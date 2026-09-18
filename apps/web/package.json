@@ -1,0 +1,13 @@
+{
+  "name": "@orionis/web",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Orionis Markets trading terminal (Next.js).",
+  "scripts": {
+    "build": "echo \"scaffold: apps/web build — Phase 4\" && exit 0",
+    "dev": "echo \"scaffold: apps/web dev — Phase 4\" && exit 0",
+    "lint": "echo \"scaffold: apps/web lint — Phase 4\" && exit 0",
+    "test": "echo \"scaffold: apps/web test — Phase 4\" && exit 0",
+    "typecheck": "echo \"scaffold: apps/web typecheck — Phase 4\" && exit 0"
+  }
+}

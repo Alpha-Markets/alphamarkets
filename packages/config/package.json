@@ -1,0 +1,14 @@
+{
+  "name": "@orionis/config",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Single source of truth for chain config, market list, fee/risk config shapes — env-driven, imported by contracts/API/indexer/SDK/frontend.",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "scripts": {
+    "build": "echo \"scaffold: packages/config build — Phase 4\" && exit 0",
+    "lint": "echo \"scaffold: packages/config lint — Phase 4\" && exit 0",
+    "test": "echo \"scaffold: packages/config test — Phase 4\" && exit 0",
+    "typecheck": "echo \"scaffold: packages/config typecheck — Phase 4\" && exit 0"
+  }
+}

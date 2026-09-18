@@ -1,0 +1,14 @@
+{
+  "name": "@orionis/types",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Single source of truth for shared shapes (MarketConfig, position types, fee config) — never redefined locally by consumers.",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "scripts": {
+    "build": "echo \"scaffold: packages/types build — Phase 1\" && exit 0",
+    "lint": "echo \"scaffold: packages/types lint — Phase 1\" && exit 0",
+    "test": "echo \"scaffold: packages/types test — Phase 1\" && exit 0",
+    "typecheck": "echo \"scaffold: packages/types typecheck — Phase 1\" && exit 0"
+  }
+}

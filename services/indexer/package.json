@@ -1,0 +1,13 @@
+{
+  "name": "@orionis/indexer",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Orionis Markets contract event indexer (replay-safe, PostgreSQL-backed).",
+  "scripts": {
+    "build": "echo \"scaffold: services/indexer build — Phase 2\" && exit 0",
+    "dev": "echo \"scaffold: services/indexer dev — Phase 2\" && exit 0",
+    "lint": "echo \"scaffold: services/indexer lint — Phase 2\" && exit 0",
+    "test": "echo \"scaffold: services/indexer test — Phase 2\" && exit 0",
+    "typecheck": "echo \"scaffold: services/indexer typecheck — Phase 2\" && exit 0"
+  }
+}

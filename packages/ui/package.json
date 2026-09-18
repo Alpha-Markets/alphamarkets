@@ -1,0 +1,14 @@
+{
+  "name": "@orionis/ui",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Shared brand-styled primitives (buttons, tables, tabular-number displays) for the Orionis terminal.",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "scripts": {
+    "build": "echo \"scaffold: packages/ui build — Phase 4\" && exit 0",
+    "lint": "echo \"scaffold: packages/ui lint — Phase 4\" && exit 0",
+    "test": "echo \"scaffold: packages/ui test — Phase 4\" && exit 0",
+    "typecheck": "echo \"scaffold: packages/ui typecheck — Phase 4\" && exit 0"
+  }
+}

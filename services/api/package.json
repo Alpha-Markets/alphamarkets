@@ -1,0 +1,13 @@
+{
+  "name": "@orionis/api",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Orionis Markets REST + WebSocket API service.",
+  "scripts": {
+    "build": "echo \"scaffold: services/api build — Phase 2\" && exit 0",
+    "dev": "echo \"scaffold: services/api dev — Phase 2\" && exit 0",
+    "lint": "echo \"scaffold: services/api lint — Phase 2\" && exit 0",
+    "test": "echo \"scaffold: services/api test — Phase 2\" && exit 0",
+    "typecheck": "echo \"scaffold: services/api typecheck — Phase 2\" && exit 0"
+  }
+}

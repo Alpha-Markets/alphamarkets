@@ -1,0 +1,13 @@
+{
+  "name": "@orionis/risk-monitor",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Orionis Markets margin health watcher — read path only; liquidation execution stays onchain.",
+  "scripts": {
+    "build": "echo \"scaffold: services/risk-monitor build — Phase 2\" && exit 0",
+    "dev": "echo \"scaffold: services/risk-monitor dev — Phase 2\" && exit 0",
+    "lint": "echo \"scaffold: services/risk-monitor lint — Phase 2\" && exit 0",
+    "test": "echo \"scaffold: services/risk-monitor test — Phase 2\" && exit 0",
+    "typecheck": "echo \"scaffold: services/risk-monitor typecheck — Phase 2\" && exit 0"
+  }
+}

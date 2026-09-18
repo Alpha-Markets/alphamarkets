@@ -1,0 +1,13 @@
+{
+  "name": "@orionis/pricing",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Orionis Markets offchain options analytics (premium, IV, Greeks) — display/quoting only, never settlement truth.",
+  "scripts": {
+    "build": "echo \"scaffold: services/pricing build — Phase 2\" && exit 0",
+    "dev": "echo \"scaffold: services/pricing dev — Phase 2\" && exit 0",
+    "lint": "echo \"scaffold: services/pricing lint — Phase 2\" && exit 0",
+    "test": "echo \"scaffold: services/pricing test — Phase 2\" && exit 0",
+    "typecheck": "echo \"scaffold: services/pricing typecheck — Phase 2\" && exit 0"
+  }
+}
