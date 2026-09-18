@@ -1,0 +1,246 @@
+// SPDX-License-Identifier: MIT
+pragma solidity 0.8.26;
+
+import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import {IOptionsEngine} from "../interfaces/IOptionsEngine.sol";
+import {IMarketRegistry} from "../interfaces/IMarketRegistry.sol";
+import {IOrionisVault} from "../interfaces/IOrionisVault.sol";
+import {IFeeManager} from "../interfaces/IFeeManager.sol";
+import {IRiskManager} from "../interfaces/IRiskManager.sol";
+import {OptionType, FeeConfig} from "../interfaces/DataTypes.sol";
+import {MarketPaused, DeadlineExpired, SlippageExceeded} from "../interfaces/Errors.sol";
+import {OptionPositionManager} from "./OptionPositionManager.sol";
+import {OptionMarket} from "./OptionMarket.sol";
+import {OptionSettlement} from "./OptionSettlement.sol";
+import {OracleRouter} from "../oracle/OracleRouter.sol";
+
+/// @notice Orchestrates the options user flow (PROJECT_BRIEF.md Section 8): validates
+/// market/risk config, charges premium, creates the position, and later closes or settles
+/// it. Users only ever buy options; the Vault's shared collateral pool is the implicit
+/// writer/counterparty — premiums paid in accrue as pool surplus that backs future
+/// in-the-money payouts, the same pooled-solvency model used for perp PnL settlement.
+/// Bounding protocol tail risk is RiskManager's job (position size / open interest caps),
+/// not this contract's.
+contract OptionsEngine is IOptionsEngine, ReentrancyGuard {
+    uint256 internal constant WAD = 1e18;
+    uint256 internal constant BPS_DENOMINATOR = 10_000;
+
+    IMarketRegistry public immutable marketRegistry;
+    OracleRouter public immutable oracleRouter;
+    IOrionisVault public immutable vault;
+    IFeeManager public immutable feeManager;
+    IRiskManager public immutable riskManager;
+    OptionPositionManager public immutable positionManager;
+    OptionMarket public immutable optionMarket;
+    address public immutable settlementToken;
+
+    error OptionsNotEnabled(bytes32 marketId);
+    error InvalidExpiry();
+    error ZeroAmount();
+    error InsufficientCollateral();
+    error NotPositionOwner();
+    error PositionNotOpen();
+    error PositionAlreadyExpired();
+
+    event OptionPositionOpened(
+        uint256 indexed positionId,
+        address indexed owner,
+        bytes32 indexed marketId,
+        OptionType optionType,
+        uint256 strike,
+        uint256 expiry,
+        uint256 contracts,
+        uint256 premium
+    );
+    event OptionPositionClosed(uint256 indexed positionId, address indexed owner, int256 realizedPnl);
+    event OptionExercised(uint256 indexed positionId, uint256 intrinsicValue, uint256 payout);
+    event OptionSettled(bytes32 indexed seriesId, uint256 settlementPrice, uint256 timestamp);
+
+    constructor(
+        address marketRegistry_,
+        address oracleRouter_,
+        address vault_,
+        address feeManager_,
+        address riskManager_,
+        address positionManager_,
+        address optionMarket_,
+        address settlementToken_
+    ) {
+        marketRegistry = IMarketRegistry(marketRegistry_);
+        oracleRouter = OracleRouter(oracleRouter_);
+        vault = IOrionisVault(vault_);
+        feeManager = IFeeManager(feeManager_);
+        riskManager = IRiskManager(riskManager_);
+        positionManager = OptionPositionManager(positionManager_);
+        optionMarket = OptionMarket(optionMarket_);
+        settlementToken = settlementToken_;
+    }
+
+    // ---------------------------------------------------------------------
+    // Open
+    // ---------------------------------------------------------------------
+
+    function openPosition(OpenPositionParams calldata params) external nonReentrant returns (uint256 positionId) {
+        if (block.timestamp > params.deadline) revert DeadlineExpired(params.deadline, block.timestamp);
+        if (!marketRegistry.isActive(params.marketId)) revert MarketPaused(params.marketId);
+        if (!marketRegistry.isOptionsEnabled(params.marketId)) revert OptionsNotEnabled(params.marketId);
+        if (params.expiry <= block.timestamp) revert InvalidExpiry();
+        if (params.contracts == 0) revert ZeroAmount();
+        if (params.premium > params.maxPremium) revert SlippageExceeded(params.maxPremium, params.premium);
+
+        uint256 contractSize = optionMarket.getContractSize(params.marketId);
+        uint256 notional = (contractSize * params.strike / WAD) * params.contracts;
+        bool oiSide = params.optionType == OptionType.CALL;
+
+        _checkAndCharge(params.marketId, oiSide, notional, params.premium);
+
+        bytes32 seriesId =
+            optionMarket.getOrCreateSeries(params.marketId, params.expiry, params.strike, params.optionType);
+        optionMarket.updateOpenInterest(seriesId, int256(params.contracts));
+
+        positionId = positionManager.createPosition(
+            OptionPositionManager.OptionPosition({
+                marketId: params.marketId,
+                optionType: params.optionType,
+                strike: params.strike,
+                expiry: params.expiry,
+                contracts: params.contracts,
+                entryPremium: params.premium,
+                collateral: params.premium,
+                realizedPnl: 0,
+                status: OptionPositionManager.PositionStatus.OPEN,
+                owner: msg.sender
+            }),
+            seriesId
+        );
+
+        emit OptionPositionOpened(
+            positionId,
+            msg.sender,
+            params.marketId,
+            params.optionType,
+            params.strike,
+            params.expiry,
+            params.contracts,
+            params.premium
+        );
+    }
+
+    function _checkAndCharge(bytes32 marketId, bool oiSide, uint256 notional, uint256 premium) internal {
+        riskManager.checkPositionSize(marketId, notional);
+        riskManager.checkOpenInterest(marketId, oiSide, notional);
+
+        FeeConfig memory fees = feeManager.getFeeConfig(marketId);
+        uint256 fee = (premium * fees.optionOpenFee) / BPS_DENOMINATOR;
+
+        if (vault.availableBalance(msg.sender, settlementToken) < premium + fee) revert InsufficientCollateral();
+
+        vault.settlePnl(msg.sender, settlementToken, -int256(premium));
+        if (fee > 0) {
+            feeManager.collectFee(marketId, msg.sender, settlementToken, fee, "OPTION_OPEN");
+        }
+
+        riskManager.recordOpenInterestDelta(marketId, oiSide, int256(notional));
+    }
+
+    // ---------------------------------------------------------------------
+    // Close (before expiry)
+    // ---------------------------------------------------------------------
+
+    function closePosition(uint256 positionId, uint256 premium, uint256 minPremium, uint256 deadline)
+        external
+        nonReentrant
+    {
+        if (block.timestamp > deadline) revert DeadlineExpired(deadline, block.timestamp);
+        if (premium < minPremium) revert SlippageExceeded(minPremium, premium);
+
+        OptionPositionManager.OptionPosition memory pos = positionManager.getPosition(positionId);
+        if (pos.owner != msg.sender) revert NotPositionOwner();
+        if (pos.status != OptionPositionManager.PositionStatus.OPEN) revert PositionNotOpen();
+        if (block.timestamp >= pos.expiry) revert PositionAlreadyExpired(); // must settle via settleExpired instead
+
+        FeeConfig memory fees = feeManager.getFeeConfig(pos.marketId);
+        uint256 fee = (premium * fees.optionCloseFee) / BPS_DENOMINATOR;
+        uint256 net = premium > fee ? premium - fee : 0;
+
+        if (premium > 0) {
+            vault.settlePnl(msg.sender, settlementToken, int256(premium));
+        }
+        if (fee > 0) {
+            feeManager.collectFee(pos.marketId, msg.sender, settlementToken, fee, "OPTION_CLOSE");
+        }
+
+        uint256 contractSize = optionMarket.getContractSize(pos.marketId);
+        uint256 notional = (contractSize * pos.strike / WAD) * pos.contracts;
+        bool oiSide = pos.optionType == OptionType.CALL;
+        riskManager.recordOpenInterestDelta(pos.marketId, oiSide, -int256(notional));
+
+        bytes32 seriesId = optionMarket.seriesId(pos.marketId, pos.expiry, pos.strike, pos.optionType);
+        optionMarket.updateOpenInterest(seriesId, -int256(pos.contracts));
+
+        int256 realizedPnl = int256(net) - int256(pos.entryPremium);
+        positionManager.closePosition(positionId, realizedPnl);
+
+        emit OptionPositionClosed(positionId, msg.sender, realizedPnl);
+    }
+
+    // ---------------------------------------------------------------------
+    // Settle (at/after expiry)
+    // ---------------------------------------------------------------------
+
+    function settleExpired(bytes32 marketId, uint256 expiry, uint256 strike, OptionType optionType)
+        external
+        nonReentrant
+    {
+        uint256 settlementPrice = oracleRouter.ensureSettlementPrice(marketId, expiry);
+
+        bytes32 seriesId = optionMarket.seriesId(marketId, expiry, strike, optionType);
+        uint256 contractSize = optionMarket.getContractSize(marketId);
+        uint256[] memory ids = positionManager.getSeriesPositions(seriesId);
+
+        for (uint256 i = 0; i < ids.length; i++) {
+            _settleOne(ids[i], marketId, optionType, strike, settlementPrice, contractSize);
+        }
+
+        emit OptionSettled(seriesId, settlementPrice, block.timestamp);
+    }
+
+    function _settleOne(
+        uint256 positionId,
+        bytes32 marketId,
+        OptionType optionType,
+        uint256 strike,
+        uint256 settlementPrice,
+        uint256 contractSize
+    ) internal {
+        OptionPositionManager.OptionPosition memory pos = positionManager.getPosition(positionId);
+        if (pos.status != OptionPositionManager.PositionStatus.OPEN) return;
+
+        uint256 payout =
+            OptionSettlement.settlementValue(optionType, settlementPrice, strike, contractSize, pos.contracts);
+        uint256 net = _payFeeAndCredit(marketId, pos.owner, payout);
+
+        bool oiSide = optionType == OptionType.CALL;
+        uint256 notional = (contractSize * strike / WAD) * pos.contracts;
+        riskManager.recordOpenInterestDelta(marketId, oiSide, -int256(notional));
+
+        positionManager.settlePosition(positionId, int256(net) - int256(pos.entryPremium));
+
+        if (payout > 0) {
+            emit OptionExercised(positionId, payout, net);
+        }
+    }
+
+    function _payFeeAndCredit(bytes32 marketId, address owner, uint256 payout) internal returns (uint256 net) {
+        FeeConfig memory fees = feeManager.getFeeConfig(marketId);
+        uint256 fee = (payout * fees.settlementFee) / BPS_DENOMINATOR;
+        net = payout > fee ? payout - fee : 0;
+
+        if (payout > 0) {
+            vault.settlePnl(owner, settlementToken, int256(payout));
+        }
+        if (fee > 0) {
+            feeManager.collectFee(marketId, owner, settlementToken, fee, "SETTLEMENT");
+        }
+    }
+}
