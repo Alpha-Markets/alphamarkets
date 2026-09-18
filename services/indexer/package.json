@@ -2,12 +2,27 @@
   "name": "@orionis/indexer",
   "private": true,
   "version": "0.0.0",
+  "type": "module",
   "description": "Orionis Markets contract event indexer (replay-safe, PostgreSQL-backed).",
   "scripts": {
     "build": "echo \"scaffold: services/indexer build — Phase 2\" && exit 0",
-    "dev": "echo \"scaffold: services/indexer dev — Phase 2\" && exit 0",
+    "dev": "tsx watch src/index.ts",
+    "start": "tsx src/index.ts",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "tsx src/db/migrate.ts",
     "lint": "echo \"scaffold: services/indexer lint — Phase 2\" && exit 0",
     "test": "echo \"scaffold: services/indexer test — Phase 2\" && exit 0",
-    "typecheck": "echo \"scaffold: services/indexer typecheck — Phase 2\" && exit 0"
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "@orionis/config": "workspace:*",
+    "@orionis/sdk": "workspace:*",
+    "@orionis/types": "workspace:*",
+    "drizzle-orm": "^0.36.0",
+    "postgres": "^3.4.0",
+    "viem": "^2.21.0"
+  },
+  "devDependencies": {
+    "drizzle-kit": "^0.28.0"
   }
 }

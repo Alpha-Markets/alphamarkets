@@ -2,12 +2,20 @@
   "name": "@orionis/pricing",
   "private": true,
   "version": "0.0.0",
+  "type": "module",
   "description": "Orionis Markets offchain options analytics (premium, IV, Greeks) — display/quoting only, never settlement truth.",
   "scripts": {
     "build": "echo \"scaffold: services/pricing build — Phase 2\" && exit 0",
-    "dev": "echo \"scaffold: services/pricing dev — Phase 2\" && exit 0",
+    "dev": "tsx watch src/index.ts",
+    "start": "tsx src/index.ts",
     "lint": "echo \"scaffold: services/pricing lint — Phase 2\" && exit 0",
-    "test": "echo \"scaffold: services/pricing test — Phase 2\" && exit 0",
-    "typecheck": "echo \"scaffold: services/pricing typecheck — Phase 2\" && exit 0"
+    "test": "tsx --test src/blackScholes.test.ts",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "@orionis/config": "workspace:*",
+    "@orionis/sdk": "workspace:*",
+    "fastify": "^5.1.0",
+    "viem": "^2.21.0"
   }
 }
