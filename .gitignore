@@ -30,3 +30,7 @@ pnpm-debug.log*
 .DS_Store
 .vscode/
 .idea/
+
+# Project Requirements
+DEVELOPMENT_STEPS.md
+PROJECT_BRIEF.md
