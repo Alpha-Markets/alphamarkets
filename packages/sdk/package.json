@@ -2,13 +2,45 @@
   "name": "@orionis/sdk",
   "private": true,
   "version": "0.0.0",
-  "description": "Orionis Markets typed client — the only sanctioned way to talk to contracts/API from any frontend or integrator.",
+  "type": "module",
+  "description": "Orionis Markets typed client \u2014 the only sanctioned way to talk to contracts/API from any frontend or integrator.",
   "main": "src/index.ts",
   "types": "src/index.ts",
   "scripts": {
-    "build": "echo \"scaffold: packages/sdk build — Phase 3\" && exit 0",
-    "lint": "echo \"scaffold: packages/sdk lint — Phase 3\" && exit 0",
-    "test": "echo \"scaffold: packages/sdk test — Phase 3\" && exit 0",
-    "typecheck": "echo \"scaffold: packages/sdk typecheck — Phase 3\" && exit 0"
-  }
+    "build": "tsup",
+    "lint": "echo \"scaffold: packages/sdk lint \u2014 Phase 3\" && exit 0",
+    "test": "tsx --test src/*.test.ts",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "generate:abis": "node scripts/generate-abis.mjs"
+  },
+  "dependencies": {
+    "@orionis/config": "workspace:*",
+    "@orionis/types": "workspace:*",
+    "viem": "^2.21.0"
+  },
+  "devDependencies": {
+    "tsup": "^8"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "publishConfig": {
+    "main": "./dist/index.cjs",
+    "module": "./dist/index.js",
+    "types": "./dist/index.d.ts",
+    "exports": {
+      ".": {
+        "import": {
+          "types": "./dist/index.d.ts",
+          "default": "./dist/index.js"
+        },
+        "require": {
+          "types": "./dist/index.d.cts",
+          "default": "./dist/index.cjs"
+        }
+      }
+    }
+  },
+  "sideEffects": false
 }
