@@ -1,0 +1,53 @@
+@import "tailwindcss";
+@source "../../../../packages/ui/src";
+
+/* Orionis terminal tokens (PROJECT_BRIEF.md Section 2): black and off-white, neutral grays, and
+   green/red used only to say which way a market or position is moving. No accent colour. */
+@theme {
+  --color-ground: #000000;
+  --color-surface: #0d0d0d;
+  --color-raised: #171717;
+  --color-line: #262626;
+  --color-text: #ece9e2;
+  --color-muted: #8a8983;
+  --color-faint: #5c5b57;
+  --color-up: #4cb782;
+  --color-down: #e0605a;
+  --font-sans: var(--font-plex), ui-sans-serif, system-ui, sans-serif;
+}
+
+:root {
+  color-scheme: dark;
+}
+
+html,
+body {
+  background: var(--color-ground);
+  color: var(--color-text);
+  font-family: var(--font-sans);
+  font-size: 14px;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* In the base layer so component utilities (e.g. `outline-none` on an input whose wrapper shows
+   the focus border instead) can override it. */
+@layer base {
+  :focus-visible {
+    outline: 1px solid var(--color-text);
+    outline-offset: 2px;
+  }
+}
+
+::selection {
+  background: var(--color-text);
+  color: var(--color-ground);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

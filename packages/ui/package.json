@@ -9,6 +9,14 @@
     "build": "echo \"scaffold: packages/ui build — Phase 4\" && exit 0",
     "lint": "echo \"scaffold: packages/ui lint — Phase 4\" && exit 0",
     "test": "echo \"scaffold: packages/ui test — Phase 4\" && exit 0",
-    "typecheck": "echo \"scaffold: packages/ui typecheck — Phase 4\" && exit 0"
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "type": "module",
+  "peerDependencies": {
+    "react": "^19.0.0"
+  },
+  "devDependencies": {
+    "@types/react": "^19",
+    "react": "^19"
   }
 }
