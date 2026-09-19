@@ -10,6 +10,7 @@
     "build": "echo \"scaffold: packages/config build \u2014 Phase 4\" && exit 0",
     "lint": "echo \"scaffold: packages/config lint \u2014 Phase 4\" && exit 0",
     "test": "tsx --test src/*.test.ts",
+    "sync:deployments": "tsx scripts/sync-deployments.ts",
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
