@@ -4,7 +4,9 @@ import type { NextConfig } from "next";
 
 // One `.env` at the repo root feeds every workspace (see .env.example); Next only reads the app
 // directory by default.
-loadEnvConfig(resolve(import.meta.dirname, "../.."));
+// `forceReload` is required: Next has already loaded the app directory's env by the time this
+// runs, and `loadEnvConfig` returns that cached result unless it is told to reload.
+loadEnvConfig(resolve(import.meta.dirname, "../.."), process.env.NODE_ENV !== "production", console, true);
 
 const config: NextConfig = {
   // Workspace packages ship TypeScript source; Next compiles them.
