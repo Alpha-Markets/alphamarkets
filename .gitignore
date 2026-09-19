@@ -10,8 +10,10 @@ node_modules/
 # Build outputs
 dist/
 .next/
+next-env.d.ts
 out/
 build/
+*.tsbuildinfo
 
 # Turborepo
 .turbo/
