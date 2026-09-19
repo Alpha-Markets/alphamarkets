@@ -27,10 +27,24 @@ export function fmtUsd(value: bigint | undefined, decimals: number, digits = 2):
   return `$${fmt(value, decimals, digits)}`;
 }
 
+/// A signed figure shows no sign, and no colour, when it rounds to zero at the precision shown:
+/// "−$0.00" in red says something moved when nothing visible did.
+function roundsToZero(value: bigint, decimals: number, digits: number): boolean {
+  return /^0\.0*$/.test(fmt(value < 0n ? -value : value, decimals, digits));
+}
+
 export function fmtSigned(value: bigint | undefined, decimals: number, digits = 2): string {
   if (value === undefined) return "–";
   const text = fmt(value < 0n ? -value : value, decimals, digits);
-  return `${value < 0n ? "−" : value > 0n ? "+" : ""}$${text}`;
+  if (roundsToZero(value, decimals, digits)) return `$${text}`;
+  return `${value < 0n ? "−" : "+"}$${text}`;
+}
+
+/// Colour for a signed figure, matching `fmtSigned`'s rounding. `muted` while it is still loading.
+export function signTone(value: bigint | undefined, decimals: number, digits = 2): "up" | "down" | "neutral" | "muted" {
+  if (value === undefined) return "muted";
+  if (roundsToZero(value, decimals, digits)) return "neutral";
+  return value > 0n ? "up" : "down";
 }
 
 /// Basis points as a percentage: 8 -> "0.08%".

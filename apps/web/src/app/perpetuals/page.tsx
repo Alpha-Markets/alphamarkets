@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { Header } from "@/components/Header";
 import { MarketHeader } from "@/components/MarketHeader";
 import { MarketList } from "@/components/MarketList";
@@ -19,7 +20,9 @@ export default function PerpetualsTerminal() {
         </p>
       )}
       <main className="grid min-h-0 flex-1 grid-cols-[220px_minmax(0,1fr)_340px] gap-px bg-line">
-        <MarketList />
+        <Suspense fallback={null}>
+          <MarketList />
+        </Suspense>
         <div className="flex min-h-0 flex-col gap-px">
           <MarketHeader />
           <PriceChart />

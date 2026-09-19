@@ -3,7 +3,7 @@
 import { Panel } from "@orionis/ui";
 import { formatUnits } from "viem";
 import { useEffect, useMemo, useState } from "react";
-import { usePerpMarket, usePositions } from "@/hooks/queries";
+import { usePerpMarket, usePositions, usePriceHistory } from "@/hooks/queries";
 import { PRICE_DECIMALS } from "@/lib/format";
 import { symbolOf } from "@/lib/market";
 import { useTerminal } from "@/stores/terminal";
@@ -15,18 +15,21 @@ const H = 320;
 
 const toNumber = (value: bigint) => Number(formatUnits(value, PRICE_DECIMALS));
 
-/// Mark price collected since this page opened. The API does not serve price history yet, so
-/// this is a live session line, not a historical chart — the panel says so.
+/// Index-price history from the indexer's samples (when `NEXT_PUBLIC_API_URL` is set and the
+/// indexer has been running), followed by mark prices collected since this page opened. Without
+/// the API it is a live session line only, and the panel title says which one you are looking at.
 export function PriceChart() {
   const symbol = useTerminal((state) => state.symbol);
   const { data, dataUpdatedAt } = usePerpMarket(symbol);
   const { data: positions } = usePositions();
-  const [points, setPoints] = useState<number[]>([]);
+  const { data: history } = usePriceHistory(symbol, "24h");
+  const [live, setLive] = useState<number[]>([]);
+  const past = useMemo(() => (history ?? []).map((point) => toNumber(point.price)), [history]);
 
-  useEffect(() => setPoints([]), [symbol]);
+  useEffect(() => setLive([]), [symbol]);
   useEffect(() => {
     if (!data) return;
-    setPoints((current) => [...current, toNumber(data.markPrice)].slice(-MAX_POINTS));
+    setLive((current) => [...current, toNumber(data.markPrice)].slice(-MAX_POINTS));
     // A new sample arrives whenever the query refetches.
   }, [dataUpdatedAt]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -45,6 +48,7 @@ export function PriceChart() {
     ]);
   }, [data, positions, symbol]);
 
+  const points = useMemo(() => [...past, ...live].slice(-MAX_POINTS), [past, live]);
   const all = [...points, ...lines.map((line) => line.price)];
   const min = Math.min(...all);
   const max = Math.max(...all);
@@ -55,13 +59,13 @@ export function PriceChart() {
   const x = (index: number) => (points.length < 2 ? 0 : (index / (MAX_POINTS - 1)) * W + (W - ((points.length - 1) / (MAX_POINTS - 1)) * W));
 
   return (
-    <Panel title={`${symbol || "Market"}-PERP · mark price this session`} className="min-h-0 flex-1">
+    <Panel title={`${symbol || "Market"}-PERP · ${past.length > 1 ? "last 24 hours" : "mark price this session"}`} className="min-h-0 flex-1">
       <div className="min-h-0 flex-1 p-3">
         {points.length < 2 ? (
-          <p className="text-muted">Collecting prices… history is not available yet, so the line builds as prices arrive.</p>
+          <p className="text-muted">Collecting prices… the line builds as they arrive.</p>
         ) : (
           <div className="relative h-full w-full">
-            <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" className="h-full w-full" role="img" aria-label="Mark price this session">
+            <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" className="h-full w-full" role="img" aria-label="Price over time">
               {lines.map((line) => (
                 <line key={line.label} x1={0} x2={W} y1={y(line.price)} y2={y(line.price)} stroke="currentColor" strokeDasharray="4 6" className={line.tone} vectorEffect="non-scaling-stroke" />
               ))}

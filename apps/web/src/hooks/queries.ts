@@ -59,3 +59,79 @@ export function usePositions() {
     refetchInterval: 6_000,
   });
 }
+
+/// Every market on the registry, perps and options alike.
+export function useAllMarkets() {
+  return useQuery({ queryKey: ["all-markets"], queryFn: () => orionisRead.markets.list(), refetchInterval: 30_000 });
+}
+
+/// Statistics need `services/api`; without it the query is off and pages show "–".
+export function useMarketStats() {
+  return useQuery({
+    queryKey: ["market-stats"],
+    queryFn: () => orionisRead.markets.stats(),
+    enabled: Boolean(env.apiUrl),
+    refetchInterval: 60_000,
+    retry: false,
+  });
+}
+
+/// What the Markets page needs per row from the chain. Each read is settled separately so one
+/// market with, say, no funding configured still shows its price.
+export function useMarketOverview(symbol: string) {
+  return useQuery({
+    queryKey: ["market-overview", symbol],
+    queryFn: async () => {
+      const [prices, funding, openInterest] = await Promise.allSettled([
+        orionisRead.prices.get(symbol),
+        orionisRead.funding.get(symbol),
+        orionisRead.risk.openInterest(symbol),
+      ]);
+      const value = <T,>(result: PromiseSettledResult<T>) => (result.status === "fulfilled" ? result.value : undefined);
+      return { prices: value(prices), funding: value(funding), openInterest: value(openInterest) };
+    },
+    refetchInterval: TICK_MS,
+  });
+}
+
+export function usePortfolioSummary() {
+  const { address } = useAccount();
+  return useQuery({
+    queryKey: ["portfolio-summary", address],
+    queryFn: () => orionisRead.portfolio.summary(address as Address),
+    enabled: Boolean(address),
+    refetchInterval: 6_000,
+  });
+}
+
+export function useFunding() {
+  const { address } = useAccount();
+  return useQuery({
+    queryKey: ["funding", address],
+    queryFn: () => orionisRead.portfolio.funding(address as Address, { limit: 200 }),
+    enabled: Boolean(address && env.apiUrl),
+    refetchInterval: 30_000,
+    retry: false,
+  });
+}
+
+export function useHistory() {
+  const { address } = useAccount();
+  return useQuery({
+    queryKey: ["history", address],
+    queryFn: () => orionisRead.portfolio.history(address as Address, { limit: 200 }),
+    enabled: Boolean(address && env.apiUrl),
+    refetchInterval: 30_000,
+    retry: false,
+  });
+}
+
+export function usePriceHistory(symbol: string, range: "1h" | "6h" | "24h" | "7d") {
+  return useQuery({
+    queryKey: ["price-history", symbol, range],
+    queryFn: () => orionisRead.prices.history(symbol, range),
+    enabled: Boolean(symbol && env.apiUrl),
+    refetchInterval: 60_000,
+    retry: false,
+  });
+}

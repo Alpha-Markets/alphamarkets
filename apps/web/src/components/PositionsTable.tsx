@@ -1,13 +1,13 @@
 "use client";
 
-import { Button, Num, Panel, toneOf } from "@orionis/ui";
+import { Button, Num, Panel } from "@orionis/ui";
 import { margin } from "@orionis/sdk";
 import type { PerpPosition } from "@orionis/types";
 import { useAccount } from "wagmi";
 import { usePerpMarket, usePositions, useSettlementDecimals } from "@/hooks/queries";
 import { useWalletOrionis } from "@/hooks/useOrionis";
 import { useTx } from "@/hooks/useTx";
-import { fmt, fmtBps, fmtPrice, fmtSigned, fmtUsd } from "@/lib/format";
+import { fmt, fmtBps, fmtPrice, fmtSigned, fmtUsd, signTone } from "@/lib/format";
 import { perpLabel, symbolOf } from "@/lib/market";
 
 const head = "px-3 py-2 text-right text-xs font-normal text-muted first:text-left";
@@ -41,7 +41,7 @@ function PositionRow({ position, decimals }: { position: PerpPosition; decimals:
       <td className={cell}>{fmtPrice(liquidation)}</td>
       <td className={cell}>{fmtBps(ratio)}</td>
       <td className={cell}>
-        <Num tone={pnl === undefined ? "muted" : toneOf(pnl)}>{fmtSigned(pnl, decimals)}</Num>
+        <Num tone={signTone(pnl, decimals)}>{fmtSigned(pnl, decimals)}</Num>
       </td>
       <td className={cell}>{fmtSigned(position.fundingAccrued, decimals)}</td>
       <td className={cell}>
@@ -62,6 +62,34 @@ function PositionRow({ position, decimals }: { position: PerpPosition; decimals:
   );
 }
 
+/// The table alone, so the terminal (in a fixed-height panel) and the portfolio page can share it.
+export function PerpPositionsTable({ positions, decimals }: { positions: PerpPosition[]; decimals: number }) {
+  return (
+    <table className="w-full min-w-[900px] text-sm">
+      <thead>
+        <tr>
+          <th className={head}>Market</th>
+          <th className={head}>Size</th>
+          <th className={head}>Leverage</th>
+          <th className={head}>Margin</th>
+          <th className={head}>Entry</th>
+          <th className={head}>Mark</th>
+          <th className={head}>Liquidation</th>
+          <th className={head}>Margin ratio</th>
+          <th className={head}>PnL</th>
+          <th className={head}>Funding</th>
+          <th className={head} />
+        </tr>
+      </thead>
+      <tbody>
+        {positions.map((position) => (
+          <PositionRow key={position.positionId.toString()} position={position} decimals={decimals} />
+        ))}
+      </tbody>
+    </table>
+  );
+}
+
 export function PositionsTable() {
   const { isConnected } = useAccount();
   const { data, isPending } = usePositions();
@@ -78,28 +106,7 @@ export function PositionsTable() {
         ) : open.length === 0 ? (
           <p className="p-3 text-muted">No open positions. Deposit collateral and open one from the order panel.</p>
         ) : (
-          <table className="w-full min-w-[900px] text-sm">
-            <thead>
-              <tr>
-                <th className={head}>Market</th>
-                <th className={head}>Size</th>
-                <th className={head}>Leverage</th>
-                <th className={head}>Margin</th>
-                <th className={head}>Entry</th>
-                <th className={head}>Mark</th>
-                <th className={head}>Liquidation</th>
-                <th className={head}>Margin ratio</th>
-                <th className={head}>PnL</th>
-                <th className={head}>Funding</th>
-                <th className={head} />
-              </tr>
-            </thead>
-            <tbody>
-              {open.map((position) => (
-                <PositionRow key={position.positionId.toString()} position={position} decimals={decimals} />
-              ))}
-            </tbody>
-          </table>
+          <PerpPositionsTable positions={open} decimals={decimals} />
         )}
       </div>
     </Panel>

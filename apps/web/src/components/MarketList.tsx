@@ -1,6 +1,7 @@
 "use client";
 
 import { Num, Panel, cn } from "@orionis/ui";
+import { useSearchParams } from "next/navigation";
 import { useEffect } from "react";
 import { usePerpMarket, usePerpMarkets } from "@/hooks/queries";
 import { fmtBps, fmtPrice } from "@/lib/format";
@@ -41,11 +42,17 @@ export function MarketList() {
   const symbol = useTerminal((state) => state.symbol);
   const setSymbol = useTerminal((state) => state.setSymbol);
 
-  // Fast market switching starts from a sensible default: the first market the registry lists.
+  // Start from `?market=` (links from the Markets page), else the first market the registry lists.
+  const requested = useSearchParams().get("market")?.toUpperCase();
   useEffect(() => {
-    const first = markets?.[0];
-    if (!symbol && first) setSymbol(symbolOf(first.marketId));
-  }, [markets, symbol, setSymbol]);
+    if (!markets?.length) return;
+    const symbols = markets.map((market) => symbolOf(market.marketId));
+    if (requested && symbols.includes(requested)) {
+      if (symbol !== requested) setSymbol(requested);
+    } else if (!symbol) {
+      setSymbol(symbols[0]!);
+    }
+  }, [markets, symbol, requested, setSymbol]);
 
   return (
     <Panel title="Markets" className="h-full">
