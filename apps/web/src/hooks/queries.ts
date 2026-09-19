@@ -1,6 +1,6 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
+import { useQueries, useQuery } from "@tanstack/react-query";
 import { useAccount } from "wagmi";
 import type { Address } from "@orionis/types";
 import { orionisRead } from "@/lib/orionis";
@@ -134,4 +134,53 @@ export function usePriceHistory(symbol: string, range: "1h" | "6h" | "24h" | "7d
     refetchInterval: 60_000,
     retry: false,
   });
+}
+
+/// Markets the registry allows options on. The underlying selector on the Options page reads this.
+export function useOptionUnderlyings() {
+  return useQuery({
+    queryKey: ["option-underlyings"],
+    queryFn: async () => (await orionisRead.markets.list()).filter((market) => market.optionsEnabled && market.active),
+    refetchInterval: 30_000,
+  });
+}
+
+/// Index price, the spot the strike ladder is centred on.
+export function useIndexPrice(symbol: string) {
+  return useQuery({
+    queryKey: ["index-price", symbol],
+    queryFn: async () => (await orionisRead.prices.get(symbol)).index.price,
+    enabled: Boolean(symbol),
+    refetchInterval: TICK_MS,
+  });
+}
+
+/// Expiries that already have an opened series, from the indexer. Off without `NEXT_PUBLIC_API_URL`.
+export function useListedExpiries(symbol: string) {
+  return useQuery({
+    queryKey: ["option-expiries", symbol],
+    queryFn: () => orionisRead.options.expiries(symbol),
+    enabled: Boolean(symbol && env.apiUrl),
+    refetchInterval: 60_000,
+    retry: false,
+  });
+}
+
+/// One display-only quote (premium, IV, Greeks) per strike and side for one expiry. These are
+/// unsigned analytics from the pricing service, never the price an order is charged. The order
+/// ticket asks for a signed quote separately.
+export function useOptionChain(symbol: string, expiry: bigint | undefined, strikes: bigint[]) {
+  const sides = ["CALL", "PUT"] as const;
+  const results = useQueries({
+    queries: strikes.flatMap((strike) =>
+      sides.map((type) => ({
+        queryKey: ["option-chain-quote", symbol, String(expiry), strike.toString(), type],
+        queryFn: () => orionisRead.options.quote({ underlying: symbol, type, strike, expiry: expiry!, contracts: 1 }),
+        enabled: Boolean(env.apiUrl && symbol && expiry),
+        refetchInterval: 15_000,
+        retry: false,
+      })),
+    ),
+  });
+  return strikes.map((strike, index) => ({ strike, call: results[index * 2]!, put: results[index * 2 + 1]! }));
 }

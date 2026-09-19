@@ -5,10 +5,10 @@ import { WalletButton } from "./WalletButton";
 /// links that lead nowhere.
 const items = [
   { label: "Markets", href: "/markets" },
-  { label: "Options", href: undefined },
+  { label: "Options", href: "/options" },
   { label: "Perpetuals", href: "/perpetuals" },
   { label: "Portfolio", href: "/portfolio" },
-  { label: "Activity", href: undefined },
+  { label: "Activity", href: "/activity" },
 ];
 
 export function Header({ current }: { current?: string }) {

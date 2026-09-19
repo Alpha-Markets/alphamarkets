@@ -3,12 +3,14 @@
 import { Button, Num, Panel } from "@orionis/ui";
 import { margin } from "@orionis/sdk";
 import type { PerpPosition } from "@orionis/types";
+import { useState } from "react";
 import { useAccount } from "wagmi";
 import { usePerpMarket, usePositions, useSettlementDecimals } from "@/hooks/queries";
 import { useWalletOrionis } from "@/hooks/useOrionis";
 import { useTx } from "@/hooks/useTx";
 import { fmt, fmtBps, fmtPrice, fmtSigned, fmtUsd, signTone } from "@/lib/format";
 import { perpLabel, symbolOf } from "@/lib/market";
+import { AdjustPosition } from "./AdjustPosition";
 
 const head = "px-3 py-2 text-right text-xs font-normal text-muted first:text-left";
 const cell = "px-3 py-2 text-right tabular-nums first:text-left";
@@ -26,39 +28,52 @@ function PositionRow({ position, decimals }: { position: PerpPosition; decimals:
     : undefined;
   const ratio = pnl === undefined ? undefined : margin.marginRatioBps(position.collateral, pnl, position.size);
   const leverage = position.collateral === 0n ? 0n : position.size / position.collateral;
+  const [adjusting, setAdjusting] = useState(false);
 
   return (
-    <tr className="border-t border-line">
-      <td className={cell}>
-        <span className="font-medium">{perpLabel(position.marketId)}</span>
-        <span className={position.isLong ? "ml-2 text-up" : "ml-2 text-down"}>{position.isLong ? "Long" : "Short"}</span>
-      </td>
-      <td className={cell}>{fmtUsd(position.size, decimals)}</td>
-      <td className={cell}>{`${leverage}x`}</td>
-      <td className={cell}>{fmtUsd(position.collateral, decimals)}</td>
-      <td className={cell}>{fmtPrice(position.entryPrice)}</td>
-      <td className={cell}>{fmtPrice(mark)}</td>
-      <td className={cell}>{fmtPrice(liquidation)}</td>
-      <td className={cell}>{fmtBps(ratio)}</td>
-      <td className={cell}>
-        <Num tone={signTone(pnl, decimals)}>{fmtSigned(pnl, decimals)}</Num>
-      </td>
-      <td className={cell}>{fmtSigned(position.fundingAccrued, decimals)}</td>
-      <td className={cell}>
-        <Button
-          size="sm"
-          disabled={!wallet}
-          onClick={() =>
-            run(
-              { title: "Close position", summary: `${perpLabel(position.marketId)} · ${fmtUsd(position.size, decimals, 0)}` },
-              (tx) => wallet!.perps.closePosition(position.positionId, { tx }),
-            )
-          }
-        >
-          Close
-        </Button>
-      </td>
-    </tr>
+    <>
+      <tr className="border-t border-line">
+        <td className={cell}>
+          <span className="font-medium">{perpLabel(position.marketId)}</span>
+          <span className={position.isLong ? "ml-2 text-up" : "ml-2 text-down"}>{position.isLong ? "Long" : "Short"}</span>
+        </td>
+        <td className={cell}>{fmtUsd(position.size, decimals)}</td>
+        <td className={cell}>{`${leverage}x`}</td>
+        <td className={cell}>{fmtUsd(position.collateral, decimals)}</td>
+        <td className={cell}>{fmtPrice(position.entryPrice)}</td>
+        <td className={cell}>{fmtPrice(mark)}</td>
+        <td className={cell}>{fmtPrice(liquidation)}</td>
+        <td className={cell}>{fmtBps(ratio)}</td>
+        <td className={cell}>
+          <Num tone={signTone(pnl, decimals)}>{fmtSigned(pnl, decimals)}</Num>
+        </td>
+        <td className={cell}>{fmtSigned(position.fundingAccrued, decimals)}</td>
+        <td className={cell}>
+          <Button size="sm" variant="ghost" aria-expanded={adjusting} onClick={() => setAdjusting((open) => !open)}>
+            Adjust
+          </Button>{" "}
+          <Button
+            size="sm"
+            disabled={!wallet}
+            onClick={() =>
+              run(
+                { title: "Close position", summary: `${perpLabel(position.marketId)} · ${fmtUsd(position.size, decimals, 0)}` },
+                (tx) => wallet!.perps.closePosition(position.positionId, { tx }),
+              )
+            }
+          >
+            Close
+          </Button>
+        </td>
+      </tr>
+      {adjusting ? (
+        <tr className="border-t border-line bg-raised/40">
+          <td colSpan={11} className="p-0 text-left">
+            <AdjustPosition position={position} decimals={decimals} />
+          </td>
+        </tr>
+      ) : null}
+    </>
   );
 }
 

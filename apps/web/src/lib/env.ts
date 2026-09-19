@@ -25,7 +25,28 @@ const raw = {
   fundingManager: process.env.NEXT_PUBLIC_FUNDING_MANAGER,
   priceValidator: process.env.NEXT_PUBLIC_PRICE_VALIDATOR,
   buybackModule: process.env.NEXT_PUBLIC_BUYBACK_MODULE,
+  optionStrikeStepBps: process.env.NEXT_PUBLIC_OPTION_STRIKE_STEP_BPS,
+  optionStrikeRows: process.env.NEXT_PUBLIC_OPTION_STRIKE_ROWS,
+  optionExpiryDays: process.env.NEXT_PUBLIC_OPTION_EXPIRY_DAYS,
+  optionExpiryHourUtc: process.env.NEXT_PUBLIC_OPTION_EXPIRY_HOUR_UTC,
 };
+
+/// A whole number from the environment, or `fallback` when it is unset, not a number or out of range.
+function wholeNumber(value: string | undefined, fallback: number, min: number, max: number): number {
+  const parsed = Number(value);
+  return value !== undefined && value !== "" && Number.isInteger(parsed) && parsed >= min && parsed <= max ? parsed : fallback;
+}
+
+/// Comma-separated whole numbers ("7,14,30"), keeping only valid entries; `fallback` if none remain.
+function wholeNumberList(value: string | undefined, fallback: number[], min: number, max: number): number[] {
+  const parsed = (value ?? "")
+    .split(",")
+    .map((part) => part.trim())
+    .filter((part) => part !== "")
+    .map(Number)
+    .filter((n) => Number.isInteger(n) && n >= min && n <= max);
+  return parsed.length > 0 ? [...new Set(parsed)].sort((a, b) => a - b) : fallback;
+}
 
 function supportedChainId(value: string | undefined): ChainId {
   const id = Number(value ?? ROBINHOOD_TESTNET_CHAIN_ID);
@@ -75,4 +96,12 @@ export const env = {
   explorerUrl: raw.explorerUrl,
   apiUrl: raw.apiUrl ? raw.apiUrl.replace(/\/+$/, "") : undefined,
   addresses: resolveAddresses(),
+  /// Option chain layout. The contract lists no strikes (a series is created on first use), so the
+  /// terminal proposes a ladder around spot and a few upcoming expiries; these set its shape.
+  options: {
+    strikeStepBps: wholeNumber(raw.optionStrikeStepBps, 500, 1, 5_000),
+    strikeRows: wholeNumber(raw.optionStrikeRows, 5, 1, 20),
+    expiryDays: wholeNumberList(raw.optionExpiryDays, [7, 14, 30], 1, 365),
+    expiryHourUtc: wholeNumber(raw.optionExpiryHourUtc, 20, 0, 23),
+  },
 } as const;
