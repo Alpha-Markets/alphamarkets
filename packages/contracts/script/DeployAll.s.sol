@@ -78,6 +78,7 @@ contract DeployAll is Script {
 
         d.optionsEngine = address(
             new OptionsEngine(
+                admin,
                 d.marketRegistry,
                 d.oracleRouter,
                 d.vault,
@@ -115,6 +116,14 @@ contract DeployAll is Script {
         );
 
         _wireRoles(d);
+
+        // The quoter signs option premiums (see IOptionsEngine.Quote), so it is a critical key:
+        // set QUOTER_ADDRESS to the pricing service's signing address, and move the role behind a
+        // multisig before mainnet. Defaults to the deployer for local runs.
+        address quoter = vm.envOr("QUOTER_ADDRESS", admin);
+        OptionsEngine optionsEngine = OptionsEngine(d.optionsEngine);
+        optionsEngine.grantRole(optionsEngine.QUOTER_ROLE(), quoter);
+        console.log("Option quoter:         ", quoter);
 
         vm.stopBroadcast();
 
