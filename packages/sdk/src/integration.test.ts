@@ -12,7 +12,10 @@ import { createWalletClient, http, parseAbi, publicActions } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import type { ContractAddresses } from "@orionis/config";
 import { Orionis } from "./client.js";
-import { OrionisContractError, UserRejectedError } from "./errors.js";
+import { InvalidQuoteError, OrionisContractError, QuoteAlreadyUsedError, UserRejectedError } from "./errors.js";
+import { closeQuoteTypedData, openQuoteTypedData } from "./quotes.js";
+import { OptionPositionStatus, OptionType } from "@orionis/types";
+import { resolveMarketId } from "./utils.js";
 import type { TxEvent } from "./transactions.js";
 
 const contractsDir = resolve(import.meta.dirname, "../../contracts");
@@ -194,5 +197,78 @@ describe("SDK against a local Anvil deployment", { skip: skipReason, timeout: 18
       (error: unknown) => error instanceof OrionisContractError && !(error instanceof UserRejectedError),
     );
     assert.equal(events.at(-1)?.status, "failed");
+  });
+
+  test("option premiums are only honoured when the quoter signed them", async () => {
+    const token = addresses.settlementToken;
+    const strike = 190n * 10n ** 18n;
+    const expiry = BigInt(Math.floor(Date.now() / 1000) + 7 * 24 * 3600);
+    const premium = 50_000_000n; // $50 for the whole order, 6-decimal token
+    const validUntil = BigInt(Math.floor(Date.now() / 1000) + 300);
+    const base = {
+      chainId: 46_630,
+      optionsEngine: addresses.optionsEngine,
+      user: account.address,
+      marketId: resolveMarketId("NVDA"),
+      optionType: OptionType.CALL,
+      strike,
+      expiry,
+      contracts: 10n,
+    };
+    // The deploy script grants QUOTER_ROLE to the deployer by default, so this account stands in
+    // for services/pricing; the typed-data shape is the same one that service signs.
+    const sign = (input: Parameters<typeof openQuoteTypedData>[0]) => account.signTypedData(openQuoteTypedData(input));
+    const params = { underlying: "NVDA", type: "CALL", strike, expiry, contracts: 10n } as const;
+
+    // Try to buy the option for free: sign for $50, submit for $0.
+    const signedFor50 = await sign({ ...base, premium, validUntil, nonce: 1n });
+    await assert.rejects(
+      orionis.options.openPosition({
+        ...params,
+        authorization: { premium: 0n, validUntil, nonce: 1n, signature: signedFor50 },
+      }),
+      InvalidQuoteError,
+    );
+
+    // The honest path: the signed premium is what is charged.
+    const before = (await orionis.vault.balances(account.address, token)).available;
+    const authorization = { premium, validUntil, nonce: 1n, signature: signedFor50 };
+    await orionis.options.openPosition({ ...params, authorization, tx: { wait: true } });
+    const afterOpen = (await orionis.vault.balances(account.address, token)).available;
+    assert.equal(before - afterOpen, premium + (premium * 20n) / 10_000n); // premium + 0.20% open fee
+
+    // The same quote cannot be used twice.
+    await assert.rejects(orionis.options.openPosition({ ...params, authorization }), QuoteAlreadyUsedError);
+
+    // Closing: a caller cannot claim more than the quoter signed.
+    const { options: optionPositions } = await orionis.portfolio.positions(account.address);
+    const position = optionPositions.find((p) => p.status === OptionPositionStatus.OPEN)!;
+    const closePremium = 60_000_000n;
+    const closeSignature = await account.signTypedData(
+      closeQuoteTypedData({
+        chainId: 46_630,
+        optionsEngine: addresses.optionsEngine,
+        user: account.address,
+        positionId: position.positionId,
+        premium: closePremium,
+        validUntil,
+        nonce: 2n,
+      }),
+    );
+    await assert.rejects(
+      orionis.options.closePosition(position.positionId, {
+        authorization: { premium: 50_000_000_000n, validUntil, nonce: 2n, signature: closeSignature },
+      }),
+      InvalidQuoteError,
+    );
+    await orionis.options.closePosition(position.positionId, {
+      authorization: { premium: closePremium, validUntil, nonce: 2n, signature: closeSignature },
+      tx: { wait: true },
+    });
+
+    const closed = await orionis.portfolio.getOptionPosition(position.positionId);
+    assert.equal(closed.status, OptionPositionStatus.CLOSED);
+    const afterClose = (await orionis.vault.balances(account.address, token)).available;
+    assert.equal(afterClose - afterOpen, closePremium - (closePremium * 20n) / 10_000n); // premium less 0.20% close fee
   });
 });

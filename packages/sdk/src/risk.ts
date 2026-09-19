@@ -18,8 +18,17 @@ export interface RiskInfo {
   openInterestCap: bigint;
 }
 
+export interface OpenInterest {
+  long: bigint;
+  short: bigint;
+  /// `long + short`, the figure RiskManager checks against `openInterestCap`.
+  total: bigint;
+}
+
 export interface RiskNamespace {
   get(marketIdOrSymbol: string): Promise<RiskInfo>;
+  /// Notional currently open on each side, read from RiskManager.
+  openInterest(marketIdOrSymbol: string): Promise<OpenInterest>;
 }
 
 export function createRisk(client: OrionisClient, addresses: ContractAddresses): RiskNamespace {
@@ -40,7 +49,16 @@ export function createRisk(client: OrionisClient, addresses: ContractAddresses):
     };
   }
 
-  return { get };
+  async function openInterest(marketIdOrSymbol: string): Promise<OpenInterest> {
+    const marketId = resolveMarketId(marketIdOrSymbol);
+    const [long, short] = await Promise.all([
+      client.readContract({ address: addresses.riskManager, abi: riskManagerAbi, functionName: "openInterestLong", args: [marketId] }),
+      client.readContract({ address: addresses.riskManager, abi: riskManagerAbi, functionName: "openInterestShort", args: [marketId] }),
+    ]);
+    return { long, short, total: long + short };
+  }
+
+  return { get, openInterest };
 }
 
 /// Runs RiskManager's own `check*` view functions (each reverts with a custom error when a rule

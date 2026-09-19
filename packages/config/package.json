@@ -3,13 +3,13 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
-  "description": "Single source of truth for chain config, market list, fee/risk config shapes — env-driven, imported by contracts/API/indexer/SDK/frontend.",
+  "description": "Single source of truth for chain config, market list, fee/risk config shapes \u2014 env-driven, imported by contracts/API/indexer/SDK/frontend.",
   "main": "src/index.ts",
   "types": "src/index.ts",
   "scripts": {
-    "build": "echo \"scaffold: packages/config build — Phase 4\" && exit 0",
-    "lint": "echo \"scaffold: packages/config lint — Phase 4\" && exit 0",
-    "test": "echo \"scaffold: packages/config test — Phase 4\" && exit 0",
+    "build": "echo \"scaffold: packages/config build \u2014 Phase 4\" && exit 0",
+    "lint": "echo \"scaffold: packages/config lint \u2014 Phase 4\" && exit 0",
+    "test": "tsx --test src/*.test.ts",
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {

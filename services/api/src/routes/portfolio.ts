@@ -1,13 +1,11 @@
-import { addressesForChain, ROBINHOOD_TESTNET_CHAIN_ID } from "@orionis/config";
 import type { Address, Orionis } from "@orionis/sdk";
 import type { FastifyInstance } from "fastify";
 import { getSql } from "../db.js";
 import { jsonSafe } from "../serialize.js";
 
-const settlementToken = addressesForChain(ROBINHOOD_TESTNET_CHAIN_ID).settlementToken;
-
 export function registerPortfolioRoutes(app: FastifyInstance, orionis: Orionis) {
   const sql = getSql();
+  const settlementToken = orionis.addresses.settlementToken;
 
   app.get<{ Params: { wallet: Address } }>("/v1/portfolio/:wallet", async (request) => {
     const { wallet } = request.params;

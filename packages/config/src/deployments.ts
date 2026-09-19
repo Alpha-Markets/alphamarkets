@@ -54,3 +54,35 @@ export function addressesForChain(chainId: ChainId): ContractAddresses {
   }
   return addresses;
 }
+
+/// The recorded deployment for `chainId`, with any addresses in the `ORIONIS_ADDRESSES`
+/// environment variable (a JSON object of `ContractAddresses` keys) replacing the recorded ones
+/// for those contracts only. This lets backend services and staging point at a fresh deployment
+/// (a redeploy, a local Anvil node) without editing checked-in code. Unknown keys and malformed
+/// addresses are rejected rather than silently ignored — a typo here would otherwise send
+/// requests to the wrong contract.
+export function resolveAddresses(
+  chainId: ChainId,
+  env: Record<string, string | undefined> = typeof process === "undefined" ? {} : process.env,
+): ContractAddresses {
+  const recorded = addressesForChain(chainId);
+  const raw = env.ORIONIS_ADDRESSES;
+  if (!raw) return recorded;
+
+  let overrides: Record<string, unknown>;
+  try {
+    overrides = JSON.parse(raw) as Record<string, unknown>;
+  } catch {
+    throw new Error("@orionis/config: ORIONIS_ADDRESSES is not valid JSON");
+  }
+
+  const resolved = { ...recorded };
+  for (const [key, value] of Object.entries(overrides)) {
+    if (!(key in recorded)) throw new Error(`@orionis/config: ORIONIS_ADDRESSES has unknown contract "${key}"`);
+    if (typeof value !== "string" || !/^0x[0-9a-fA-F]{40}$/.test(value)) {
+      throw new Error(`@orionis/config: ORIONIS_ADDRESSES.${key} is not an address`);
+    }
+    resolved[key as keyof ContractAddresses] = value as Address;
+  }
+  return resolved;
+}

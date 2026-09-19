@@ -5,14 +5,15 @@
   "type": "module",
   "description": "Orionis Markets REST + WebSocket API service.",
   "scripts": {
-    "build": "echo \"scaffold: services/api build — Phase 2\" && exit 0",
+    "build": "echo \"scaffold: services/api build \u2014 Phase 2\" && exit 0",
     "dev": "tsx watch src/index.ts",
     "start": "tsx src/index.ts",
-    "lint": "echo \"scaffold: services/api lint — Phase 2\" && exit 0",
-    "test": "echo \"scaffold: services/api test — Phase 2\" && exit 0",
+    "lint": "echo \"scaffold: services/api lint \u2014 Phase 2\" && exit 0",
+    "test": "tsx --test src/*.test.ts",
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
+    "@fastify/cors": "^10",
     "@fastify/websocket": "^11.0.0",
     "@orionis/config": "workspace:*",
     "@orionis/sdk": "workspace:*",

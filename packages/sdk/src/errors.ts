@@ -42,6 +42,10 @@ export class InsufficientMarginError extends OrionisContractError {}
 export class PositionLimitExceededError extends OrionisContractError {}
 export class OpenInterestLimitExceededError extends OrionisContractError {}
 export class DeadlineExpiredError extends OrionisContractError {}
+/// The option premium was not authorised by a valid, unexpired, unused quote (see `OptionsEngine`).
+export class InvalidQuoteError extends OrionisContractError {}
+export class QuoteExpiredError extends OrionisContractError {}
+export class QuoteAlreadyUsedError extends OrionisContractError {}
 export class SlippageExceededError extends OrionisContractError {}
 
 type ContractErrorClass = new (errorName: string, args: readonly unknown[], cause?: unknown) => OrionisContractError;
@@ -56,6 +60,9 @@ const contractErrorClasses: Record<string, ContractErrorClass> = {
   PositionLimitExceeded: PositionLimitExceededError,
   OpenInterestLimitExceeded: OpenInterestLimitExceededError,
   DeadlineExpired: DeadlineExpiredError,
+  InvalidQuote: InvalidQuoteError,
+  QuoteExpired: QuoteExpiredError,
+  QuoteAlreadyUsed: QuoteAlreadyUsedError,
   SlippageExceeded: SlippageExceededError,
 };
 

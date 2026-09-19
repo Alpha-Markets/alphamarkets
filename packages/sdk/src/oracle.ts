@@ -1,6 +1,7 @@
 import type { ContractAddresses } from "@orionis/config";
 import { oracleRouterAbi } from "./abis.js";
 import type { OrionisClient } from "./client.js";
+import { createApiGet } from "./api.js";
 import { toUnixSeconds, resolveMarketId } from "./utils.js";
 
 export interface PriceReading {
@@ -24,14 +25,32 @@ export interface PriceSet {
   last: PriceReading;
 }
 
+export type PriceRange = "1h" | "6h" | "24h" | "7d";
+
+export interface PricePoint {
+  /// Unix seconds.
+  time: number;
+  /// Index price, 18 decimals.
+  price: bigint;
+}
+
 export interface PricesNamespace {
+  /// Index-price history sampled by the indexer, for charts. Requires `apiUrl`. Display only.
+  history(marketIdOrSymbol: string, range?: PriceRange): Promise<PricePoint[]>;
   /// Index, Mark and Last price, read from OracleRouter.
   get(marketIdOrSymbol: string): Promise<PriceSet>;
   /// Validated expiry price used for options settlement (reverts until recorded for `expiry`).
   settlement(marketIdOrSymbol: string, expiry: bigint | Date | string): Promise<PriceReading>;
 }
 
-export function createPrices(client: OrionisClient, addresses: ContractAddresses, oracle: OracleNamespace): PricesNamespace {
+export function createPrices(
+  client: OrionisClient,
+  addresses: ContractAddresses,
+  oracle: OracleNamespace,
+  apiUrl?: string,
+): PricesNamespace {
+  const apiGet = createApiGet(apiUrl);
+
   async function get(marketIdOrSymbol: string): Promise<PriceSet> {
     const [index, mark, last] = await Promise.all([
       oracle.getIndexPrice(marketIdOrSymbol),
@@ -51,7 +70,15 @@ export function createPrices(client: OrionisClient, addresses: ContractAddresses
     return { price, timestamp };
   }
 
-  return { get, settlement };
+  async function history(marketIdOrSymbol: string, range: PriceRange = "24h"): Promise<PricePoint[]> {
+    const rows = await apiGet<Array<{ time: number; price: string }>>(
+      "prices.history",
+      `/v1/prices/${marketIdOrSymbol}/history?range=${range}`,
+    );
+    return rows.map((row) => ({ time: row.time, price: BigInt(row.price) }));
+  }
+
+  return { get, settlement, history };
 }
 
 export function createOracle(client: OrionisClient, addresses: ContractAddresses): OracleNamespace {

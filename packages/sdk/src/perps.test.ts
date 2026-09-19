@@ -16,13 +16,14 @@ function setup(reads: Record<string, unknown> = {}, market = activeMarket) {
     client: fake.client,
     addresses,
     decimals: async () => 6,
-    markets: { list: async () => [market], get: async () => market },
+    markets: { list: async () => [market], get: async () => market, stats: async () => [] },
     oracle: {
       getIndexPrice: async () => ({ price: 184_420_000_000_000_000_000n, timestamp: 1n }),
       getMarkPrice: async () => ({ price: MARK, timestamp: 1n }),
       getLastPrice: async () => ({ price: MARK, timestamp: 1n }),
     },
     risk: {
+      openInterest: async () => ({ long: 0n, short: 0n, total: 0n }),
       get: async () => ({
         maxLeverage: 10n,
         allowedLeverageTiers: [1n, 2n, 3n, 5n, 10n],

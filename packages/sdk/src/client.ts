@@ -1,5 +1,5 @@
 import { type Account, type Address, createWalletClient, publicActions, type Transport } from "viem";
-import { addressesForChain, chains, type ChainId, type ContractAddresses } from "@orionis/config";
+import { chains, resolveAddresses, type ChainId, type ContractAddresses } from "@orionis/config";
 import { createDecimalsReader, createErc20, type Erc20Namespace } from "./erc20.js";
 import { createExplorer, type ExplorerNamespace } from "./explorer.js";
 import { createFees, type FeesNamespace } from "./fees.js";
@@ -17,7 +17,8 @@ export interface OrionisConfig {
   chainId: ChainId;
   /// Contract addresses to use instead of the checked-in deployment for `chainId` — for a local
   /// Anvil deployment or a fresh testnet redeploy (PROJECT_BRIEF.md Section 4: never hardcode
-  /// per-environment addresses in client logic).
+  /// per-environment addresses in client logic). When omitted, the checked-in deployment is used
+  /// with any overrides from the `ORIONIS_ADDRESSES` environment variable (see `resolveAddresses`).
   addresses?: ContractAddresses;
   /// Caller-supplied transport (PROJECT_BRIEF.md Section 34) — e.g. `custom(window.ethereum)`
   /// in a browser, or `http(rpcUrl)` for a script. No default RPC is baked in: Robinhood's own
@@ -80,14 +81,14 @@ export class Orionis {
 
   constructor(config: OrionisConfig) {
     this.chainId = config.chainId;
-    this.addresses = config.addresses ?? addressesForChain(config.chainId);
+    this.addresses = config.addresses ?? resolveAddresses(config.chainId);
 
     const client = buildClient(config);
     const decimals = createDecimalsReader(client);
 
-    this.markets = createMarkets(client, this.addresses);
+    this.markets = createMarkets(client, this.addresses, config.apiUrl);
     this.oracle = createOracle(client, this.addresses);
-    this.prices = createPrices(client, this.addresses, this.oracle);
+    this.prices = createPrices(client, this.addresses, this.oracle, config.apiUrl);
     this.funding = createFunding(client, this.addresses);
     this.risk = createRisk(client, this.addresses);
     this.fees = createFees(client, this.addresses);

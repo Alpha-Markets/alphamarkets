@@ -44,12 +44,13 @@ await orionis.perps.openPosition({
 - **Errors.** Contract reverts become typed errors (`MarketPausedError`, `StaleOraclePriceError`, `InsufficientMarginError`, ...), all extending `OrionisContractError`. A wallet rejection becomes `UserRejectedError`.
 - **Previews.** `perps.previewOpen` and `options.previewOpen` return fee, break-even, max loss, liquidation price and any onchain rule the order would break. The contracts stay the source of truth for liquidation and settlement; previews are display only.
 - **Orders.** `orderType` is `"MARKET"` today. `"LIMIT"` is rejected until limit orders ship.
+- **Options prices are signed.** The contract never accepts a caller-chosen premium. `options.previewOpen({ ..., user })` returns an `authorization` signed by the pricing service, and `options.quoteClose(positionId, user)` does the same for closing. Pass it to `openPosition` / `closePosition`; it fixes the premium, is single-use, and expires within seconds (`InvalidQuoteError`, `QuoteExpiredError`, `QuoteAlreadyUsedError`).
 - **Options analytics.** Premium and Greeks come from `services/pricing` through the API and are never used for settlement.
 - **Runtime.** Depends only on `viem`. No React or browser-only code. ESM and CJS builds. On Node versions before 22, pass `webSocket` (the `ws` package) to use `stream.subscribe`.
 
 ## Namespaces
 
-`markets`, `perps`, `options`, `vault`, `erc20`, `portfolio`, `prices`, `oracle`, `funding`, `risk`, `fees`, `explorer`, `stream`.
+`markets` (`stats()` needs the API), `perps`, `options`, `vault`, `erc20`, `portfolio` (`funding()`, `history()` need the API), `prices` (`history()` needs the API), `oracle`, `funding`, `risk` (incl. `openInterest()`), `fees`, `explorer`, `stream`.
 
 European cash-settled options have no user "exercise" call. `options.settle()` settles every position in an expired series and the contract emits `OptionExercised` for each in-the-money position.
 
