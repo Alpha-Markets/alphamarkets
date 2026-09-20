@@ -78,22 +78,32 @@ export function useMarketStats() {
   });
 }
 
-/// What the Markets page needs per row from the chain. Each read is settled separately so one
+/// What the Markets page needs per market from the chain. Each read is settled separately so one
 /// market with, say, no funding configured still shows its price.
+async function fetchMarketOverview(symbol: string) {
+  const [prices, funding, openInterest] = await Promise.allSettled([
+    orionisRead.prices.get(symbol),
+    orionisRead.funding.get(symbol),
+    orionisRead.risk.openInterest(symbol),
+  ]);
+  const value = <T,>(result: PromiseSettledResult<T>) => (result.status === "fulfilled" ? result.value : undefined);
+  return { prices: value(prices), funding: value(funding), openInterest: value(openInterest) };
+}
+
+const overviewQuery = (symbol: string) => ({
+  queryKey: ["market-overview", symbol],
+  queryFn: () => fetchMarketOverview(symbol),
+  refetchInterval: TICK_MS,
+});
+
 export function useMarketOverview(symbol: string) {
-  return useQuery({
-    queryKey: ["market-overview", symbol],
-    queryFn: async () => {
-      const [prices, funding, openInterest] = await Promise.allSettled([
-        orionisRead.prices.get(symbol),
-        orionisRead.funding.get(symbol),
-        orionisRead.risk.openInterest(symbol),
-      ]);
-      const value = <T,>(result: PromiseSettledResult<T>) => (result.status === "fulfilled" ? result.value : undefined);
-      return { prices: value(prices), funding: value(funding), openInterest: value(openInterest) };
-    },
-    refetchInterval: TICK_MS,
-  });
+  return useQuery(overviewQuery(symbol));
+}
+
+/// The same overview for several markets at once, in the order given, so a table can sort by it.
+/// Shares the cache with `useMarketOverview`.
+export function useMarketOverviews(symbols: string[]) {
+  return useQueries({ queries: symbols.map(overviewQuery) });
 }
 
 export function usePortfolioSummary() {

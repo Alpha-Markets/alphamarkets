@@ -115,7 +115,7 @@ function SideCells({ view, ...context }: CellContext & { view: View }) {
   return (
     <>
       {orderedColumns(view, context.side).map((column) => (
-        <td key={column.id} className={cn(cell, column.muted && "text-muted", context.selected && "bg-raised")}>
+        <td key={column.id} className={cn(cell, column.muted && "text-muted", context.selected && "bg-raised shadow-[inset_0_1px_0_var(--color-text),inset_0_-1px_0_var(--color-text)]")}>
           {column.render(context)}
         </td>
       ))}
@@ -231,7 +231,7 @@ export function OptionChain() {
           <p className="p-3 text-muted">Waiting for the index price…</p>
         ) : (
           <table className="w-full min-w-[860px] text-sm">
-            <thead>
+            <thead className="sticky top-0 z-10 bg-surface">
               <tr>
                 <th className={groupHead} colSpan={5}>
                   Calls
@@ -263,7 +263,7 @@ export function OptionChain() {
                   selection.strike === row.strike &&
                   selection.type === type;
                 return (
-                  <tr key={row.strike.toString()} className={cn("border-t border-line", index === atTheMoney && "bg-surface")}>
+                  <tr key={row.strike.toString()} className={cn("border-t border-line", index === atTheMoney && "bg-raised/50")}>
                     <SideCells
                       view={view}
                       side="CALL"
@@ -274,6 +274,11 @@ export function OptionChain() {
                       onSelect={() => expiry && select({ symbol, expiry, strike: row.strike, type: "CALL" })}
                     />
                     <td className={cn(cell, "text-center font-medium")}>
+                      {index === atTheMoney ? (
+                        <span className="mr-2 text-xs font-normal text-muted" title="Strike nearest the index price">
+                          ATM
+                        </span>
+                      ) : null}
                       <Num>{strikeText(row.strike)}</Num>
                     </td>
                     <SideCells

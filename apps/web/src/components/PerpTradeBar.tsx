@@ -2,9 +2,11 @@
 
 import { Button } from "@orionis/ui";
 import { useTerminal } from "@/stores/terminal";
+import { useOpenTradeSheet } from "./TradeSheet";
 
 /// Phone-only shortcut to the order panel: picks the side and opens the sheet.
-export function PerpTradeBar({ open }: { open: () => void }) {
+export function PerpTradeBar() {
+  const open = useOpenTradeSheet();
   const setSide = useTerminal((state) => state.setSide);
   return (
     <>

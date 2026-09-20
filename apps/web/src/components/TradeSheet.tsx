@@ -1,13 +1,18 @@
 "use client";
 
 import { Button, cn } from "@orionis/ui";
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
+
+const OpenSheet = createContext<() => void>(() => {});
+
+/// Opens the surrounding `TradeSheet`. Buttons in its `bar` call this.
+export const useOpenTradeSheet = () => useContext(OpenSheet);
 
 /// The order panel on a wide screen; on a phone it becomes a full-height sheet opened from a bar
 /// pinned to the bottom of the page. The same panel stays mounted in both, so what was typed is kept
 /// when the sheet closes.
 ///
-/// `bar` renders the buttons in the pinned bar and receives `open`. `openWhen` opens the sheet
+/// `bar` holds the buttons in the pinned bar; they open the sheet with `useOpenTradeSheet`. `openWhen` opens the sheet
 /// whenever it changes to a truthy value (for example a series picked in the option chain).
 export function TradeSheet({
   title,
@@ -16,7 +21,7 @@ export function TradeSheet({
   children,
 }: {
   title: string;
-  bar: (open: () => void) => ReactNode;
+  bar: ReactNode;
   openWhen?: unknown;
   children: ReactNode;
 }) {
@@ -52,16 +57,15 @@ export function TradeSheet({
         role={open ? "dialog" : undefined}
         aria-label={title}
       >
-        <div className="flex h-12 shrink-0 items-center justify-between border-b border-line px-3 lg:hidden">
-          <p className="font-medium">{title}</p>
-          <Button variant="ghost" onClick={() => setOpen(false)}>
+        <div className="flex h-11 shrink-0 items-center justify-end border-b border-line px-1 lg:hidden">
+          <Button variant="ghost" aria-label={`Close ${title.toLowerCase()}`} onClick={() => setOpen(false)}>
             Close
           </Button>
         </div>
         <div className="min-h-0 flex-1 lg:h-full">{children}</div>
       </div>
       <div className="sticky bottom-0 z-20 flex gap-2 border-t border-line bg-surface p-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] lg:hidden">
-        {bar(() => setOpen(true))}
+        <OpenSheet.Provider value={() => setOpen(true)}>{bar}</OpenSheet.Provider>
       </div>
     </>
   );

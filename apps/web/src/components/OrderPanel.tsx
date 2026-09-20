@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { Button, Panel, Row, Segmented, TextField } from "@orionis/ui";
+import { Button, Panel, Row, Segmented, Skeleton, TextField } from "@orionis/ui";
 import { toBaseUnits, type OrderType } from "@orionis/sdk";
 import { useState } from "react";
 import { useAccount, useSwitchChain } from "wagmi";
@@ -96,6 +96,8 @@ export function OrderPanel() {
             ? "Calculating…"
             : undefined;
   const blocker = problem ?? waiting;
+  /// A figure once the preview is in, a pulse while it is being priced, a dash before there is anything to price.
+  const show = (value: string | undefined | "") => (value ? value : validAmount && validLimit && preview.isFetching ? <Skeleton className="w-16" /> : "–");
 
   async function submit() {
     if (!wallet || !leverage || !p) return;
@@ -159,6 +161,7 @@ export function OrderPanel() {
       <div className="flex flex-col gap-3 p-3">
         <Segmented
           label="Side"
+          size="lg"
           value={side}
           onChange={setSide}
           activeTone={(value) => (value === "LONG" ? "up" : "down")}
@@ -248,35 +251,38 @@ export function OrderPanel() {
         </div>
 
         {p ? (
-          <>
-            <RiskLadder isLong={side === "LONG"} entry={p.entryPrice} liquidation={p.liquidationPrice} worst={p.worstPrice} />
-            <dl className="border-t border-line pt-2">
-              <Row label="Side">{side === "LONG" ? "Long" : "Short"}</Row>
-              <Row label="Size">{fmtUsd(p.notional, decimals)}</Row>
-              <Row label="Leverage">{`${p.leverage}x`}</Row>
-              {isLimit ? (
-                <Row label={side === "LONG" ? "Fills at or below" : "Fills at or above"}>{fmtPrice(p.entryPrice)}</Row>
-              ) : (
-                <>
-                  <Row label="Estimated entry">{fmtPrice(p.entryPrice)}</Row>
-                  <Row label="Worst accepted price">{fmtPrice(p.worstPrice)}</Row>
-                </>
-              )}
-              <Row label="Margin">{fmtUsd(p.collateral, decimals)}</Row>
-              <Row label="Liquidation price">{fmtPrice(p.liquidationPrice)}</Row>
-              <Row label="Funding rate">{fmtBps(p.fundingRateBps)}</Row>
-              <Row label={`Fee (${fmtBps(p.feeBps)})`}>{fmtUsd(p.fee, decimals)}</Row>
-              <Row label={isLimit ? "Needed when it fills" : "Total from vault"} className="border-t border-line font-medium">
-                {fmtUsd(p.totalRequired, decimals)}
-              </Row>
-            </dl>
-            {isLimit ? (
-              <p className="text-xs leading-snug text-muted">
-                Nothing is reserved while the order waits. The margin and fee are taken from your vault balance when it fills, so keep
-                that balance available. Cancel it any time from Portfolio.
-              </p>
-            ) : null}
-          </>
+          <RiskLadder isLong={side === "LONG"} entry={p.entryPrice} liquidation={p.liquidationPrice} worst={p.worstPrice} />
+        ) : (
+          <p className="flex min-h-[148px] items-center justify-center border border-dashed border-line p-3 text-center text-xs text-muted">
+            Enter collateral to see how far the price can move before liquidation.
+          </p>
+        )}
+        {/* Always shown, so the button below does not jump when the numbers arrive. */}
+        <dl className="border-t border-line pt-2">
+          <Row label="Side">{side === "LONG" ? "Long" : "Short"}</Row>
+          <Row label="Size">{show(p && fmtUsd(p.notional, decimals))}</Row>
+          <Row label="Leverage">{leverage ? `${leverage}x` : "–"}</Row>
+          {isLimit ? (
+            <Row label={side === "LONG" ? "Fills at or below" : "Fills at or above"}>{show(p && fmtPrice(p.entryPrice))}</Row>
+          ) : (
+            <>
+              <Row label="Estimated entry">{show(p && fmtPrice(p.entryPrice))}</Row>
+              <Row label="Worst accepted price">{show(p && fmtPrice(p.worstPrice))}</Row>
+            </>
+          )}
+          <Row label="Margin">{show(p && fmtUsd(p.collateral, decimals))}</Row>
+          <Row label="Liquidation price">{show(p && fmtPrice(p.liquidationPrice))}</Row>
+          <Row label="Funding rate">{show(p && fmtBps(p.fundingRateBps))}</Row>
+          <Row label={p ? `Fee (${fmtBps(p.feeBps)})` : "Fee"}>{show(p && fmtUsd(p.fee, decimals))}</Row>
+          <Row label={isLimit ? "Needed when it fills" : "Total from vault"} className="border-t border-line font-medium">
+            {show(p && fmtUsd(p.totalRequired, decimals))}
+          </Row>
+        </dl>
+        {p && isLimit ? (
+          <p className="text-xs leading-snug text-muted">
+            Nothing is reserved while the order waits. The margin and fee are taken from your vault balance when it fills, so keep
+            that balance available. Cancel it any time from Portfolio.
+          </p>
         ) : null}
 
         {preview.error ? <p className="text-down">Could not price this order. Check the connection and try again.</p> : null}

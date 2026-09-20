@@ -3,6 +3,7 @@
 import { Panel, Tabs } from "@orionis/ui";
 import { useState } from "react";
 import { useAccount } from "wagmi";
+import { ConnectButton } from "./ConnectButton";
 import { FundingTable, HistoryTable } from "./ActivityTables";
 
 type Tab = "history" | "funding";
@@ -20,8 +21,11 @@ export function ActivityView() {
 
   if (!isConnected) {
     return (
-      <Panel title="Activity">
-        <p className="p-3 text-muted">Connect a wallet to see its transactions and funding payments.</p>
+      <Panel>
+        <div className="flex flex-wrap items-center justify-between gap-3 p-3">
+          <p className="text-muted">Connect a wallet to see its transactions and funding payments.</p>
+          <ConnectButton />
+        </div>
       </Panel>
     );
   }

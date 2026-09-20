@@ -7,7 +7,7 @@ import { OptionTradeSheet } from "@/components/OptionTradeSheet";
 /// 1024px the ticket opens as a sheet when a series is picked.
 export default function OptionsTerminal() {
   return (
-    <div className="grid gap-px bg-line lg:h-full lg:grid-cols-[minmax(0,1fr)_340px]">
+    <div className="grid grid-cols-1 gap-px bg-line lg:h-full lg:grid-cols-[minmax(0,1fr)_340px]">
       <div className="flex min-h-0 flex-col gap-px lg:overflow-y-auto">
         <OptionChain />
         <OptionPositions />

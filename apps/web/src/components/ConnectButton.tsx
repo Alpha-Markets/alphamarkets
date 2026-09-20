@@ -55,7 +55,7 @@ export function ConnectButton({ variant = "primary", size = "md", className }: P
           ) : null}
           {choices.length === 0 ? (
             <p className="p-2 text-xs leading-snug text-muted">No browser wallet found. Install MetaMask or another EVM wallet, then reload this page.</p>
-          ) : (
+          ) : choices.length === 1 ? null : (
             choices.map((connector) => (
               <button
                 key={connector.uid}
