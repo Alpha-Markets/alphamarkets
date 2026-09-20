@@ -6,6 +6,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useDismiss } from "@/hooks/useDismiss";
 import { PAGE_FRAME } from "@/lib/frame";
 import { cn } from "@alphamarkets/ui";
+import { Logo } from "./Logo";
 import { WalletButton } from "./WalletButton";
 
 /// PROJECT_BRIEF.md Section 22, plus the strategy builder from Section 41.
@@ -54,8 +55,8 @@ export function Header() {
     >
       <div className={cn("flex h-12 items-center justify-between gap-3", landing ? PAGE_FRAME : "px-4")}>
         <div className="flex h-full items-center gap-8">
-          <Link href="/" className="text-sm font-medium tracking-[0.32em]">
-            ALPHAMARKETS
+          <Link href="/" aria-label="AlphaMarkets home" className="pt-1">
+            <Logo />
           </Link>
           <nav aria-label="Primary" className="hidden h-full items-stretch gap-6 md:flex">
             {items.map((item) => {
