@@ -1,7 +1,7 @@
 "use client";
 
-import { Num, Panel, Segmented, cn } from "@orionis/ui";
-import type { OptionSeriesStats, OptionSide, OptionsQuoteResult } from "@orionis/sdk";
+import { Num, Panel, Segmented, cn } from "@alphamarkets/ui";
+import type { OptionSeriesStats, OptionSide, OptionsQuoteResult } from "@alphamarkets/sdk";
 import type { UseQueryResult } from "@tanstack/react-query";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useIndexPrice, useListedExpiries, useOptionChain, useOptionStats, useOptionUnderlyings } from "@/hooks/queries";

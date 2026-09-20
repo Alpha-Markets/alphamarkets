@@ -1,9 +1,9 @@
-import type { ContractAddresses } from "@orionis/config";
-import { OptionType, type Address, type Hex } from "@orionis/types";
+import type { ContractAddresses } from "@alphamarkets/config";
+import { OptionType, type Address, type Hex } from "@alphamarkets/types";
 import { optionMarketAbi, optionsEngineAbi, vaultAbi } from "./abis.js";
 import { convertDecimals, fromBaseUnits, PRICE_DECIMALS, toBaseUnits, type Amount } from "./amounts.js";
-import type { OrionisClient } from "./client.js";
-import { NotImplementedError, OrionisError, type OrionisContractError } from "./errors.js";
+import type { AlphaMarketsClient } from "./client.js";
+import { NotImplementedError, AlphaMarketsError, type AlphaMarketsContractError } from "./errors.js";
 import type { FeesNamespace } from "./fees.js";
 import { feeFromBps } from "./math.js";
 import type { MarketsNamespace } from "./markets.js";
@@ -179,7 +179,7 @@ export interface OptionOpenPreview {
   maxProfit: bigint | null;
   availableBalance?: bigint;
   sufficientCollateral?: boolean;
-  violations: OrionisContractError[];
+  violations: AlphaMarketsContractError[];
 }
 
 export interface OptionSeries {
@@ -233,7 +233,7 @@ export interface OptionsNamespace {
 }
 
 export interface OptionsDeps {
-  client: OrionisClient;
+  client: AlphaMarketsClient;
   addresses: ContractAddresses;
   decimals: (token: Address) => Promise<number>;
   markets: MarketsNamespace;
@@ -242,7 +242,7 @@ export interface OptionsDeps {
 }
 
 function optionTypeOf(type: OptionSide): OptionType {
-  if (type !== "CALL" && type !== "PUT") throw new OrionisError(`Option type must be "CALL" or "PUT", received "${type}"`);
+  if (type !== "CALL" && type !== "PUT") throw new AlphaMarketsError(`Option type must be "CALL" or "PUT", received "${type}"`);
   return type === "CALL" ? OptionType.CALL : OptionType.PUT;
 }
 
@@ -267,7 +267,7 @@ export function createOptions(deps: OptionsDeps): OptionsNamespace {
     if (!apiUrl) {
       throw new NotImplementedError(
         method,
-        "requires `apiUrl` in the Orionis constructor config, pointing at services/api",
+        "requires `apiUrl` in the AlphaMarkets constructor config, pointing at services/api",
       );
     }
     return apiUrl;
@@ -275,7 +275,7 @@ export function createOptions(deps: OptionsDeps): OptionsNamespace {
 
   async function getJson<T>(method: string, path: string): Promise<T> {
     const response = await fetch(`${requireApi(method)}${path}`);
-    if (!response.ok) throw new OrionisError(`${method}: services/api returned ${response.status}`);
+    if (!response.ok) throw new AlphaMarketsError(`${method}: services/api returned ${response.status}`);
     return (await response.json()) as T;
   }
 
@@ -328,7 +328,7 @@ export function createOptions(deps: OptionsDeps): OptionsNamespace {
     });
     const json = await response.json();
     if (!response.ok) {
-      throw new OrionisError(`${method}: services/api returned ${response.status}: ${JSON.stringify(json)}`);
+      throw new AlphaMarketsError(`${method}: services/api returned ${response.status}: ${JSON.stringify(json)}`);
     }
     return json as T;
   }
@@ -447,7 +447,7 @@ export function createOptions(deps: OptionsDeps): OptionsNamespace {
 
   function toQuoteStruct(authorization: SignedQuote | undefined, method: string) {
     if (!authorization) {
-      throw new OrionisError(
+      throw new AlphaMarketsError(
         `${method}: a signed quote is required — call options.previewOpen (or quoteClose) with a \`user\` and pass its authorization`,
       );
     }

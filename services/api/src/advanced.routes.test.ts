@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { OptionPositionStatus, OptionType, resolveMarketId, type Orionis } from "@orionis/sdk";
+import { OptionPositionStatus, OptionType, resolveMarketId, type AlphaMarkets } from "@alphamarkets/sdk";
 import Fastify from "fastify";
 import { registerAdvancedRoutes, parseShocks } from "./routes/advanced.js";
 
@@ -22,7 +22,7 @@ function fakeSql(answers: Record<string, unknown[]>) {
   return { sql, calls };
 }
 
-function fakeOrionis(over: Record<string, unknown> = {}) {
+function fakeAlphaMarkets(over: Record<string, unknown> = {}) {
   return {
     addresses: { settlementToken: `0x${"aa".repeat(20)}` },
     markets: { list: async () => [{ marketId: NVDA, perpsEnabled: true, optionsEnabled: true, active: true }] },
@@ -47,13 +47,13 @@ function fakeOrionis(over: Record<string, unknown> = {}) {
     },
     options: { contractSize: async () => 100n * WAD },
     ...over,
-  } as unknown as Orionis;
+  } as unknown as AlphaMarkets;
 }
 
-function build(sqlAnswers: Record<string, unknown[]> = {}, orionis = fakeOrionis()) {
+function build(sqlAnswers: Record<string, unknown[]> = {}, alphaMarkets = fakeAlphaMarkets()) {
   const app = Fastify();
   const { sql, calls } = fakeSql(sqlAnswers);
-  registerAdvancedRoutes(app, orionis, sql);
+  registerAdvancedRoutes(app, alphaMarkets, sql);
   return { app, calls };
 }
 
@@ -112,7 +112,7 @@ test("a report can be a CSV file", async () => {
   const response = await app.inject({ url: `/v1/reports/${WALLET}?format=csv` });
   assert.equal(response.statusCode, 200);
   assert.match(response.headers["content-type"] as string, /text\/csv/);
-  assert.match(response.headers["content-disposition"] as string, /attachment; filename="orionis-report-0xabababab\.csv"/);
+  assert.match(response.headers["content-disposition"] as string, /attachment; filename="alphamarkets-report-0xabababab\.csv"/);
   assert.ok(response.body.startsWith("time,type,txHash,positionId,marketId,amount,detail\r\n"));
 });
 

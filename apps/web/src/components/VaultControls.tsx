@@ -1,11 +1,11 @@
 "use client";
 
-import { Button, Row, Skeleton, TextField } from "@orionis/ui";
-import { toBaseUnits } from "@orionis/sdk";
+import { Button, Row, Skeleton, TextField } from "@alphamarkets/ui";
+import { toBaseUnits } from "@alphamarkets/sdk";
 import { useState } from "react";
 import { useAccount } from "wagmi";
 import { useSettlementDecimals, useVaultBalances, useWalletTokenBalance } from "@/hooks/queries";
-import { useWalletOrionis } from "@/hooks/useOrionis";
+import { useWalletAlphaMarkets } from "@/hooks/useAlphaMarkets";
 import { useTx } from "@/hooks/useTx";
 import { env } from "@/lib/env";
 import { fmtUsd } from "@/lib/format";
@@ -16,7 +16,7 @@ type Mode = "deposit" | "withdraw" | undefined;
 /// and withdraw sit directly above the order form.
 export function VaultControls() {
   const { address, isConnected } = useAccount();
-  const wallet = useWalletOrionis();
+  const wallet = useWalletAlphaMarkets();
   const run = useTx();
   const { data: decimals = 6 } = useSettlementDecimals();
   const { data: balances } = useVaultBalances();

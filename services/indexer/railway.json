@@ -11,11 +11,11 @@
     ]
   },
   "deploy": {
-    "startCommand": "pnpm --filter @orionis/indexer start",
+    "startCommand": "pnpm --filter @alphamarkets/indexer start",
     "restartPolicyType": "ON_FAILURE",
     "restartPolicyMaxRetries": 10,
     "preDeployCommand": [
-      "pnpm --filter @orionis/indexer db:migrate"
+      "pnpm --filter @alphamarkets/indexer db:migrate"
     ]
   }
 }

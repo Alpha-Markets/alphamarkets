@@ -71,7 +71,7 @@ contract RFQManager is AccessControl, EIP712, ReentrancyGuard {
     );
     event ParametersUpdated(uint256 maxDeviationBps, uint256 blockMinNotional, uint256 blockMaxNotional);
 
-    constructor(address admin, address perpsEngine_, address oracleRouter_) EIP712("OrionisRFQ", "1") {
+    constructor(address admin, address perpsEngine_, address oracleRouter_) EIP712("AlphaMarketsRFQ", "1") {
         if (admin == address(0) || perpsEngine_ == address(0) || oracleRouter_ == address(0)) revert ZeroAddress();
         perpsEngine = PerpsEngine(perpsEngine_);
         oracleRouter = OracleRouter(oracleRouter_);

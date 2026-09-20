@@ -1,4 +1,4 @@
-# @orionis/contracts
+# @alphamarkets/contracts
 
 Foundry + Solidity 0.8.26 + OpenZeppelin v5.1.0. Phase 1 (see `DEVELOPMENT_STEPS.md`) is implemented: interfaces, all core/oracle/risk/options/perps contracts, security pass, events, Foundry test suite, and deploy scripts. **Deployed to Robinhood Chain testnet** — see `deployments/robinhood_testnet.json` and the CHANGELOG's `[1.0.0-testnet]` entry for addresses (each confirmed live via `cast code`, not just trusted from script output). No market seeded yet — see CHANGELOG `[Unreleased]` for pending follow-ups.
 
@@ -6,12 +6,12 @@ Foundry + Solidity 0.8.26 + OpenZeppelin v5.1.0. Phase 1 (see `DEVELOPMENT_STEPS
 
 ```text
 src/
-core/       MarketRegistry.sol, OrionisVault.sol, CollateralManager.sol, FeeManager.sol, BuybackModule.sol
+core/       MarketRegistry.sol, AlphaMarketsVault.sol, CollateralManager.sol, FeeManager.sol, BuybackModule.sol
 options/    OptionsEngine.sol, OptionMarket.sol, OptionSettlement.sol, OptionPositionManager.sol
 perps/      PerpsEngine.sol, PerpPositionManager.sol, PerpOrderManager.sol, FundingManager.sol, LiquidationEngine.sol
 oracle/     OracleRouter.sol, PriceValidator.sol, MockPriceFeed.sol
 risk/       RiskManager.sol, MarginEngine.sol
-interfaces/ IOracle.sol, IMarketRegistry.sol, IOrionisVault.sol, IOptionsEngine.sol, IPerpsEngine.sol,
+interfaces/ IOracle.sol, IMarketRegistry.sol, IAlphaMarketsVault.sol, IOptionsEngine.sol, IPerpsEngine.sol,
             IRiskManager.sol, IFeeManager.sol, IPriceFeed.sol, DataTypes.sol, Errors.sol
 test/       unit + fuzz tests mirroring src/, plus test/integration/ and test/utils/BaseTest.sol
 script/     DeployAll.s.sol

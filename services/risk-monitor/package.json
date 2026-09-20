@@ -1,9 +1,9 @@
 {
-  "name": "@orionis/risk-monitor",
+  "name": "@alphamarkets/risk-monitor",
   "private": true,
   "version": "0.0.0",
   "type": "module",
-  "description": "Orionis Markets margin health watcher — read path only; liquidation execution stays onchain.",
+  "description": "AlphaMarkets margin health watcher — read path only; liquidation execution stays onchain.",
   "scripts": {
     "build": "echo \"scaffold: services/risk-monitor build — Phase 2\" && exit 0",
     "dev": "tsx watch src/index.ts",
@@ -15,8 +15,8 @@
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
-    "@orionis/config": "workspace:*",
-    "@orionis/sdk": "workspace:*",
+    "@alphamarkets/config": "workspace:*",
+    "@alphamarkets/sdk": "workspace:*",
     "drizzle-orm": "^0.36.0",
     "postgres": "^3.4.0",
     "viem": "^2.21.0"

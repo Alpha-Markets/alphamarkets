@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import type { OpenOrder, Orionis, TriggerOrder } from "@orionis/sdk";
+import type { OpenOrder, AlphaMarkets, TriggerOrder } from "@alphamarkets/sdk";
 import type { PublicClient, WalletClient } from "viem";
 import { createKeeper } from "./keeper.js";
 
@@ -44,7 +44,7 @@ function setup({ orders = [] as OpenOrder[], triggers = [] as TriggerOrder[], tr
   const logs: string[] = [];
   const simulatedWith: unknown[] = [];
 
-  const orionis = {
+  const alphaMarkets = {
     addresses: { oracleRouter: `0x${"0e".repeat(20)}`, ...(withOrders ? { perpOrderManager: `0x${"0f".repeat(20)}` } : {}) },
     markets: { list: async () => [{ marketId: MARKET, oracleId: MARKET, active: true }] },
     oracle: { getMarkPrice: async () => ({ price: mark, timestamp: 1n }) },
@@ -70,7 +70,7 @@ function setup({ orders = [] as OpenOrder[], triggers = [] as TriggerOrder[], tr
       },
     },
     portfolio: { getPerpPosition: async () => ({ open, isLong, marketId: MARKET }) },
-  } as unknown as Orionis;
+  } as unknown as AlphaMarkets;
 
   const publicClient = {
     getBlock: async () => ({ timestamp: now }),
@@ -93,7 +93,7 @@ function setup({ orders = [] as OpenOrder[], triggers = [] as TriggerOrder[], tr
   } as unknown as WalletClient;
 
   const keeper = createKeeper({
-    orionis,
+    alphaMarkets,
     publicClient,
     walletClient,
     refreshSeconds: 1_800n,
@@ -151,7 +151,7 @@ test("a wallet client without an account is rejected up front", () => {
   assert.throws(
     () =>
       createKeeper({
-        orionis: {} as Orionis,
+        alphaMarkets: {} as AlphaMarkets,
         publicClient: {} as PublicClient,
         walletClient: {} as WalletClient,
         refreshSeconds: 1n,
@@ -165,12 +165,12 @@ test("a failed read is logged with viem's short message", async () => {
   const { keeper, logs } = setup({ orders: [order(1n)] });
   // Make the mark price read fail the way viem reports a revert.
   const failing = createKeeper({
-    orionis: {
+    alphaMarkets: {
       addresses: { oracleRouter: `0x${"0e".repeat(20)}`, perpOrderManager: `0x${"0f".repeat(20)}` },
       markets: { list: async () => [] },
       oracle: { getMarkPrice: async () => Promise.reject(Object.assign(new Error("long\nmultiline"), { shortMessage: "The contract function reverted" })) },
       perps: { scanOrders: async () => [order(1n)] },
-    } as unknown as Orionis,
+    } as unknown as AlphaMarkets,
     publicClient: { getBlock: async () => ({ timestamp: 5_000n }) } as unknown as PublicClient,
     walletClient: { account: { address: ME } } as unknown as WalletClient,
     refreshSeconds: 1_800n,
@@ -219,7 +219,7 @@ test("a failing trigger is logged and does not stop the others", async () => {
 
 test("a failing trigger scan does not hide the feed refresh or the limit fills", async () => {
   const failing = createKeeper({
-    orionis: {
+    alphaMarkets: {
       addresses: { oracleRouter: `0x${"0e".repeat(20)}`, perpOrderManager: `0x${"0f".repeat(20)}` },
       markets: { list: async () => [] },
       oracle: { getMarkPrice: async () => ({ price: 170n * WAD, timestamp: 1n }) },
@@ -229,7 +229,7 @@ test("a failing trigger scan does not hide the feed refresh or the limit fills",
         supportsTriggerOrders: async () => true,
         scanTriggerOrders: async () => Promise.reject(new Error("rpc down")),
       },
-    } as unknown as Orionis,
+    } as unknown as AlphaMarkets,
     publicClient: { getBlock: async () => ({ timestamp: 5_000n }) } as unknown as PublicClient,
     walletClient: { account: { address: ME } } as unknown as WalletClient,
     refreshSeconds: 1_800n,

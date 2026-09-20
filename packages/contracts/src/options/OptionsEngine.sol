@@ -8,7 +8,7 @@ import {ECDSA} from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import {IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import {IOptionsEngine} from "../interfaces/IOptionsEngine.sol";
 import {IMarketRegistry} from "../interfaces/IMarketRegistry.sol";
-import {IOrionisVault} from "../interfaces/IOrionisVault.sol";
+import {IAlphaMarketsVault} from "../interfaces/IAlphaMarketsVault.sol";
 import {IFeeManager} from "../interfaces/IFeeManager.sol";
 import {IRiskManager} from "../interfaces/IRiskManager.sol";
 import {OptionType, FeeConfig} from "../interfaces/DataTypes.sol";
@@ -49,7 +49,7 @@ contract OptionsEngine is IOptionsEngine, ReentrancyGuard, AccessControl, EIP712
 
     IMarketRegistry public immutable marketRegistry;
     OracleRouter public immutable oracleRouter;
-    IOrionisVault public immutable vault;
+    IAlphaMarketsVault public immutable vault;
     IFeeManager public immutable feeManager;
     IRiskManager public immutable riskManager;
     OptionPositionManager public immutable positionManager;
@@ -95,11 +95,11 @@ contract OptionsEngine is IOptionsEngine, ReentrancyGuard, AccessControl, EIP712
         address positionManager_,
         address optionMarket_,
         address settlementToken_
-    ) EIP712("OrionisOptionsEngine", "1") {
+    ) EIP712("AlphaMarketsOptionsEngine", "1") {
         _grantRole(DEFAULT_ADMIN_ROLE, admin_);
         marketRegistry = IMarketRegistry(marketRegistry_);
         oracleRouter = OracleRouter(oracleRouter_);
-        vault = IOrionisVault(vault_);
+        vault = IAlphaMarketsVault(vault_);
         feeManager = IFeeManager(feeManager_);
         riskManager = IRiskManager(riskManager_);
         positionManager = OptionPositionManager(positionManager_);

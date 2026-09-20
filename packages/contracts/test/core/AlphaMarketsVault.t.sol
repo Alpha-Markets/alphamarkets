@@ -2,9 +2,9 @@
 pragma solidity 0.8.26;
 
 import {BaseTest} from "../utils/BaseTest.sol";
-import {OrionisVault} from "../../src/core/OrionisVault.sol";
+import {AlphaMarketsVault} from "../../src/core/AlphaMarketsVault.sol";
 
-contract OrionisVaultTest is BaseTest {
+contract AlphaMarketsVaultTest is BaseTest {
     function test_deposit_creditsLedger() public {
         assertEq(vault.availableBalance(alice, address(usdc)), 100_000e18);
     }
@@ -18,7 +18,7 @@ contract OrionisVaultTest is BaseTest {
 
     function test_withdraw_moreThanAvailable_reverts() public {
         vm.prank(alice);
-        vm.expectRevert(OrionisVault.InsufficientCollateral.selector);
+        vm.expectRevert(AlphaMarketsVault.InsufficientCollateral.selector);
         vault.withdraw(address(usdc), 200_000e18);
     }
 
@@ -29,7 +29,7 @@ contract OrionisVaultTest is BaseTest {
         assertEq(vault.availableBalance(alice, address(usdc)), 50_000e18);
 
         vm.prank(alice);
-        vm.expectRevert(OrionisVault.InsufficientCollateral.selector);
+        vm.expectRevert(AlphaMarketsVault.InsufficientCollateral.selector);
         vault.withdraw(address(usdc), 60_000e18);
     }
 

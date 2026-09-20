@@ -1,7 +1,7 @@
-import type { ContractAddresses } from "@orionis/config";
-import type { MarketConfig } from "@orionis/types";
+import type { ContractAddresses } from "@alphamarkets/config";
+import type { MarketConfig } from "@alphamarkets/types";
 import { marketRegistryAbi } from "./abis.js";
-import type { OrionisClient } from "./client.js";
+import type { AlphaMarketsClient } from "./client.js";
 import { createApiGet } from "./api.js";
 import { resolveMarketId } from "./utils.js";
 
@@ -28,7 +28,7 @@ export interface MarketsNamespace {
   get(marketIdOrSymbol: string): Promise<MarketConfig>;
 }
 
-export function createMarkets(client: OrionisClient, addresses: ContractAddresses, apiUrl?: string): MarketsNamespace {
+export function createMarkets(client: AlphaMarketsClient, addresses: ContractAddresses, apiUrl?: string): MarketsNamespace {
   const apiGet = createApiGet(apiUrl);
 
   async function get(marketIdOrSymbol: string): Promise<MarketConfig> {

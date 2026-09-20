@@ -1,12 +1,12 @@
 "use client";
 
-import { Button, Segmented, TextField } from "@orionis/ui";
-import type { TriggerKind, TriggerOrder } from "@orionis/sdk";
-import type { PerpPosition } from "@orionis/types";
+import { Button, Segmented, TextField } from "@alphamarkets/ui";
+import type { TriggerKind, TriggerOrder } from "@alphamarkets/sdk";
+import type { PerpPosition } from "@alphamarkets/types";
 import { useState } from "react";
 import { usePositions, useTriggerOrders } from "@/hooks/queries";
 import { useNow } from "@/hooks/useNow";
-import { useWalletOrionis } from "@/hooks/useOrionis";
+import { useWalletAlphaMarkets } from "@/hooks/useAlphaMarkets";
 import { useTx } from "@/hooks/useTx";
 import { fmtPrice } from "@/lib/format";
 import { parseLimitPrice } from "@/lib/limit";
@@ -28,7 +28,7 @@ const firesAt = (isLong: boolean, order: TriggerOrder) => `${triggerSide(isLong,
 /// reaches the trigger anyone (the keeper) can fire the order and the whole position closes at the
 /// mark price, which can be worse than the trigger if the price jumps past it.
 export function PositionTriggers({ position, mark }: { position: PerpPosition; mark: bigint | undefined }) {
-  const wallet = useWalletOrionis();
+  const wallet = useWalletAlphaMarkets();
   const run = useTx();
   const now = useNow();
   const { data: orders = [] } = useTriggerOrders();
@@ -103,7 +103,7 @@ export function PositionTriggers({ position, mark }: { position: PerpPosition; m
 /// The wallet's stop-loss and take-profit orders. Waiting ones first, then the most recent
 /// finished ones so a fire or a cancel does not just vanish.
 export function TriggerOrdersTable() {
-  const wallet = useWalletOrionis();
+  const wallet = useWalletAlphaMarkets();
   const run = useTx();
   const now = useNow();
   const { data: orders } = useTriggerOrders();

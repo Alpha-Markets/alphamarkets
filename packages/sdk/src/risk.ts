@@ -1,9 +1,9 @@
-import type { ContractAddresses } from "@orionis/config";
-import type { Hex } from "@orionis/types";
+import type { ContractAddresses } from "@alphamarkets/config";
+import type { Hex } from "@alphamarkets/types";
 import { riskManagerAbi } from "./abis.js";
-import type { OrionisClient } from "./client.js";
+import type { AlphaMarketsClient } from "./client.js";
 import { createApiGet } from "./api.js";
-import { MarketPausedError, mapError, OrionisContractError } from "./errors.js";
+import { MarketPausedError, mapError, AlphaMarketsContractError } from "./errors.js";
 import type { MarketsNamespace } from "./markets.js";
 import { resolveMarketId } from "./utils.js";
 
@@ -45,7 +45,7 @@ export interface RiskNamespace {
   openInterest(marketIdOrSymbol: string): Promise<OpenInterest>;
 }
 
-export function createRisk(client: OrionisClient, addresses: ContractAddresses, apiUrl?: string): RiskNamespace {
+export function createRisk(client: AlphaMarketsClient, addresses: ContractAddresses, apiUrl?: string): RiskNamespace {
   const apiGet = createApiGet(apiUrl);
 
   async function get(marketIdOrSymbol: string): Promise<RiskInfo> {
@@ -89,13 +89,13 @@ export function createRisk(client: OrionisClient, addresses: ContractAddresses, 
 /// is broken) plus the market's active/enabled flags, and returns the decoded violations. The
 /// contract stays the source of truth: this only asks it, it never re-implements the rules.
 export async function collectRiskViolations(
-  client: OrionisClient,
+  client: AlphaMarketsClient,
   addresses: ContractAddresses,
   markets: MarketsNamespace,
   params: { marketId: Hex; isLong: boolean; notional: bigint; leverage?: bigint; needs: "perps" | "options" },
-): Promise<OrionisContractError[]> {
+): Promise<AlphaMarketsContractError[]> {
   const { marketId, isLong, notional, leverage } = params;
-  const violations: OrionisContractError[] = [];
+  const violations: AlphaMarketsContractError[] = [];
 
   const calls: Array<() => Promise<unknown>> = [
     () =>
@@ -130,7 +130,7 @@ export async function collectRiskViolations(
         await call();
       } catch (error) {
         const mapped = mapError(error);
-        if (mapped instanceof OrionisContractError) violations.push(mapped);
+        if (mapped instanceof AlphaMarketsContractError) violations.push(mapped);
         else throw mapped;
       }
     }),

@@ -1,4 +1,4 @@
-import { resolveMarketId, type Orionis } from "@orionis/sdk";
+import { resolveMarketId, type AlphaMarkets } from "@alphamarkets/sdk";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { getSql } from "../db.js";
 
@@ -9,7 +9,7 @@ import { getSql } from "../db.js";
 /// is valid per `OptionsEngine.openPosition` — PROJECT_BRIEF.md Section 8's "Select strike"
 /// is a free choice, not a pick from a list) — so an empty chain for an unused market is
 /// correct, not a bug, and this endpoint does not synthesize a suggested strike ladder.
-export function registerOptionRoutes(app: FastifyInstance, _orionis: Orionis) {
+export function registerOptionRoutes(app: FastifyInstance, _alphamarkets: AlphaMarkets) {
   const sql = getSql();
 
   app.get<{ Params: { symbol: string } }>("/v1/options/:symbol/expiries", async (request) => {

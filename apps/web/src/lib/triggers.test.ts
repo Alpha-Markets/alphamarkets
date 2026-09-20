@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import type { TriggerOrder } from "@orionis/sdk";
+import type { TriggerOrder } from "@alphamarkets/sdk";
 import { openTriggersFor, sortTriggers, triggerProblem, triggerSide, triggerState } from "./triggers.js";
 
 const WAD = 10n ** 18n;

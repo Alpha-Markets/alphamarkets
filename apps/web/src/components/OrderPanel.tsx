@@ -1,18 +1,18 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { Button, Panel, Row, Segmented, Skeleton, TextField } from "@orionis/ui";
-import { toBaseUnits, type OrderType } from "@orionis/sdk";
+import { Button, Panel, Row, Segmented, Skeleton, TextField } from "@alphamarkets/ui";
+import { toBaseUnits, type OrderType } from "@alphamarkets/sdk";
 import { useState } from "react";
 import { useAccount, useSwitchChain } from "wagmi";
 import { usePerpMarket, useSettlementDecimals, useVaultBalances } from "@/hooks/queries";
 import { useDebounced } from "@/hooks/useDebounced";
-import { useWalletOrionis } from "@/hooks/useOrionis";
+import { useWalletAlphaMarkets } from "@/hooks/useAlphaMarkets";
 import { useTx } from "@/hooks/useTx";
 import { env } from "@/lib/env";
 import { fmtBps, fmtPrice, fmtUsd } from "@/lib/format";
 import { LIMIT_EXPIRIES, limitDirectionNote, limitExpirySeconds, parseLimitPrice, type LimitExpiry } from "@/lib/limit";
-import { orionisRead } from "@/lib/orionis";
+import { alphaMarketsRead } from "@/lib/alphamarkets";
 import { chain } from "@/lib/wagmi";
 import { errorMessage } from "@/stores/tx";
 import { useTerminal } from "@/stores/terminal";
@@ -26,7 +26,7 @@ export function OrderPanel() {
   const symbol = useTerminal((state) => state.symbol);
   const { address, isConnected, chainId } = useAccount();
   const { switchChain } = useSwitchChain();
-  const wallet = useWalletOrionis();
+  const wallet = useWalletAlphaMarkets();
   const run = useTx();
   const { data: market } = usePerpMarket(symbol);
   const { data: decimals = 6 } = useSettlementDecimals();
@@ -62,7 +62,7 @@ export function OrderPanel() {
   const preview = useQuery({
     queryKey: ["preview", symbol, side, orderType, isLimit ? debouncedLimit : "", debouncedCollateral, String(leverage), address],
     queryFn: () =>
-      orionisRead.perps.previewOpen({
+      alphaMarketsRead.perps.previewOpen({
         market: symbol,
         side,
         collateral: debouncedCollateral,

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { OrionisError } from "./errors.js";
+import { AlphaMarketsError } from "./errors.js";
 import type { OptionsNamespace } from "./options.js";
 import { createStructured, STRUCTURED_KINDS } from "./structured.js";
 import type { PreparedTx, TradingNamespace } from "./trading.js";
@@ -86,5 +86,5 @@ test("bad requests and unsigned quotes are refused", async () => {
   await assert.rejects(structured.build({ ...base, kind: "COVERED_CALL" as never, strikes: { callStrike: 110 } }), /unknown product/);
   await assert.rejects(structured.build({ ...base, contracts: 0n, kind: "BREAKOUT_STRADDLE", strikes: { strike: 100 } }), /above zero/);
   await assert.rejects(setup({ signed: false }).structured.build({ ...base, kind: "BREAKOUT_STRADDLE", strikes: { strike: 100 } }), /did not sign/);
-  await assert.rejects(structured.build({ ...base, kind: "BREAKOUT_STRANGLE", strikes: { putStrike: 110, callStrike: 95 } }), OrionisError);
+  await assert.rejects(structured.build({ ...base, kind: "BREAKOUT_STRANGLE", strikes: { putStrike: 110, callStrike: 95 } }), AlphaMarketsError);
 });

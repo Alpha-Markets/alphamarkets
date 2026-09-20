@@ -1,6 +1,6 @@
 import { ImageResponse } from "next/og";
 
-export const alt = "Orionis Markets — Derivatives for tokenized equities";
+export const alt = "AlphaMarkets — Derivatives for tokenized equities";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
@@ -29,7 +29,7 @@ export default function OpengraphImage() {
             marginBottom: 48,
           }}
         />
-        <div style={{ fontSize: 72, letterSpacing: 18, fontWeight: 500 }}>ORIONIS MARKETS</div>
+        <div style={{ fontSize: 72, letterSpacing: 18, fontWeight: 500 }}>ALPHAMARKETS</div>
         <div style={{ fontSize: 34, color: "#aaa9a2", marginTop: 28 }}>Derivatives for tokenized equities.</div>
       </div>
     ),

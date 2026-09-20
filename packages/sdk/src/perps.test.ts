@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { InsufficientMarginError, NotImplementedError, OrionisError, PositionLimitExceededError } from "./errors.js";
+import { InsufficientMarginError, NotImplementedError, AlphaMarketsError, PositionLimitExceededError } from "./errors.js";
 import { triggerFiresBelow } from "./orders.js";
 import { createPerps, type PerpsDeps } from "./perps.js";
 import { activeMarket, addresses, fakeClient, NVDA, revertError, USER, WAD } from "./testing.js";
@@ -124,7 +124,7 @@ test("a LIMIT preview needs a trigger and works out its figures at that price", 
   const { perps } = setup();
   await assert.rejects(
     perps.previewOpen({ market: "NVDA", side: "LONG", collateral: "1000", leverage: 5, orderType: "LIMIT" }),
-    OrionisError,
+    AlphaMarketsError,
   );
 
   const preview = await perps.previewOpen({ market: "NVDA", side: "LONG", collateral: "1000", leverage: 5, orderType: "LIMIT", limitPrice: "180" });
@@ -222,7 +222,7 @@ test("placeTriggerOrder rejects an unknown kind before any RPC call", async () =
   const { perps, simulated } = setup();
   await assert.rejects(
     perps.placeTriggerOrder({ positionId: 5n, kind: "TRAILING" as never, triggerPrice: "1" }),
-    OrionisError,
+    AlphaMarketsError,
   );
   assert.equal(simulated().length, 0);
 });

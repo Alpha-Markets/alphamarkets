@@ -1,4 +1,4 @@
-import { loadDotEnv } from "@orionis/config";
+import { loadDotEnv } from "@alphamarkets/config";
 loadDotEnv();
 
 const { buildServer } = await import("./server.js");

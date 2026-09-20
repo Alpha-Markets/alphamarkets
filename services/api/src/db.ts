@@ -1,4 +1,4 @@
-import { requireEnv } from "@orionis/config";
+import { requireEnv } from "@alphamarkets/config";
 import postgres from "postgres";
 
 /// Plain `postgres.js` client, not Drizzle — `services/api` only ever reads rows

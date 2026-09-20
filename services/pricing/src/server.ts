@@ -1,10 +1,10 @@
 import { randomBytes } from "node:crypto";
-import { requireEnv, resolveChainId } from "@orionis/config";
+import { requireEnv, resolveChainId } from "@alphamarkets/config";
 import {
   closeQuoteTypedData,
   fromBaseUnits,
   openQuoteTypedData,
-  Orionis,
+  AlphaMarkets,
   OptionPositionStatus,
   type Address,
   type Hex,
@@ -12,7 +12,7 @@ import {
   premiumForOrder,
   resolveMarketId,
   toBaseUnits,
-} from "@orionis/sdk";
+} from "@alphamarkets/sdk";
 import Fastify from "fastify";
 import { http, isAddress, type LocalAccount } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
@@ -68,7 +68,7 @@ interface CloseQuoteRequestBody {
 
 export interface PricingOptions {
   /// Injected in tests; built from `RPC_URL` otherwise.
-  orionis?: Orionis;
+  alphaMarkets?: AlphaMarkets;
   /// The `QUOTER_ROLE` signing account. Without it the service still returns analytics, but no
   /// authorization, so nothing can be opened or closed against its prices.
   account?: LocalAccount;
@@ -115,8 +115,8 @@ function randomNonce(): bigint {
 
 export function buildServer(options: PricingOptions = {}) {
   const chainId = resolveChainId(process.env.CHAIN_ID);
-  const orionis =
-    options.orionis ?? new Orionis({ chainId, transport: http(requireEnv("RPC_URL")) });
+  const alphaMarkets =
+    options.alphaMarkets ?? new AlphaMarkets({ chainId, transport: http(requireEnv("RPC_URL")) });
   const account = options.account ?? quoterFromEnv();
   const now = options.now ?? Date.now;
   const spreadBps = options.spreadBps ?? SPREAD_BPS;
@@ -172,7 +172,7 @@ export function buildServer(options: PricingOptions = {}) {
     }
 
     const strikeNumber = Number(strike);
-    const { price: spotRaw } = await orionis.oracle.getIndexPrice(underlying);
+    const { price: spotRaw } = await alphaMarkets.oracle.getIndexPrice(underlying);
     const spot = Number(spotRaw) / 1e18;
 
     // `strike` here is a plain decimal (PROJECT_BRIEF.md Section 10's example: "strike": 190) — a
@@ -197,8 +197,8 @@ export function buildServer(options: PricingOptions = {}) {
     if (account && user) {
       const marketId = resolveMarketId(underlying);
       const [contractSize, tokenDecimals] = await Promise.all([
-        orionis.options.contractSize(underlying),
-        orionis.erc20.decimals(orionis.addresses.settlementToken),
+        alphaMarkets.options.contractSize(underlying),
+        alphaMarkets.erc20.decimals(alphaMarkets.addresses.settlementToken),
       ]);
       // Opening pays the ask.
       const premium = premiumForOrder(result.ask, contractSize, BigInt(contracts), tokenDecimals);
@@ -207,7 +207,7 @@ export function buildServer(options: PricingOptions = {}) {
       const signature = await account.signTypedData(
         openQuoteTypedData({
           chainId,
-          optionsEngine: orionis.addresses.optionsEngine,
+          optionsEngine: alphaMarkets.addresses.optionsEngine,
           user: user as Address,
           marketId,
           optionType: type === "CALL" ? ChainOptionType.CALL : ChainOptionType.PUT,
@@ -241,7 +241,7 @@ export function buildServer(options: PricingOptions = {}) {
       return reply.code(400).send({ error: "positionId (integer string) and user (address) are required" });
     }
 
-    const position = await orionis.portfolio.getOptionPosition(BigInt(positionId));
+    const position = await alphaMarkets.portfolio.getOptionPosition(BigInt(positionId));
     if (position.owner.toLowerCase() !== user.toLowerCase()) {
       return reply.code(403).send({ error: "position belongs to a different address" });
     }
@@ -253,7 +253,7 @@ export function buildServer(options: PricingOptions = {}) {
       return reply.code(409).send({ error: "position has expired; settle it instead of closing" });
     }
 
-    const { price: spotRaw } = await orionis.oracle.getIndexPrice(position.marketId);
+    const { price: spotRaw } = await alphaMarkets.oracle.getIndexPrice(position.marketId);
     const spot = Number(spotRaw) / 1e18;
     const optionType = position.optionType === ChainOptionType.CALL ? "CALL" : "PUT";
     const strike = Number(fromBaseUnits(position.strike, 18));
@@ -261,8 +261,8 @@ export function buildServer(options: PricingOptions = {}) {
     const result = priceOption(volatility.value, spot, strike, timeToExpiryYears, optionType);
 
     const [contractSize, tokenDecimals] = await Promise.all([
-      orionis.options.contractSize(position.marketId),
-      orionis.erc20.decimals(orionis.addresses.settlementToken),
+      alphaMarkets.options.contractSize(position.marketId),
+      alphaMarkets.erc20.decimals(alphaMarkets.addresses.settlementToken),
     ]);
     // Closing receives the bid.
     const premium = premiumForOrder(result.bid, contractSize, position.contracts, tokenDecimals);
@@ -271,7 +271,7 @@ export function buildServer(options: PricingOptions = {}) {
     const signature = await account.signTypedData(
       closeQuoteTypedData({
         chainId,
-        optionsEngine: orionis.addresses.optionsEngine,
+        optionsEngine: alphaMarkets.addresses.optionsEngine,
         user: user as Address,
         positionId: BigInt(positionId),
         premium,
@@ -315,7 +315,7 @@ export function buildServer(options: PricingOptions = {}) {
       if (parsed && !Array.isArray(parsed)) return reply.code(400).send(parsed);
     }
 
-    const { price: spotRaw } = await orionis.oracle.getIndexPrice(underlying);
+    const { price: spotRaw } = await alphaMarkets.oracle.getIndexPrice(underlying);
     const spot = Number(spotRaw) / 1e18;
     const nowSecondsNumber = Math.floor(now() / 1000);
     const volatility = await volatilityFor(underlying);
@@ -341,7 +341,7 @@ export function buildServer(options: PricingOptions = {}) {
     ok: true,
     signing: Boolean(account),
     quoter: account?.address,
-    optionsEngine: orionis.addresses.optionsEngine,
+    optionsEngine: alphaMarkets.addresses.optionsEngine,
   }));
 
   return app;

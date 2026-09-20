@@ -1,9 +1,9 @@
 {
-  "name": "@orionis/pricing",
+  "name": "@alphamarkets/pricing",
   "private": true,
   "version": "0.0.0",
   "type": "module",
-  "description": "Orionis Markets offchain options analytics (premium, IV, Greeks) — display/quoting only, never settlement truth.",
+  "description": "AlphaMarkets offchain options analytics (premium, IV, Greeks) — display/quoting only, never settlement truth.",
   "scripts": {
     "build": "echo \"scaffold: services/pricing build — Phase 2\" && exit 0",
     "dev": "tsx watch src/index.ts",
@@ -13,8 +13,8 @@
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
-    "@orionis/config": "workspace:*",
-    "@orionis/sdk": "workspace:*",
+    "@alphamarkets/config": "workspace:*",
+    "@alphamarkets/sdk": "workspace:*",
     "fastify": "^5.1.0",
     "viem": "^2.21.0"
   }

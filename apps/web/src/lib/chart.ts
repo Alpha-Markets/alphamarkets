@@ -1,5 +1,5 @@
 import { formatUnits } from "viem";
-import type { Candle } from "@orionis/sdk";
+import type { Candle } from "@alphamarkets/sdk";
 import { PRICE_DECIMALS } from "./format";
 
 /// A candle as the chart draws it: plain numbers, since drawing needs no more precision than a

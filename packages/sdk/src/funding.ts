@@ -1,6 +1,6 @@
-import type { ContractAddresses } from "@orionis/config";
+import type { ContractAddresses } from "@alphamarkets/config";
 import { fundingManagerAbi } from "./abis.js";
-import type { OrionisClient } from "./client.js";
+import type { AlphaMarketsClient } from "./client.js";
 import { createApiGet } from "./api.js";
 import { resolveMarketId } from "./utils.js";
 
@@ -26,7 +26,7 @@ export interface FundingNamespace {
   history(marketIdOrSymbol: string, limit?: number): Promise<FundingRatePoint[]>;
 }
 
-export function createFunding(client: OrionisClient, addresses: ContractAddresses, apiUrl?: string): FundingNamespace {
+export function createFunding(client: AlphaMarketsClient, addresses: ContractAddresses, apiUrl?: string): FundingNamespace {
   const apiGet = createApiGet(apiUrl);
 
   async function get(marketIdOrSymbol: string): Promise<FundingInfo> {

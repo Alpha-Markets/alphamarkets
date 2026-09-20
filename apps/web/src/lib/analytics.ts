@@ -1,5 +1,5 @@
 import { formatUnits } from "viem";
-import type { FundingRatePoint, OpenInterestPoint } from "@orionis/sdk";
+import type { FundingRatePoint, OpenInterestPoint } from "@alphamarkets/sdk";
 
 /// Share of open interest on the long side, in whole percent, or `undefined` when there is none.
 /// 50 means balanced; above it, longs outweigh shorts.

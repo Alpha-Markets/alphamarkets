@@ -1,7 +1,7 @@
 "use client";
 
-import { Num, Panel, Segmented, Stat, Tabs } from "@orionis/ui";
-import type { OpenInterestRange } from "@orionis/sdk";
+import { Num, Panel, Segmented, Stat, Tabs } from "@alphamarkets/ui";
+import type { OpenInterestRange } from "@alphamarkets/sdk";
 import { useMemo, useState } from "react";
 import { useAccount } from "wagmi";
 import {

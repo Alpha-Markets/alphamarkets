@@ -1,8 +1,8 @@
-import type { ContractAddresses } from "@orionis/config";
-import type { Address, Hex } from "@orionis/types";
+import type { ContractAddresses } from "@alphamarkets/config";
+import type { Address, Hex } from "@alphamarkets/types";
 import { collateralManagerAbi, vaultAbi } from "./abis.js";
 import { toBaseUnits, type Amount } from "./amounts.js";
-import type { OrionisClient } from "./client.js";
+import type { AlphaMarketsClient } from "./client.js";
 import { executeTx, type TxOptions } from "./transactions.js";
 
 export interface VaultBalances {
@@ -26,7 +26,7 @@ export interface VaultNamespace {
 }
 
 export function createVault(
-  client: OrionisClient,
+  client: AlphaMarketsClient,
   addresses: ContractAddresses,
   decimals: (token: Address) => Promise<number>,
 ): VaultNamespace {

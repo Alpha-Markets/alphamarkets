@@ -1,7 +1,7 @@
 import { BaseError, decodeErrorResult, isHex, UserRejectedRequestError, type Hex } from "viem";
 import { allErrorsAbi } from "./abis.js";
 
-export class OrionisError extends Error {
+export class AlphaMarketsError extends Error {
   constructor(message: string, options?: { cause?: unknown }) {
     super(message, options);
     this.name = new.target.name;
@@ -13,18 +13,18 @@ export class OrionisError extends Error {
 /// PROJECT_BRIEF.md Section 10 requires offchain analytics to never become the source of
 /// settlement truth, and Section 31 requires historical data to come from the indexer, never a
 /// frontend RPC substitute.
-export class NotImplementedError extends OrionisError {
+export class NotImplementedError extends AlphaMarketsError {
   constructor(method: string, reason: string) {
-    super(`@orionis/sdk: ${method}() is not implemented yet — ${reason}`);
+    super(`@alphamarkets/sdk: ${method}() is not implemented yet — ${reason}`);
   }
 }
 
 /// The wallet owner declined to sign.
-export class UserRejectedError extends OrionisError {}
+export class UserRejectedError extends AlphaMarketsError {}
 
 /// A contract reverted with a custom error (PROJECT_BRIEF.md Section 36). `errorName` and `args`
 /// are decoded from the revert data; the subclasses below cover the errors Section 36 names.
-export class OrionisContractError extends OrionisError {
+export class AlphaMarketsContractError extends AlphaMarketsError {
   constructor(
     readonly errorName: string,
     readonly args: readonly unknown[],
@@ -34,28 +34,28 @@ export class OrionisContractError extends OrionisError {
   }
 }
 
-export class MarketPausedError extends OrionisContractError {}
-export class InvalidOraclePriceError extends OrionisContractError {}
-export class StaleOraclePriceError extends OrionisContractError {}
-export class InsufficientCollateralError extends OrionisContractError {}
-export class InsufficientMarginError extends OrionisContractError {}
-export class PositionLimitExceededError extends OrionisContractError {}
-export class OpenInterestLimitExceededError extends OrionisContractError {}
-export class DeadlineExpiredError extends OrionisContractError {}
+export class MarketPausedError extends AlphaMarketsContractError {}
+export class InvalidOraclePriceError extends AlphaMarketsContractError {}
+export class StaleOraclePriceError extends AlphaMarketsContractError {}
+export class InsufficientCollateralError extends AlphaMarketsContractError {}
+export class InsufficientMarginError extends AlphaMarketsContractError {}
+export class PositionLimitExceededError extends AlphaMarketsContractError {}
+export class OpenInterestLimitExceededError extends AlphaMarketsContractError {}
+export class DeadlineExpiredError extends AlphaMarketsContractError {}
 /// The option premium was not authorised by a valid, unexpired, unused quote (see `OptionsEngine`).
-export class InvalidQuoteError extends OrionisContractError {}
-export class QuoteExpiredError extends OrionisContractError {}
-export class QuoteAlreadyUsedError extends OrionisContractError {}
-export class SlippageExceededError extends OrionisContractError {}
-export class OrderNotOpenError extends OrionisContractError {}
-export class OrderExpiredError extends OrionisContractError {}
+export class InvalidQuoteError extends AlphaMarketsContractError {}
+export class QuoteExpiredError extends AlphaMarketsContractError {}
+export class QuoteAlreadyUsedError extends AlphaMarketsContractError {}
+export class SlippageExceededError extends AlphaMarketsContractError {}
+export class OrderNotOpenError extends AlphaMarketsContractError {}
+export class OrderExpiredError extends AlphaMarketsContractError {}
 /// The mark price has not reached the limit order's trigger yet.
-export class LimitPriceNotReachedError extends OrionisContractError {}
-export class InvalidTriggerPriceError extends OrionisContractError {}
+export class LimitPriceNotReachedError extends AlphaMarketsContractError {}
+export class InvalidTriggerPriceError extends AlphaMarketsContractError {}
 /// The mark price has not reached the stop-loss or take-profit trigger yet.
-export class TriggerPriceNotReachedError extends OrionisContractError {}
+export class TriggerPriceNotReachedError extends AlphaMarketsContractError {}
 
-type ContractErrorClass = new (errorName: string, args: readonly unknown[], cause?: unknown) => OrionisContractError;
+type ContractErrorClass = new (errorName: string, args: readonly unknown[], cause?: unknown) => AlphaMarketsContractError;
 
 const contractErrorClasses: Record<string, ContractErrorClass> = {
   MarketPaused: MarketPausedError,
@@ -96,10 +96,10 @@ function findRevertData(error: BaseError): Hex | undefined {
   return found;
 }
 
-/// Converts a viem error into a typed Orionis error where possible. Anything not recognised is
+/// Converts a viem error into a typed AlphaMarkets error where possible. Anything not recognised is
 /// returned unchanged so no information is lost.
 export function mapError(error: unknown): unknown {
-  if (error instanceof OrionisError) return error;
+  if (error instanceof AlphaMarketsError) return error;
   if (!(error instanceof BaseError)) return error;
 
   if (error.walk((candidate) => candidate instanceof UserRejectedRequestError)) {
@@ -111,7 +111,7 @@ export function mapError(error: unknown): unknown {
 
   try {
     const decoded = decodeErrorResult({ abi: allErrorsAbi, data });
-    const ErrorClass = contractErrorClasses[decoded.errorName] ?? OrionisContractError;
+    const ErrorClass = contractErrorClasses[decoded.errorName] ?? AlphaMarketsContractError;
     return new ErrorClass(decoded.errorName, decoded.args ?? [], error);
   } catch {
     return error;

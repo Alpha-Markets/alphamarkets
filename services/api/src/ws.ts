@@ -1,4 +1,4 @@
-import type { Orionis } from "@orionis/sdk";
+import type { AlphaMarkets } from "@alphamarkets/sdk";
 import type { FastifyInstance } from "fastify";
 import { getSql } from "./db.js";
 
@@ -14,7 +14,7 @@ interface Sendable {
   send(data: string): void;
 }
 
-export function registerWebSocket(app: FastifyInstance, orionis: Orionis) {
+export function registerWebSocket(app: FastifyInstance, alphaMarkets: AlphaMarkets) {
   const sql = getSql();
   const clients = new Set<Sendable>();
 
@@ -34,8 +34,8 @@ export function registerWebSocket(app: FastifyInstance, orionis: Orionis) {
       let payload: string;
       try {
         const [index, funding] = await Promise.all([
-          orionis.oracle.getIndexPrice(marketId),
-          orionis.funding.get(marketId),
+          alphaMarkets.oracle.getIndexPrice(marketId),
+          alphaMarkets.funding.get(marketId),
         ]);
         payload = JSON.stringify({
           type: "tick",

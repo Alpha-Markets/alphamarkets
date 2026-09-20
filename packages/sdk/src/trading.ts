@@ -1,10 +1,10 @@
-import type { ContractAddresses } from "@orionis/config";
-import { OptionType, type Address, type Hex } from "@orionis/types";
+import type { ContractAddresses } from "@alphamarkets/config";
+import { OptionType, type Address, type Hex } from "@alphamarkets/types";
 import { encodeFunctionData } from "viem";
 import { erc20Abi, optionsEngineAbi, perpsEngineAbi, rfqManagerAbi, vaultAbi } from "./abis.js";
 import { PRICE_DECIMALS, toBaseUnits, type Amount } from "./amounts.js";
-import type { OrionisClient } from "./client.js";
-import { mapError, OrionisError } from "./errors.js";
+import type { AlphaMarketsClient } from "./client.js";
+import { mapError, AlphaMarketsError } from "./errors.js";
 import { applyBps } from "./math.js";
 import type { OracleNamespace } from "./oracle.js";
 import type { TriggerKind } from "./orders.js";
@@ -125,7 +125,7 @@ export interface TradingNamespace {
 }
 
 export interface TradingDeps {
-  client: OrionisClient;
+  client: AlphaMarketsClient;
   addresses: ContractAddresses;
   chainId: number;
   decimals: (token: Address) => Promise<number>;
@@ -149,18 +149,18 @@ export function createTrading(deps: TradingDeps): TradingNamespace {
   async function bound(params: PerpBound, isLong: boolean, isEntry: boolean, marketId: Hex): Promise<bigint> {
     if (params.worstPrice !== undefined) return toBaseUnits(params.worstPrice, PRICE_DECIMALS);
     const slippage = BigInt(params.slippageBps ?? DEFAULT_SLIPPAGE_BPS);
-    if (slippage < 0n || slippage >= 10_000n) throw new OrionisError("trading: slippageBps must be between 0 and 9999");
+    if (slippage < 0n || slippage >= 10_000n) throw new AlphaMarketsError("trading: slippageBps must be between 0 and 9999");
     const { price } = await oracle.getMarkPrice(marketId);
     return applyBps(price, isEntry === isLong ? slippage : -slippage);
   }
 
   const sideOf = (side: "LONG" | "SHORT") => {
-    if (side !== "LONG" && side !== "SHORT") throw new OrionisError(`trading: side must be "LONG" or "SHORT", received "${String(side)}"`);
+    if (side !== "LONG" && side !== "SHORT") throw new AlphaMarketsError(`trading: side must be "LONG" or "SHORT", received "${String(side)}"`);
     return side === "LONG";
   };
 
   function optionTypeOf(type: "CALL" | "PUT"): OptionType {
-    if (type !== "CALL" && type !== "PUT") throw new OrionisError(`trading: option type must be "CALL" or "PUT", received "${String(type)}"`);
+    if (type !== "CALL" && type !== "PUT") throw new AlphaMarketsError(`trading: option type must be "CALL" or "PUT", received "${String(type)}"`);
     return type === "CALL" ? OptionType.CALL : OptionType.PUT;
   }
 
@@ -250,7 +250,7 @@ export function createTrading(deps: TradingDeps): TradingNamespace {
 
     preparePlaceTriggerOrder(params) {
       const kind = TRIGGER_KINDS.indexOf(params.kind);
-      if (kind < 0) throw new OrionisError(`trading: unknown trigger kind ${String(params.kind)}`);
+      if (kind < 0) throw new AlphaMarketsError(`trading: unknown trigger kind ${String(params.kind)}`);
       const expiry = params.expiry === undefined ? BigInt(Math.floor(Date.now() / 1000) + 30 * 86_400) : toUnixSeconds(params.expiry);
       return tx(
         addresses.perpsEngine,
@@ -263,7 +263,7 @@ export function createTrading(deps: TradingDeps): TradingNamespace {
     prepareExecuteTriggerOrder: (orderId) => tx(addresses.perpsEngine, encodeFunctionData({ abi: perpsEngineAbi, functionName: "executeTriggerOrder", args: [orderId] }), `fire trigger order ${orderId}`),
 
     prepareExecuteRfq(quote) {
-      if (!addresses.rfqManager) throw new OrionisError("trading: this deployment has no RFQManager (it needs a deployment made after [1.3.0])");
+      if (!addresses.rfqManager) throw new AlphaMarketsError("trading: this deployment has no RFQManager (it needs a deployment made after [1.3.0])");
       return tx(
         addresses.rfqManager,
         encodeFunctionData({

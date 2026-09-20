@@ -1,6 +1,6 @@
-import type { Address, Hex } from "@orionis/types";
+import type { Address, Hex } from "@alphamarkets/types";
 import { erc20Abi } from "./abis.js";
-import type { OrionisClient } from "./client.js";
+import type { AlphaMarketsClient } from "./client.js";
 import { toBaseUnits, type Amount } from "./amounts.js";
 import { executeTx, type TxOptions } from "./transactions.js";
 
@@ -15,7 +15,7 @@ export interface Erc20Namespace {
 }
 
 /// Token decimals never change after deployment, so they are read once per token per client.
-export function createDecimalsReader(client: OrionisClient) {
+export function createDecimalsReader(client: AlphaMarketsClient) {
   const cache = new Map<Address, Promise<number>>();
   return (token: Address): Promise<number> => {
     let decimals = cache.get(token);
@@ -29,7 +29,7 @@ export function createDecimalsReader(client: OrionisClient) {
   };
 }
 
-export function createErc20(client: OrionisClient, decimals: (token: Address) => Promise<number>): Erc20Namespace {
+export function createErc20(client: AlphaMarketsClient, decimals: (token: Address) => Promise<number>): Erc20Namespace {
   async function approve(token: Address, spender: Address, amount: Amount, tx?: TxOptions) {
     const value = toBaseUnits(amount, await decimals(token));
     const { hash } = await executeTx(

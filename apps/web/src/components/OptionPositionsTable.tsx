@@ -1,20 +1,20 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { Button, Num } from "@orionis/ui";
-import { margin, OptionPositionStatus, OptionType, premiumForOrder, type CloseQuote } from "@orionis/sdk";
-import type { OptionPosition } from "@orionis/types";
+import { Button, Num } from "@alphamarkets/ui";
+import { margin, OptionPositionStatus, OptionType, premiumForOrder, type CloseQuote } from "@alphamarkets/sdk";
+import type { OptionPosition } from "@alphamarkets/types";
 import { useState } from "react";
 import { useAccount } from "wagmi";
 import { useSettlementDecimals } from "@/hooks/queries";
 import { useNow } from "@/hooks/useNow";
-import { useWalletOrionis } from "@/hooks/useOrionis";
+import { useWalletAlphaMarkets } from "@/hooks/useAlphaMarkets";
 import { useTx } from "@/hooks/useTx";
 import { env } from "@/lib/env";
 import { fmtSigned, fmtUsd, signTone } from "@/lib/format";
 import { symbolOf } from "@/lib/market";
 import { optionCodeOf } from "@/lib/options";
-import { orionisRead } from "@/lib/orionis";
+import { alphaMarketsRead } from "@/lib/alphamarkets";
 
 const head = "px-3 py-2 text-right text-xs font-normal text-muted first:text-left";
 const cell = "px-3 py-2 text-right tabular-nums first:text-left";
@@ -27,7 +27,7 @@ const statusLabel: Record<OptionPositionStatus, string> = {
 
 function OptionRow({ position, decimals }: { position: OptionPosition; decimals: number }) {
   const { address } = useAccount();
-  const wallet = useWalletOrionis();
+  const wallet = useWalletAlphaMarkets();
   const run = useTx();
   const now = useNow();
   const symbol = symbolOf(position.marketId);
@@ -44,8 +44,8 @@ function OptionRow({ position, decimals }: { position: OptionPosition; decimals:
     retry: false,
     queryFn: async () => {
       const [quote, contractSize] = await Promise.all([
-        orionisRead.options.quote({ underlying: symbol, type, strike: position.strike, expiry: position.expiry, contracts: position.contracts }),
-        orionisRead.options.contractSize(symbol),
+        alphaMarketsRead.options.quote({ underlying: symbol, type, strike: position.strike, expiry: position.expiry, contracts: position.contracts }),
+        alphaMarketsRead.options.contractSize(symbol),
       ]);
       return premiumForOrder(quote.premium, contractSize, position.contracts, decimals);
     },
@@ -61,7 +61,7 @@ function OptionRow({ position, decimals }: { position: OptionPosition; decimals:
     setBusy(true);
     setProblem(undefined);
     try {
-      const [quote, fees] = await Promise.all([orionisRead.options.quoteClose(position.positionId, address), orionisRead.fees.get(symbol)]);
+      const [quote, fees] = await Promise.all([alphaMarketsRead.options.quoteClose(position.positionId, address), alphaMarketsRead.fees.get(symbol)]);
       setConfirm({ quote, fee: margin.feeFromBps(quote.premium, fees.optionCloseFee) });
     } catch (error) {
       setProblem(error instanceof Error && error.message.includes("apiUrl") ? "Closing needs NEXT_PUBLIC_API_URL." : "Could not get a closing price. Try again.");

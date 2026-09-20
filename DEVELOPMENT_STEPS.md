@@ -4,7 +4,7 @@ aliases: []
 tags: []
 ---
 
-# ORIONIS MARKETS — DEVELOPMENT STEPS
+# ALPHAMARKETS — DEVELOPMENT STEPS
 
 Derived from PROJECT_BRIEF.md. Sequenced by MVP Priority 0 → 1 → 2, then post-MVP.
 
@@ -17,8 +17,8 @@ Derived from PROJECT_BRIEF.md. Sequenced by MVP Priority 0 → 1 → 2, then pos
 | Phase | Status |
 |---|---|
 | 0 Scaffolding | Done |
-| 1 Contracts | Deployed as `[1.3.0-testnet]` (2026-09-20): the Phase 7 contracts on top of the `[1.2.0-testnet]` fixes (`increasePosition`, limit orders, options decimals). Explorer verification pending. |
-| 2 Backend services | Done and running against `1.3.0-testnet`. Nothing is hosted yet: the Railway project has only the Postgres database, and the services run from a developer machine. The indexer database was reset on 2026-09-20. A fresh database now fills `markets` from the registry when the indexer starts, and replays history when `INDEXER_START_BLOCK` (the deploy block, `122013174` for `1.3.0-testnet`) is set; see the readiness check under Testing & Pre-Deployment. New in Phase 5: `services/keeper`, analytics endpoints, bid/ask (spread `OPTION_SPREAD_BPS=200`) and realized volatility in `services/pricing`. |
+| 1 Contracts | Deployed as `[1.4.0-testnet]` (2026-09-21): the `[1.3.0-testnet]` code redeployed under AlphaMarkets names, so the EIP-712 domains match the SDK. Explorer verification pending. |
+| 2 Backend services | Done. Hosted on Railway (2026-09-21): indexer, API, pricing and keeper run there against `1.4.0-testnet`; see "Hosting (testnet)" below. The web app is not hosted yet. Earlier: running against `1.3.0-testnet`. Nothing is hosted yet: the Railway project has only the Postgres database, and the services run from a developer machine. The indexer database was reset on 2026-09-20. A fresh database now fills `markets` from the registry when the indexer starts, and replays history when `INDEXER_START_BLOCK` (the deploy block, `122013174` for `1.3.0-testnet`) is set; see the readiness check under Testing & Pre-Deployment. New in Phase 5: `services/keeper`, analytics endpoints, bid/ask (spread `OPTION_SPREAD_BPS=200`) and realized volatility in `services/pricing`. |
 | 3 SDK | Done. Package and docs are ready to publish (`0.1.0`); not published. |
 | 4 Frontend | Done. Accepted with a real wallet on `1.1.0-testnet` (Phase 4) and again on `1.2.0-testnet` (Phase 5: option chain with bid/ask and Greeks, candles, funding and open interest views, limit order placed and cancelled). |
 | 5 Polish | **Done** (2026-09-20): built, tested, deployed as `1.2.0-testnet`, merged into `main` (PR #1) and accepted on testnet. Open follow-ups, none blocking Phase 6: run the keeper continuously (the mock NVDA feed goes stale after 1 hour without it), publish the SDK, explorer verification, and the items marked "not done" in Phase 5. |
@@ -52,7 +52,7 @@ These make the plan scalable (new markets, new contracts, new services added wit
 **API / SDK**
 
 - API routes versioned from day one (`/v1/...`) so breaking changes don't require a flag day.
-- SDK (`@orionis/sdk`) is the only sanctioned way to talk to contracts/API from the frontend — this keeps one integration surface to maintain instead of two (frontend fetches vs external integrator fetches).
+- SDK (`@alphamarkets/sdk`) is the only sanctioned way to talk to contracts/API from the frontend — this keeps one integration surface to maintain instead of two (frontend fetches vs external integrator fetches).
 
 **Frontend**
 
@@ -77,7 +77,7 @@ These make the plan scalable (new markets, new contracts, new services added wit
 1. Initialize git repo.
 2. Create monorepo structure (Section 32):
     ```
-    orionis/
+    alphamarkets/
     apps/web/
     services/api/
     services/indexer/
@@ -91,7 +91,7 @@ These make the plan scalable (new markets, new contracts, new services added wit
     ```
 3. Set up package manager workspaces (pnpm recommended for this stack).
 4. Add `.env.example` with all `NEXT_PUBLIC_*` vars from Section 4 and Section 21 — no hardcoded chain ID, RPC URL, contract addresses, or protocol token symbol/address.
-5. Add root README stating official brand (ORIONIS / Orionis Markets), tagline, and product statement (Section 47) — Citadelle naming must not appear anywhere (Section 46).
+5. Add root README stating official brand (ALPHAMARKETS / AlphaMarkets, one brand), tagline, and product statement (Section 47) — Citadelle naming must not appear anywhere (Section 46).
 
 ---
 
@@ -99,13 +99,13 @@ These make the plan scalable (new markets, new contracts, new services added wit
 
 Package: `packages/contracts/` (Foundry + Solidity + OpenZeppelin).
 
-1. **Interfaces first** (`interfaces/`): `IOracle`, `IMarketRegistry`, `IOrionisVault`, `IOptionsEngine`, `IPerpsEngine`.
+1. **Interfaces first** (`interfaces/`): `IOracle`, `IMarketRegistry`, `IAlphaMarketsVault`, `IOptionsEngine`, `IPerpsEngine`.
 2. **MarketRegistry.sol** (`core/`) — `MarketConfig` struct (Section 18): marketId, underlyingToken, oracleId, optionsEnabled, perpsEnabled, maxLeverage, openInterestCap, active. Single source of truth for markets; frontend/SDK/protocol all query this — no separate market lists.
 3. **OracleRouter.sol + PriceValidator.sol** (`oracle/`) — implements `IOracle`, routes price requests, normalizes decimals, validates timestamp freshness, rejects stale/deviant prices, supports fallback oracle, per-market config, emergency pause (Section 16). Must distinguish 4 price types (Section 17): Index Price (reference price of underlying), Mark Price (used for unrealized PnL/margin/liquidation/risk), Last Price (most recent executed derivatives price), Settlement Price (validated expiry price for options).
-4. **OrionisVault.sol + CollateralManager.sol** (`core/`) — Vault holds collateral deposits/withdrawals, locked margin, available balance, PnL settlement, premium accounting, funding transfers, fee transfers (Section 7); CollateralManager tracks supported collateral tokens and per-user/per-token balances (`supportedTokens` mapping, Section 7's suggested state), keeping token-support rules separate from Vault's settlement logic. MVP: single stable settlement asset only.
+4. **AlphaMarketsVault.sol + CollateralManager.sol** (`core/`) — Vault holds collateral deposits/withdrawals, locked margin, available balance, PnL settlement, premium accounting, funding transfers, fee transfers (Section 7); CollateralManager tracks supported collateral tokens and per-user/per-token balances (`supportedTokens` mapping, Section 7's suggested state), keeping token-support rules separate from Vault's settlement logic. MVP: single stable settlement asset only.
 5. **RiskManager.sol + MarginEngine.sol** (`risk/`) — per-market max leverage, max position size, open interest caps, margin parameters (Initial/Maintenance Margin, Margin Ratio, Liquidation Price) (Section 13, 19). MVP: isolated margin only.
 6. **FeeManager.sol** (`core/`) — `FeeConfig` struct: makerFee, takerFee, optionOpenFee, optionCloseFee, settlementFee, liquidationFee (Section 20). No fee percentages in UI code.
-    - **Buyback Module** (Section 21, conditional) — if Orionis keeps the deflationary tokenomics model: protocol fees → Fee Manager → Buyback Module → protocol token buyback, with configurable buyback percentage. Protocol token symbol/address stay env-driven (`NEXT_PUBLIC_PROTOCOL_TOKEN_SYMBOL`, `NEXT_PUBLIC_PROTOCOL_TOKEN_ADDRESS`), never hardcoded `$CTDL`. Confirm with product whether this ships in MVP or is skipped — brief marks it conditional, not required.
+    - **Buyback Module** (Section 21, conditional) — if AlphaMarkets keeps the deflationary tokenomics model: protocol fees → Fee Manager → Buyback Module → protocol token buyback, with configurable buyback percentage. Protocol token symbol/address stay env-driven (`NEXT_PUBLIC_PROTOCOL_TOKEN_SYMBOL`, `NEXT_PUBLIC_PROTOCOL_TOKEN_ADDRESS`), never hardcoded `$CTDL`. Confirm with product whether this ships in MVP or is skipped — brief marks it conditional, not required.
 7. **OptionsEngine.sol + OptionMarket.sol + OptionPositionManager.sol** (`options/`) — European call/put, cash-settled only. Identifier format `UNDERLYING-EXPIRY-STRIKE-TYPE` (Section 8). Premiums are computed offchain (Section 10), so the engine only accepts a premium carried by an EIP-712 quote signed by a `QUOTER_ROLE` holder for that exact user, series, size and premium; quotes expire and are single-use. The quoter key is critical: a dedicated key, held only by `services/pricing`, moved behind a multisig/HSM before mainnet (Section 37).
 8. **OptionSettlement.sol** — intrinsic value formulas (Section 9): call `max(Settlement - Strike, 0)`, put `max(Strike - Settlement, 0)`, payout `Intrinsic × Contract Size × Contracts`. Settlement price from validated oracle data only.
 9. **PerpsEngine.sol + PerpPositionManager.sol** (`perps/`) — open/increase/reduce/close long/short. MVP leverage tiers: 1x/2x/3x/5x/10x, configurable per market, never hardcoded in frontend (Section 11). Position state to track (Section 12): market, side, entry price, mark price, index price, position size, collateral, leverage, unrealized PnL, realized PnL, liquidation price, funding accrued, margin ratio.
@@ -116,7 +116,7 @@ Package: `packages/contracts/` (Foundry + Solidity + OpenZeppelin).
 14. Foundry test suite: unit tests per contract, fuzz tests on margin/liquidation math, integration tests for full open→settle/liquidate flows.
 15. Deploy to testnet. Verify contracts, record addresses into `.env`.
 
-**Status:** deployed as `[1.3.0-testnet]` on Robinhood Chain testnet on 2026-09-20, replacing `[1.2.0-testnet]` (which had replaced `1.1.0-testnet` with: signed-quote `OptionsEngine`, dedicated quoter, `increasePosition` fix, limit orders, options decimals fix, NVDA seeded). Addresses are in `deployments/robinhood_testnet.json` and synced into `packages/config` with `pnpm --filter @orionis/config sync:deployments`. Explorer verification is pending: Robinhood's explorer certificate fails validation, so re-run `script/verify.sh` later. The mock NVDA price feed goes stale after 1 hour; `services/keeper` refreshes it, so the keeper must be running (a real feed is needed before mainnet).
+**Status:** deployed as `[1.4.0-testnet]` on 2026-09-21 (the `[1.3.0-testnet]` code under AlphaMarkets names; first block `122118624`), replacing `[1.3.0-testnet]`, which had replaced `[1.2.0-testnet]` (which had replaced `1.1.0-testnet` with: signed-quote `OptionsEngine`, dedicated quoter, `increasePosition` fix, limit orders, options decimals fix, NVDA seeded). Addresses are in `deployments/robinhood_testnet.json` and synced into `packages/config` with `pnpm --filter @alphamarkets/config sync:deployments`. Explorer verification is pending: Robinhood's explorer certificate fails validation, so re-run `script/verify.sh` later. The mock NVDA price feed goes stale after 1 hour; `services/keeper` refreshes it, so the keeper must be running (a real feed is needed before mainnet).
 
 ---
 
@@ -139,7 +139,7 @@ Package: `packages/contracts/` (Foundry + Solidity + OpenZeppelin).
 7. **CORS**: `services/api` allows only the origins in `CORS_ORIGINS` (no wildcard).
 8. **Signed option quotes** — `services/pricing` signs each open and close premium (EIP-712, `QUOTER_PRIVATE_KEY`); see Phase 1 step 7.
 
-**Status:** steps 1–8 implemented and running against `1.3.0-testnet`. Phase 5 added `services/keeper`, candles, funding history, open interest history, option series statistics and open limit orders to the API, and bid/ask plus realized volatility to the pricing service (see Phase 5).
+**Status:** steps 1–8 implemented and tested against `1.3.0-testnet`; pointed at `1.4.0-testnet` by the config sync. Phase 5 added `services/keeper`, candles, funding history, open interest history, option series statistics and open limit orders to the API, and bid/ask plus realized volatility to the pricing service (see Phase 5).
 
 ---
 
@@ -147,10 +147,10 @@ Package: `packages/contracts/` (Foundry + Solidity + OpenZeppelin).
 
 The brief lists the SDK as Priority 2 but also says "Create an SDK from the beginning" (Section 34), so it is built alongside the API rather than after the frontend.
 
-**Prerequisite — config layer** (`packages/config/`, `packages/types/`): chain config, deployments, market list and shared types, all typed and env-driven. No hardcoded chain ID, leverage or fees anywhere. The SDK and the frontend both import from here. Status: done. After a redeploy, run `pnpm --filter @orionis/config sync:deployments` to copy `packages/contracts/deployments/<network>.json` into `src/deployments.ts`.
+**Prerequisite — config layer** (`packages/config/`, `packages/types/`): chain config, deployments, market list and shared types, all typed and env-driven. No hardcoded chain ID, leverage or fees anywhere. The SDK and the frontend both import from here. Status: done. After a redeploy, run `pnpm --filter @alphamarkets/config sync:deployments` to copy `packages/contracts/deployments/<network>.json` into `src/deployments.ts`.
 
-1. `packages/sdk/` — `@orionis/sdk`, typed client wrapping API + contract calls (Section 34).
-2. Constructor matches the brief: `new Orionis({ chainId, transport })`. Contract addresses and markets are resolved from `packages/config` and MarketRegistry, never hardcoded in the SDK.
+1. `packages/sdk/` — `@alphamarkets/sdk`, typed client wrapping API + contract calls (Section 34).
+2. Constructor matches the brief: `new AlphaMarkets({ chainId, transport })`. Contract addresses and markets are resolved from `packages/config` and MarketRegistry, never hardcoded in the SDK.
 3. Modules and methods:
     - `markets`: `list()`, `get(symbol)`.
     - `options`: `chain()`, `expiries()`, `quote()`, `previewOpen()`, `openPosition()`, `closePosition()`, `settle()`. European cash-settled options have no user "exercise" call: `settle()` settles the whole expired series and the contract emits `OptionExercised` per in-the-money position.
@@ -170,7 +170,7 @@ The brief lists the SDK as Priority 2 but also says "Create an SDK from the begi
 13. Tests: unit tests per module, plus an integration test against a local Anvil node covering deposit → open → close (`packages/sdk/src/integration.test.ts`, skipped when Foundry is not installed).
 14. Frontend consumes its own SDK (dogfooding) rather than calling API/contracts directly.
 
-**Status:** steps 1–14 implemented. The frontend reaches the chain and API only through the SDK; wagmi is used for wallet connection and network state only. Added since the original list: signed option quotes (`previewOpen({ user })`, `quoteClose`, `InvalidQuoteError` and friends), `markets.stats()`, `prices.history()`, `portfolio.funding()`, `risk.openInterest()`, and the `ORIONIS_ADDRESSES` override. Phase 5 added limit orders, candles, funding and open interest history, option statistics, bid/ask, and the package and docs for `@orionis/sdk` `0.1.0` (not published yet).
+**Status:** steps 1–14 implemented. The frontend reaches the chain and API only through the SDK; wagmi is used for wallet connection and network state only. Added since the original list: signed option quotes (`previewOpen({ user })`, `quoteClose`, `InvalidQuoteError` and friends), `markets.stats()`, `prices.history()`, `portfolio.funding()`, `risk.openInterest()`, and the `ALPHAMARKETS_ADDRESSES` override. Phase 5 added limit orders, candles, funding and open interest history, option statistics, bid/ask, and the package and docs for `@alphamarkets/sdk` `0.1.0` (not published yet).
 
 ---
 
@@ -182,7 +182,7 @@ The brief lists the SDK as Priority 2 but also says "Create an SDK from the begi
 
 1. **Wallet connection** — wagmi setup, connect button, network detection against `NEXT_PUBLIC_CHAIN_ID`.
 2. **Landing page** (Section 23) — hero with tagline, "Launch Terminal" / "Explore Markets" CTAs, concise product blocks (Options / Perpetuals / Onchain). Terminal remains primary focus, not landing page.
-3. **Navigation** (Section 22): ORIONIS / Markets / Options / Perpetuals / Portfolio / Activity / Connect Wallet.
+3. **Navigation** (Section 22): ALPHAMARKETS / Markets / Options / Perpetuals / Portfolio / Activity / Connect Wallet.
 4. **Trading Terminal shell** (Section 24) — desktop-first layout: market list, chart, option chain/positions panel, order panel. Institutional visual direction (Section 2): black/off-white, neutral gray, restrained green/red, tabular numerals, no neon, minimal animation.
 5. **Options Terminal** (Section 25–26) — underlying selector, expiry selector, option chain (calls left / strike center / puts right) with bid/ask/mark/IV/Greeks/OI/volume, order ticket showing premium, cost, break-even, max loss before signing (Section 45). **Status:** built at `/options`. The chain shows bid, ask, IV, open interest and volume, or the Greeks (a strike ladder proposed around spot, since the contract lists no strikes); added in Phase 5.
 6. **Perpetual Terminal** (Section 27) — index/mark price, long/short toggle, market/limit order type, size, leverage selector (1x–10x from registry, not hardcoded), collateral input, estimated entry, liquidation price, fee — all shown before signing. **Status:** built, with increase/reduce controls on open positions. The limit order type shipped in Phase 5 (it needs a deployment that includes `PerpOrderManager`).
@@ -204,7 +204,7 @@ The brief lists the SDK as Priority 2 but also says "Create an SDK from the begi
 - **Funding history view, open interest analytics. Done.** Under the terminal chart: Positions, Funding (rates the chain applied, per interval) and Open interest (long, short, share, cap used, history). Funding is 0% on every interval until a real mark price exists, and the view says so.
 - **Advanced charts. Done.** Candlesticks with perp volume bars (5m, 15m, 1h, 1d) next to the line chart, built from the indexer's price samples, with a hover readout. Candles need the indexer to have been sampling; there are no candles before it started.
 - **Limit orders. Done and live on testnet (engine, keeper, SDK, indexer, API and frontend).** `PerpOrderManager`, `placeLimitOrder`, `cancelLimitOrder`, permissionless `executeLimitOrder`; the SDK's `orderType: "LIMIT"` is now `perps.placeLimitOrder`; the perp ticket has a Limit mode; Portfolio lists orders with a Cancel action. Not built in Phase 5: stop-loss and take-profit (started in Phase 7, not deployed) and keeper incentives.
-- **SDK docs and package. Done; not published.** `@orionis/sdk` `0.1.0` is publishable (`dist/` with ESM, CJS and types; `@orionis/config` and `@orionis/types` are bundled), with a full README and a changelog. Publishing needs an npm token and a person to start `.github/workflows/release-sdk.yml`.
+- **SDK docs and package. Done; not published.** `@alphamarkets/sdk` `0.1.0` is publishable (`dist/` with ESM, CJS and types; `@alphamarkets/config` and `@alphamarkets/types` are bundled), with a full README and a changelog. Publishing needs an npm token and a person to start `.github/workflows/release-sdk.yml`.
 - **Not done, still open:** fork tests against testnet state; an end-to-end test that runs contract event to indexer to API to frontend in CI (done by hand locally, not automated); the third-party audit; real price feed; moving the quoter role behind a multisig.
 
 ## Phase 6: Rebrand / Naming Audit (Section 46)
@@ -212,17 +212,26 @@ The brief lists the SDK as Priority 2 but also says "Create an SDK from the begi
 Run before any public deployment or handoff:
 
 - Grep entire repo for `Citadelle`, `CTDL`, `citadelle` — must return zero hits in new code.
-- Confirm package name is `@orionis/sdk`, contract display labels say Orionis, repo/README/docs/metadata/social preview/logos/favicons all rebranded.
-- Do not rename already-deployed immutable contracts unless redeploying; new deployments use Orionis naming only.
+- Confirm package name is `@alphamarkets/sdk`, contract display labels say AlphaMarkets, repo/README/docs/metadata/social preview/logos/favicons all rebranded.
+- Do not rename already-deployed immutable contracts unless redeploying; new deployments use AlphaMarkets naming only.
 
 **Status: done (2026-09-20).** Audit results:
 
 - Zero hits for `Citadelle`, `CTDL`, `citadelle` in any tracked file name or content, except this file and `PROJECT_BRIEF.md`, which state the rule. Untracked files (`.env`, `deployments/`, `broadcast/`) are clean too.
-- All 11 package names use the `@orionis/` scope (root: `orionis`). The Railway project and the GitHub repository (`rubengitdev/orionis`) are named `orionis`.
-- Contract labels: `OrionisVault`, EIP-712 domain `OrionisOptionsEngine`. Web title, README and metadata say Orionis Markets.
+- All 11 package names use the `@alphamarkets/` scope (root: `alphamarkets`). The Railway project and the GitHub repository (`rubengitdev/alphamarkets`) are named `alphamarkets`.
+- Contract labels: `AlphaMarketsVault`, EIP-712 domain `AlphaMarketsOptionsEngine`. Web title, README and metadata say AlphaMarkets.
 - Added `scripts/check-brand.sh` (`pnpm check:brand`) and a CI step, so a retired name cannot return unnoticed.
 - Added social preview: Open Graph and Twitter metadata plus a generated `opengraph-image` in the terminal palette. `NEXT_PUBLIC_SITE_URL` sets the absolute URL.
 - **Open follow-ups, not blocking:** a real logo, which needs product input. Only the ring favicon (`apps/web/src/app/icon.svg`) and the text wordmark exist; the social preview reuses them. Also, explorer labels cannot be set from this repo (they depend on explorer verification, which is blocked).
+
+---
+
+## Phase 6b: Rebrand from Orionis to AlphaMarkets (2026-09-21)
+
+Product name changed to AlphaMarkets. Done in this repo: every package is `@alphamarkets/*`, env vars use the `ALPHAMARKETS_` prefix (`ALPHAMARKETS_ADDRESSES`, `NEXT_PUBLIC_ALPHAMARKETS_VAULT`), the SDK class is `AlphaMarkets`, and the vault contract is `AlphaMarketsVault`. `pnpm check:brand` now also rejects `orionis`. Earlier sections of this file keep their history under the new name.
+
+- **On chain since 2026-09-21.** `[1.3.0-testnet]` was deployed under the old names, and its EIP-712 domains (`OrionisOptionsEngine`, `OrionisRFQ`) differed from the ones the SDK signs with. `[1.4.0-testnet]` redeployed the same code under the new names; `OptionsEngine.eip712Domain()` reports `AlphaMarketsOptionsEngine` (`packages/contracts/CHANGELOG.md`).
+- **Outside the repo.** GitHub repository, Railway project, and the local project folder are renamed separately; see the rebrand pull request.
 
 ---
 
@@ -242,7 +251,7 @@ Phase 2 list (Section 39):
 - **Volatility surface.** `GET /v1/options/:symbol/surface` and `options.surface`: the model's volatility, prices and Greeks per strike and expiry, and the at-the-money volatility and skew per expiry. It is the pricing model's surface, not market-implied (no order book), and flat until `VOL_SKEW_SLOPE`, `VOL_SMILE_CURVE` and `VOL_TERM_SLOPE` are set, which is a product decision. Quotes follow the surface. Not shown in the web app yet.
 - **Options strategy builder.** `strategies` in the SDK (the seven strategies of Section 41: net premium, max profit and loss, break-evens, Greeks, payoff) and a `/strategies` page with a payoff chart. `OptionsEngine` only lets a user buy options, so a strategy with a short leg is analysis only (the page says so); the page does not open legs itself.
 - **Advanced funding analytics.** `GET /v1/perps/:symbol/funding/analytics` (rate statistics, annualised rate, payments by side) and `institutional.fundingAnalytics`. No web view yet.
-- **Trading API.** `orionis.trading.prepare*` and `POST /v1/trade/...`: every action as an unsigned transaction, with an optional simulation from the sender that turns a revert into the contract's error name. No keys or auth are involved, so it cannot move money.
+- **Trading API.** `alphaMarkets.trading.prepare*` and `POST /v1/trade/...`: every action as an unsigned transaction, with an optional simulation from the sender that turns a revert into the contract's error name. No keys or auth are involved, so it cannot move money.
 - **Market maker API.** Request-for-quote broker in `services/api` (`/v1/rfq/...`), and `/v1/mm/...` plus `/v1/mm/ws` for makers, with API keys bound to a signing address (`MM_API_KEYS`), rate limiting and pre-checks of a quote's terms and price band. In memory (a request lives seconds). Needs the RFQ contract deployed.
 
 Phase 3 list (Section 40):
@@ -312,6 +321,16 @@ Covers what Phase 1 step 14 and the CI gate don't: full-stack integration, stagi
 - The insurance fund holds 0 of the settlement token, so a liquidation shortfall test needs it funded first.
 - The handover to a multisig or timelock has not been run on testnet, and no timelock is chosen.
 - Explorer verification is still blocked by Robinhood's explorer certificate.
+
+**Hosting (testnet, 2026-09-21)**
+
+- **Railway** project `alphamarkets`, environment `production`, Free plan. Services: `Postgres`, `indexer`, `api`, `pricing`, `keeper`, each built from GitHub `rubengitdev/alphamarkets`, branch `chore/rebrand-alphamarkets` (move it to `main` after the rebrand pull request merges). The Free plan allows 5 services per project, so `web` cannot live there; deploy it on Vercel.
+- **Service settings** are set in Railway, not read from `railway.json`: the API refused a config-file path ("Config as Code is deprecated"). Start commands are `pnpm --filter @alphamarkets/<service> start`, build command `true`, and the indexer runs `pnpm --filter @alphamarkets/indexer db:migrate` before each deploy. The `railway.json` files in the repo document the same values.
+- **Variables.** All services: `CHAIN_ID=46630`, `RPC_URL` (Alchemy key, secret). `indexer`: `DATABASE_URL=${{Postgres.DATABASE_URL}}`, `INDEXER_START_BLOCK=122118624`, `INDEXER_MAX_BLOCK_RANGE=10`. `api`: `DATABASE_URL`, `PORT=4000`, `PRICING_SERVICE_URL=http://pricing.railway.internal:4100`, `CORS_ORIGINS` (the web URL). `pricing`: `PORT=4100`, `API_URL=http://api.railway.internal:4000`, `OPTION_SPREAD_BPS=200`, `QUOTER_PRIVATE_KEY` (secret). `keeper`: `KEEPER_PRIVATE_KEY` (secret).
+- **Public API:** `https://api-production-ee4e.up.railway.app`. Checked live after deploy: `/v1/prices/NVDA` returns $190, `/v1/options/quote` with a `user` returns a signed authorization (so the API reaches the pricing service over the private network), and the keeper refreshed the mock feed.
+- **Web app on Vercel:** set the project root to `apps/web` and these variables: `NEXT_PUBLIC_API_URL` (the API above), `NEXT_PUBLIC_CHAIN_ID=46630`, `NEXT_PUBLIC_EXPLORER_URL`, `NEXT_PUBLIC_RPC_URL`. Robinhood's public RPC still has an expired certificate, so `NEXT_PUBLIC_RPC_URL` must be a private provider URL, which then sits in the browser bundle: use a rate-limited key.
+- **Known gap:** the indexer database was not reset for `1.4.0-testnet` (the reset was refused as a destructive action). The indexer keeps its saved position and replays forward; the NVDA market row is overwritten when it reaches the new `MarketAdded` event (block `122118624`). Events from `1.3.0-testnet` stay in the `events` table, so Activity may show old test entries for wallets that used the previous deployment. To clear them: `TRUNCATE markets, events, indexer_state, price_ticks;` on the Railway Postgres, then restart the indexer.
+- **Free plan credit.** Railway Free has a small usage allowance. If it runs out, Railway pauses the services and the site stops. Check the Usage page in the first days.
 
 **Testing pyramid**
 

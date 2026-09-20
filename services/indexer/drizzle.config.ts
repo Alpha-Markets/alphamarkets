@@ -1,7 +1,7 @@
 import { defineConfig } from "drizzle-kit";
 
-// Inlined rather than imported from `@orionis/config`: drizzle-kit loads this file with its
-// own bundler, which doesn't resolve `@orionis/config`'s internal `./chains.js` -> `chains.ts`
+// Inlined rather than imported from `@alphamarkets/config`: drizzle-kit loads this file with its
+// own bundler, which doesn't resolve `@alphamarkets/config`'s internal `./chains.js` -> `chains.ts`
 // NodeNext-style specifiers the rest of this monorepo relies on (tsc/tsx both handle it fine).
 try {
   process.loadEnvFile("../../.env");

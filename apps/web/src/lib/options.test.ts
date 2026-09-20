@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { stringToHex } from "viem";
-import { OptionType } from "@orionis/types";
+import { OptionType } from "@alphamarkets/types";
 import {
   expiryCode,
   expiryDates,

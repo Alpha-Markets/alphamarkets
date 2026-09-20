@@ -1,4 +1,4 @@
-import { cn } from "@orionis/ui";
+import { cn } from "@alphamarkets/ui";
 import { formatUnits } from "viem";
 import { PRICE_DECIMALS } from "@/lib/format";
 

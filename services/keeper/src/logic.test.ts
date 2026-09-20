@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import type { OpenOrder, TriggerOrder } from "@orionis/sdk";
+import type { OpenOrder, TriggerOrder } from "@alphamarkets/sdk";
 import { feedNeedsRefresh, isFillable, isTriggerReached, nextCursor } from "./logic.js";
 
 const WAD = 10n ** 18n;

@@ -1,4 +1,4 @@
-import { triggerFiresBelow, type OpenOrder, type TriggerOrder } from "@orionis/sdk";
+import { triggerFiresBelow, type OpenOrder, type TriggerOrder } from "@alphamarkets/sdk";
 
 /// A limit order can be filled when it is open, has not expired, and the mark price has reached
 /// its trigger: at or below it for a long, at or above it for a short. This mirrors

@@ -1,5 +1,5 @@
 {
-  "name": "@orionis/config",
+  "name": "@alphamarkets/config",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -14,7 +14,7 @@
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
-    "@orionis/types": "workspace:*",
+    "@alphamarkets/types": "workspace:*",
     "viem": "^2.21.0"
   }
 }

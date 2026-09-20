@@ -5,7 +5,7 @@ import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import {IOrionisVault} from "../interfaces/IOrionisVault.sol";
+import {IAlphaMarketsVault} from "../interfaces/IAlphaMarketsVault.sol";
 import {IWithdrawGuard} from "../interfaces/IWithdrawGuard.sol";
 import {CollateralManager} from "./CollateralManager.sol";
 
@@ -13,7 +13,7 @@ import {CollateralManager} from "./CollateralManager.sol";
 /// withdrawals, locked margin, available balance, PnL settlement, funding transfers, and
 /// fee transfers. Raw ledger balances live in CollateralManager; this contract holds actual
 /// token custody and enforces locking/withdrawal rules on top of that ledger.
-contract OrionisVault is IOrionisVault, AccessControl, ReentrancyGuard {
+contract AlphaMarketsVault is IAlphaMarketsVault, AccessControl, ReentrancyGuard {
     using SafeERC20 for IERC20;
 
     /// @notice Granted to OptionsEngine, PerpsEngine, LiquidationEngine, FundingManager —

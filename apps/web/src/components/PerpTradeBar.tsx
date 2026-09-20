@@ -1,6 +1,6 @@
 "use client";
 
-import { Button } from "@orionis/ui";
+import { Button } from "@alphamarkets/ui";
 import { useTerminal } from "@/stores/terminal";
 import { useOpenTradeSheet } from "./TradeSheet";
 

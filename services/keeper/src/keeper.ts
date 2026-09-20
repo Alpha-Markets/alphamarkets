@@ -1,4 +1,4 @@
-import { OrionisContractError, type Orionis } from "@orionis/sdk";
+import { AlphaMarketsContractError, type AlphaMarkets } from "@alphamarkets/sdk";
 import { parseAbi, type Account, type PublicClient, type WalletClient } from "viem";
 import { feedNeedsRefresh, isFillable, isTriggerReached, nextCursor } from "./logic.js";
 
@@ -10,7 +10,7 @@ const feedAbi = parseAbi([
 const routerAbi = parseAbi(["function primarySource(bytes32 marketId) view returns (address)"]);
 
 export interface KeeperDeps {
-  orionis: Orionis;
+  alphaMarkets: AlphaMarkets;
   publicClient: PublicClient;
   /// Signs the keeper's own transactions. Must be built with a local account: that account is the
   /// keeper's address, and it must own a mock feed to refresh it.
@@ -29,13 +29,13 @@ export interface Keeper {
 
 /// One line a person can act on: viem's short message when there is one, else the first line.
 function describe(error: unknown): string {
-  if (error instanceof OrionisContractError) return error.errorName;
+  if (error instanceof AlphaMarketsContractError) return error.errorName;
   const { shortMessage, message } = error as { shortMessage?: string; message?: string };
   return shortMessage ?? message?.split("\n")[0] ?? String(error);
 }
 
 export function createKeeper(deps: KeeperDeps): Keeper {
-  const { orionis, publicClient, walletClient, refreshSeconds } = deps;
+  const { alphaMarkets, publicClient, walletClient, refreshSeconds } = deps;
   if (!walletClient.account) throw new Error("keeper: the wallet client needs an account to sign with");
   // Kept in a const so the check above still holds inside the functions below.
   const account: Account = walletClient.account;
@@ -51,11 +51,11 @@ export function createKeeper(deps: KeeperDeps): Keeper {
   /// testnet market alive: it does not move the price. A feed this keeper does not own is left alone.
   async function refreshFeeds(now: bigint): Promise<number> {
     let refreshed = 0;
-    for (const market of await orionis.markets.list()) {
+    for (const market of await alphaMarkets.markets.list()) {
       if (!market.active) continue;
       try {
         const feed = await publicClient.readContract({
-          address: orionis.addresses.oracleRouter,
+          address: alphaMarkets.addresses.oracleRouter,
           abi: routerAbi,
           functionName: "primarySource",
           args: [market.oracleId],
@@ -84,9 +84,9 @@ export function createKeeper(deps: KeeperDeps): Keeper {
   /// needs no privileges, only gas. An order that reverts (its owner withdrew the margin, a limit
   /// was hit) is left open and tried again next tick, until it expires or is cancelled.
   async function fillOrders(now: bigint): Promise<number> {
-    if (!orionis.addresses.perpOrderManager) return 0;
+    if (!alphaMarkets.addresses.perpOrderManager) return 0;
 
-    const orders = await orionis.perps.scanOrders(orderCursor);
+    const orders = await alphaMarkets.perps.scanOrders(orderCursor);
     orderCursor = nextCursor(orders, orderCursor, now);
 
     const marks = new Map<string, bigint>();
@@ -94,10 +94,10 @@ export function createKeeper(deps: KeeperDeps): Keeper {
     for (const order of orders) {
       if (order.status !== "OPEN") continue;
       try {
-        if (!marks.has(order.marketId)) marks.set(order.marketId, (await orionis.oracle.getMarkPrice(order.marketId)).price);
+        if (!marks.has(order.marketId)) marks.set(order.marketId, (await alphaMarkets.oracle.getMarkPrice(order.marketId)).price);
         if (!isFillable(order, marks.get(order.marketId)!, now)) continue;
 
-        const { hash, positionId } = await orionis.perps.executeLimitOrder(order.id, { wait: true });
+        const { hash, positionId } = await alphaMarkets.perps.executeLimitOrder(order.id, { wait: true });
         filled++;
         log(`filled order ${order.id} as position ${positionId} (${hash})`);
       } catch (error) {
@@ -113,24 +113,24 @@ export function createKeeper(deps: KeeperDeps): Keeper {
   /// it. Any other failure leaves the order open to be tried again next tick.
   async function fireTriggers(now: bigint): Promise<number> {
     // A deployment made before `[1.3.0]` has an order manager without trigger orders: nothing to scan.
-    if (!(await orionis.perps.supportsTriggerOrders())) return 0;
+    if (!(await alphaMarkets.perps.supportsTriggerOrders())) return 0;
 
-    const orders = await orionis.perps.scanTriggerOrders(triggerCursor);
+    const orders = await alphaMarkets.perps.scanTriggerOrders(triggerCursor);
     const dead = new Set<bigint>();
     const marks = new Map<string, bigint>();
     let triggered = 0;
     for (const order of orders) {
       if (order.status !== "OPEN" || now > order.expiry) continue;
       try {
-        const position = await orionis.portfolio.getPerpPosition(order.positionId);
+        const position = await alphaMarkets.portfolio.getPerpPosition(order.positionId);
         if (!position.open) {
           dead.add(order.id);
           continue;
         }
-        if (!marks.has(position.marketId)) marks.set(position.marketId, (await orionis.oracle.getMarkPrice(position.marketId)).price);
+        if (!marks.has(position.marketId)) marks.set(position.marketId, (await alphaMarkets.oracle.getMarkPrice(position.marketId)).price);
         if (!isTriggerReached(order, position.isLong, marks.get(position.marketId)!, now)) continue;
 
-        const hash = await orionis.perps.executeTriggerOrder(order.id, { wait: true });
+        const hash = await alphaMarkets.perps.executeTriggerOrder(order.id, { wait: true });
         triggered++;
         log(`fired ${order.kind} order ${order.id} on position ${order.positionId} (${hash})`);
       } catch (error) {

@@ -1,9 +1,9 @@
 /// Shared fakes for unit tests — not exported from the package.
 import { BaseError, encodeErrorResult, stringToHex } from "viem";
-import type { ContractAddresses } from "@orionis/config";
-import type { MarketConfig } from "@orionis/types";
+import type { ContractAddresses } from "@alphamarkets/config";
+import type { MarketConfig } from "@alphamarkets/types";
 import { allErrorsAbi } from "./abis.js";
-import type { OrionisClient } from "./client.js";
+import type { AlphaMarketsClient } from "./client.js";
 
 export const WAD = 10n ** 18n;
 export const NVDA = stringToHex("NVDA", { size: 32 });
@@ -62,6 +62,6 @@ export function fakeClient(reads: Record<string, unknown> = {}) {
     async waitForTransactionReceipt() {
       return { status: "success" };
     },
-  } as unknown as OrionisClient;
+  } as unknown as AlphaMarketsClient;
   return { client, calls, simulated: () => calls.filter((call) => call.method === "simulateContract") };
 }

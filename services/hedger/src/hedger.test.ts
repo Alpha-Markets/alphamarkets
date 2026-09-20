@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { OptionPositionStatus, OptionType, type Orionis } from "@orionis/sdk";
+import { OptionPositionStatus, OptionType, type AlphaMarkets } from "@alphamarkets/sdk";
 import { collateralFor, createHedger } from "./hedger.js";
 
 const WAD = 10n ** 18n;
@@ -12,7 +12,7 @@ const NOW = 1_000_000;
 function setup(over: { options?: unknown[]; perps?: unknown[]; delta?: number; failOpen?: boolean } = {}) {
   const sent: Array<{ name: string; args: unknown[] }> = [];
   const logs: string[] = [];
-  const orionis = {
+  const alphaMarkets = {
     addresses: { settlementToken: `0x${"bb".repeat(20)}` },
     erc20: { decimals: async () => 6 },
     oracle: { getMarkPrice: async () => ({ price: 190n * WAD, timestamp: 1n }) },
@@ -42,9 +42,9 @@ function setup(over: { options?: unknown[]; perps?: unknown[]; delta?: number; f
         return { hash: "0x", positionId: 1n };
       },
     },
-  } as unknown as Orionis;
+  } as unknown as AlphaMarkets;
   const make = (execute: boolean) =>
-    createHedger({ orionis, account: ME, market: "NVDA", targetDelta: 0, toleranceUnits: 1, minNotional: 0n, leverage: 2, execute, now: () => NOW, log: (m) => logs.push(m) });
+    createHedger({ alphaMarkets, account: ME, market: "NVDA", targetDelta: 0, toleranceUnits: 1, minNotional: 0n, leverage: 2, execute, now: () => NOW, log: (m) => logs.push(m) });
   return { make, sent, logs };
 }
 

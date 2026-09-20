@@ -1,17 +1,17 @@
-# ORIONIS MARKETS
+# ALPHAMARKETS
 
 **Tagline:** Derivatives for tokenized equities.
 
 ## 1. Overview
 
-Orionis Markets is an onchain derivatives venue for tokenized equities, built for Robinhood Chain.
+AlphaMarkets is an onchain derivatives venue for tokenized equities, built for Robinhood Chain.
 
 The product has two primary trading verticals:
 
 - Options
 - Perpetual derivatives
 
-Orionis should let users trade volatility, direction, leverage, and hedging strategies against tokenized equities from one institutional-style terminal.
+AlphaMarkets should let users trade volatility, direction, leverage, and hedging strategies against tokenized equities from one institutional-style terminal.
 
 Example markets:
 
@@ -34,7 +34,7 @@ Secondary positioning:
 
 > Trade options and perpetual derivatives on tokenized equities.
 
-Orionis should feel like capital-markets infrastructure, not a generic DeFi DEX.
+AlphaMarkets should feel like capital-markets infrastructure, not a generic DeFi DEX.
 
 ---
 
@@ -42,11 +42,11 @@ Orionis should feel like capital-markets infrastructure, not a generic DeFi DEX.
 
 Official brand:
 
-**ORIONIS**
+**ALPHAMARKETS**
 
 Institutional product name:
 
-**Orionis Markets**
+**AlphaMarkets**
 
 Primary tagline:
 
@@ -76,7 +76,7 @@ Visual direction:
 
 ## 3. Core Product
 
-Orionis has two trading engines:
+AlphaMarkets has two trading engines:
 
 1. Options Engine
 2. Perpetual Derivatives Engine
@@ -85,7 +85,7 @@ Both share:
 
 - Market Registry
 - Oracle Router
-- Orionis Vault
+- AlphaMarkets Vault
 - Risk Engine
 - Margin Engine
 - Fee Manager
@@ -97,11 +97,11 @@ Both share:
 High-level architecture:
 
 ```text
-                        ORIONIS MARKETS
+                        ALPHAMARKETS
 
                              USER
                               |
-                        ORIONIS TERMINAL
+                        ALPHAMARKETS TERMINAL
                               |
                --------------------------------
                |                              |
@@ -111,7 +111,7 @@ High-level architecture:
                               |
                         ORACLE ROUTER
                               |
-                         ORIONIS VAULT
+                         ALPHAMARKETS VAULT
                               |
                     SMART CONTRACT LAYER
                               |
@@ -142,7 +142,7 @@ NEXT_PUBLIC_RPC_URL=
 NEXT_PUBLIC_EXPLORER_URL=
 
 NEXT_PUBLIC_MARKET_REGISTRY=
-NEXT_PUBLIC_ORIONIS_VAULT=
+NEXT_PUBLIC_ALPHAMARKETS_VAULT=
 NEXT_PUBLIC_OPTIONS_ENGINE=
 NEXT_PUBLIC_PERPS_ENGINE=
 NEXT_PUBLIC_ORACLE_ROUTER=
@@ -207,7 +207,7 @@ Suggested structure:
 contracts/
 
 core/
-    OrionisVault.sol
+    AlphaMarketsVault.sol
     MarketRegistry.sol
     CollateralManager.sol
     FeeManager.sol
@@ -235,7 +235,7 @@ risk/
 interfaces/
     IOracle.sol
     IMarketRegistry.sol
-    IOrionisVault.sol
+    IAlphaMarketsVault.sol
     IOptionsEngine.sol
     IPerpsEngine.sol
 ```
@@ -254,9 +254,9 @@ Every privileged action must emit an event.
 
 ---
 
-## 7. Orionis Vault
+## 7. AlphaMarkets Vault
 
-`OrionisVault.sol` is the collateral and settlement layer.
+`AlphaMarketsVault.sol` is the collateral and settlement layer.
 
 Responsibilities:
 
@@ -428,7 +428,7 @@ Offchain analytics must never become the sole source of settlement truth.
 
 ## 11. Perpetual Derivatives Engine
 
-Orionis perpetuals provide leveraged long / short exposure to tokenized equities.
+AlphaMarkets perpetuals provide leveraged long / short exposure to tokenized equities.
 
 Examples:
 
@@ -626,7 +626,7 @@ Required safeguards:
 
 ## 17. Price Types
 
-Orionis must distinguish:
+AlphaMarkets must distinguish:
 
 ### Index Price
 
@@ -745,7 +745,7 @@ Do not hardcode fee percentages in UI code.
 
 Token ticker remains configurable during the rebrand.
 
-Do not hardcode `$CTDL` into the Orionis codebase.
+Do not hardcode `$CTDL` into the AlphaMarkets codebase.
 
 Use:
 
@@ -754,7 +754,7 @@ NEXT_PUBLIC_PROTOCOL_TOKEN_SYMBOL=
 NEXT_PUBLIC_PROTOCOL_TOKEN_ADDRESS=
 ```
 
-If Orionis keeps the previous deflationary model:
+If AlphaMarkets keeps the previous deflationary model:
 
 ```text
 Trading Activity
@@ -770,7 +770,7 @@ Protocol Token Buyback
 
 Buyback percentage must be configurable.
 
-This allows Orionis to change token ticker or tokenomics without rewriting the trading engine.
+This allows AlphaMarkets to change token ticker or tokenomics without rewriting the trading engine.
 
 ---
 
@@ -779,7 +779,7 @@ This allows Orionis to change token ticker or tokenomics without rewriting the t
 Desktop:
 
 ```text
-ORIONIS
+ALPHAMARKETS
 
 MARKETS
 OPTIONS
@@ -797,7 +797,7 @@ ACTIVITY
 Hero:
 
 ```text
-ORIONIS MARKETS
+ALPHAMARKETS
 
 Derivatives for tokenized equities.
 
@@ -835,7 +835,7 @@ Suggested layout:
 
 ```text
 ---------------------------------------------------------------
- ORIONIS      MARKETS      OPTIONS      PERPETUALS     WALLET
+ ALPHAMARKETS      MARKETS      OPTIONS      PERPETUALS     WALLET
 ---------------------------------------------------------------
  MARKET LIST |                                               |
              |                 CHART                         |
@@ -1080,7 +1080,7 @@ Do not rely on frontend RPC calls for historical analytics.
 Suggested monorepo:
 
 ```text
-orionis/
+alphamarkets/
 
 apps/
     web/
@@ -1160,16 +1160,16 @@ Create an SDK from the beginning.
 Example:
 
 ```typescript
-import { Orionis } from "@orionis/sdk";
+import { AlphaMarkets } from "@alphamarkets/sdk";
 
-const orionis = new Orionis({
+const alphaMarkets = new AlphaMarkets({
   chainId,
   transport
 });
 
-const markets = await orionis.markets.list();
+const markets = await alphaMarkets.markets.list();
 
-const quote = await orionis.options.quote({
+const quote = await alphaMarkets.options.quote({
   underlying: "NVDA",
   strike: 190,
   expiry: "2026-09-25",
@@ -1177,7 +1177,7 @@ const quote = await orionis.options.quote({
   contracts: 10
 });
 
-await orionis.perps.openPosition({
+await alphaMarkets.perps.openPosition({
   market: "NVDA-PERP",
   side: "LONG",
   collateral: 1000,
@@ -1187,7 +1187,7 @@ await orionis.perps.openPosition({
 
 Future SDK users:
 
-- Orionis frontend
+- AlphaMarkets frontend
 - Trading bots
 - Trading agents
 - Market makers
@@ -1290,7 +1290,7 @@ Every privileged change must be emitted onchain.
 
 - Robinhood Chain integration
 - Wallet connection
-- OrionisVault
+- AlphaMarketsVault
 - MarketRegistry
 - OracleRouter
 - RiskManager
@@ -1448,7 +1448,7 @@ Keep documentation technical.
 
 ## 45. UX Principles
 
-Orionis should optimize for:
+AlphaMarkets should optimize for:
 
 1. Execution clarity
 2. Risk visibility
@@ -1489,11 +1489,11 @@ Replace old Citadelle branding.
 Rename:
 
 ```text
-Citadelle → Orionis
-Citadelle Options → Orionis Markets
-CitadelleVault → OrionisVault
-@citadelle/sdk → @orionis/sdk
-Citadelle Terminal → Orionis Terminal
+Citadelle → AlphaMarkets
+Citadelle Options → AlphaMarkets
+CitadelleVault → AlphaMarketsVault
+@citadelle/sdk → @alphamarkets/sdk
+Citadelle Terminal → AlphaMarkets Terminal
 ```
 
 Update:
@@ -1513,20 +1513,20 @@ Update:
 
 Do not rename already-deployed immutable contracts unless redeploying.
 
-For new deployments, use Orionis naming.
+For new deployments, use AlphaMarkets naming.
 
 ---
 
 ## 47. Final Product Definition
 
-Orionis is not positioned as a tokenized-stock spot exchange.
+AlphaMarkets is not positioned as a tokenized-stock spot exchange.
 
 It is the derivatives layer built on top of tokenized equities.
 
 ```text
 TOKENIZED EQUITIES
         ↓
-     ORIONIS
+     ALPHAMARKETS
         ↓
 --------------------------------
 |                              |
@@ -1546,7 +1546,7 @@ ROBINHOOD CHAIN
 
 Official brand:
 
-**ORIONIS MARKETS**
+**ALPHAMARKETS**
 
 Primary tagline:
 

@@ -2,7 +2,7 @@
 pragma solidity 0.8.26;
 
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
-import {IOrionisVault} from "../interfaces/IOrionisVault.sol";
+import {IAlphaMarketsVault} from "../interfaces/IAlphaMarketsVault.sol";
 import {IFeeManager} from "../interfaces/IFeeManager.sol";
 import {IRiskManager} from "../interfaces/IRiskManager.sol";
 import {FeeConfig} from "../interfaces/DataTypes.sol";
@@ -23,7 +23,7 @@ contract LiquidationEngine is ReentrancyGuard {
     uint256 public constant LIQUIDATOR_REWARD_BPS = 500; // 5%
 
     OracleRouter public immutable oracleRouter;
-    IOrionisVault public immutable vault;
+    IAlphaMarketsVault public immutable vault;
     IFeeManager public immutable feeManager;
     IRiskManager public immutable riskManager;
     PerpPositionManager public immutable positionManager;
@@ -65,7 +65,7 @@ contract LiquidationEngine is ReentrancyGuard {
         address insuranceFund_
     ) {
         oracleRouter = OracleRouter(oracleRouter_);
-        vault = IOrionisVault(vault_);
+        vault = IAlphaMarketsVault(vault_);
         feeManager = IFeeManager(feeManager_);
         riskManager = IRiskManager(riskManager_);
         positionManager = PerpPositionManager(positionManager_);

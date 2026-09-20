@@ -7,7 +7,7 @@
 /// price (long positive, short negative), because a perp's size is a notional fixed at entry.
 /// Option deltas come from `options.quote` (display analytics from `services/pricing`), so a hedge
 /// planned from them is an estimate: it neutralises the model's delta, not a guaranteed exposure.
-import { OrionisError } from "./errors.js";
+import { AlphaMarketsError } from "./errors.js";
 
 export interface OptionDeltaInput {
   /// Per-unit delta from the pricing model: about 0 to 1 for a call, -1 to 0 for a put.
@@ -63,7 +63,7 @@ export function planHedge(input: HedgePlanInput): HedgePlan {
   const targetDelta = input.targetDelta ?? 0;
   const tolerance = input.toleranceUnits ?? 0;
   if (![input.optionDelta, input.perpDelta, targetDelta, tolerance].every(Number.isFinite) || tolerance < 0) {
-    throw new OrionisError("hedging: deltas, target and tolerance must be finite numbers, and the tolerance not negative");
+    throw new AlphaMarketsError("hedging: deltas, target and tolerance must be finite numbers, and the tolerance not negative");
   }
   const netDelta = input.optionDelta + input.perpDelta;
   const gap = targetDelta - netDelta;
@@ -95,7 +95,7 @@ export function hedgeActions(
   settlementDecimals: number,
   minNotional: bigint = 0n,
 ): HedgeAction[] {
-  if (!Number.isFinite(adjustUnits)) throw new OrionisError("hedging: adjustUnits must be finite");
+  if (!Number.isFinite(adjustUnits)) throw new AlphaMarketsError("hedging: adjustUnits must be finite");
   if (adjustUnits === 0 || markPrice <= 0n) return [];
 
   const buying = adjustUnits > 0;

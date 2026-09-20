@@ -6,7 +6,7 @@ import {console} from "forge-std/console.sol";
 
 import {MarketRegistry} from "../src/core/MarketRegistry.sol";
 import {CollateralManager} from "../src/core/CollateralManager.sol";
-import {OrionisVault} from "../src/core/OrionisVault.sol";
+import {AlphaMarketsVault} from "../src/core/AlphaMarketsVault.sol";
 import {FeeManager} from "../src/core/FeeManager.sol";
 import {BuybackModule} from "../src/core/BuybackModule.sol";
 import {PriceValidator} from "../src/oracle/PriceValidator.sol";
@@ -74,7 +74,7 @@ contract DeployAll is Script {
         d.settlementToken = settlementToken;
         d.marketRegistry = address(new MarketRegistry(admin));
         d.collateralManager = address(new CollateralManager(admin));
-        d.vault = address(new OrionisVault(admin, d.collateralManager));
+        d.vault = address(new AlphaMarketsVault(admin, d.collateralManager));
         d.feeManager = address(new FeeManager(admin, d.vault));
         d.buybackModule = address(new BuybackModule(admin));
         d.priceValidator = address(new PriceValidator(admin));
@@ -178,7 +178,7 @@ contract DeployAll is Script {
 
     function _wireVaultAndCollateral(Deployment memory d) internal {
         CollateralManager cm = CollateralManager(d.collateralManager);
-        OrionisVault vault = OrionisVault(d.vault);
+        AlphaMarketsVault vault = AlphaMarketsVault(d.vault);
 
         cm.grantRole(cm.VAULT_ROLE(), d.vault);
         cm.addSupportedToken(d.settlementToken);
@@ -282,7 +282,7 @@ contract DeployAll is Script {
     function _logSummary(Deployment memory d) internal pure {
         console.log("MarketRegistry:        ", d.marketRegistry);
         console.log("CollateralManager:     ", d.collateralManager);
-        console.log("OrionisVault:          ", d.vault);
+        console.log("AlphaMarketsVault:          ", d.vault);
         console.log("FeeManager:            ", d.feeManager);
         console.log("BuybackModule:         ", d.buybackModule);
         console.log("PriceValidator:        ", d.priceValidator);

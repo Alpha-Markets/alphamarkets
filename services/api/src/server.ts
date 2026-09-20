@@ -1,5 +1,5 @@
-import { requireEnv, resolveChainId } from "@orionis/config";
-import { Orionis } from "@orionis/sdk";
+import { requireEnv, resolveChainId } from "@alphamarkets/config";
+import { AlphaMarkets } from "@alphamarkets/sdk";
 import websocket from "@fastify/websocket";
 import Fastify from "fastify";
 import { http } from "viem";
@@ -18,7 +18,7 @@ import { registerWebSocket } from "./ws.js";
 
 export function buildServer() {
   const chainId = resolveChainId(process.env.CHAIN_ID);
-  const orionis = new Orionis({ chainId, transport: http(requireEnv("RPC_URL")) });
+  const alphaMarkets = new AlphaMarkets({ chainId, transport: http(requireEnv("RPC_URL")) });
 
   const app = Fastify({ logger: true });
 
@@ -27,17 +27,17 @@ export function buildServer() {
   app.get("/health", async () => ({ ok: true }));
 
   app.register(async (instance) => {
-    registerMarketRoutes(instance, orionis);
-    registerOptionRoutes(instance, orionis);
-    registerPerpRoutes(instance, orionis);
-    registerPriceRoutes(instance, orionis);
-    registerPortfolioRoutes(instance, orionis);
+    registerMarketRoutes(instance, alphaMarkets);
+    registerOptionRoutes(instance, alphaMarkets);
+    registerPerpRoutes(instance, alphaMarkets);
+    registerPriceRoutes(instance, alphaMarkets);
+    registerPortfolioRoutes(instance, alphaMarkets);
     registerStatsRoutes(instance);
     registerAnalyticsRoutes(instance);
-    registerAdvancedRoutes(instance, orionis);
-    registerTradeRoutes(instance, orionis);
-    registerRfqRoutes(instance, orionis);
-    registerWebSocket(instance, orionis);
+    registerAdvancedRoutes(instance, alphaMarkets);
+    registerTradeRoutes(instance, alphaMarkets);
+    registerRfqRoutes(instance, alphaMarkets);
+    registerWebSocket(instance, alphaMarkets);
   });
 
   return app;

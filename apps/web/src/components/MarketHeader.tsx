@@ -1,6 +1,6 @@
 "use client";
 
-import { Num, Skeleton, Stat } from "@orionis/ui";
+import { Num, Skeleton, Stat } from "@alphamarkets/ui";
 import { useNow } from "@/hooks/useNow";
 import { usePerpMarket, usePerpMarkets } from "@/hooks/queries";
 import { fmtBps, fmtCountdown, fmtPrice } from "@/lib/format";

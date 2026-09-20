@@ -1,13 +1,46 @@
 # Changelog
 
-All notable changes to Orionis Markets smart contracts are documented here.
+All notable changes to AlphaMarkets smart contracts are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
-Not deployed. Found by auditing the cross-cutting rules in DEVELOPMENT_STEPS.md against `[1.3.0-testnet]`; these changes reach a chain with the next redeploy.
+## [1.4.0-testnet] - 2026-09-21
 
-### Added — events for four admin setters that emitted nothing
+Full redeploy to Robinhood Chain testnet (chain ID 46630) via `script/DeployAll.s.sol` then `script/ConfigureMarkets.s.sol`, from the deployer `0xC804c6c50CE6F5B5dFB035378A3F84145914697F`, first block `122118624` (use it as `INDEXER_START_BLOCK`). It replaces `[1.3.0-testnet]`, which is abandoned. Same code as `[1.3.0-testnet]` plus the rebrand and the audit changes below.
+
+The rebrand renamed `OrionisVault` to `AlphaMarketsVault` and `IOrionisVault` to `IAlphaMarketsVault`, and the EIP-712 domain names from `OrionisOptionsEngine` to `AlphaMarketsOptionsEngine` and from `OrionisRFQ` to `AlphaMarketsRFQ`. **Every version below, down to `[1.0.0-testnet]`, was deployed under the old names.** Their `OptionsEngine` and `RFQManager` verify the old domains, so signed option quotes and RFQ prices from the current SDK and pricing service revert there. This deployment fixes that: `OptionsEngine.eip712Domain()` reports `AlphaMarketsOptionsEngine`.
+
+| Contract | Address |
+|---|---|
+| MarketRegistry | `0x9BC1F3927EF19E5CE75Ce964ddf1ECCBfbc75860` |
+| CollateralManager | `0x4cB54d06104BF249c158704Dd55C51E859091238` |
+| AlphaMarketsVault | `0x2EFE37890e3Dce8a18B75fFBE17b941952B25245` |
+| FeeManager | `0xD931b01626Ca93ceB9DF00f5AdD87cBcC7960709` |
+| BuybackModule | `0x88c404731358C75d7286a450850a0AaB8133462d` |
+| PriceValidator | `0x8202ECC35c540158ebbb9bA3228EE194Cb5E83c4` |
+| OracleRouter | `0x92e506941Fa70821888bB0A06FD9B9DFF39DaC4a` |
+| RiskManager | `0xA6f31aDaF3d685a9b0079e22454ED69B0A812F6D` |
+| OptionPositionManager | `0x71DFEd832a096C51B72247F567e0de1c1AC141D1` |
+| OptionMarket | `0xc03122Df09F563C215A9dF5da0b75ab822f0115E` |
+| OptionsEngine | `0x2d02597B4576b4804600C08519351792D376644e` |
+| PerpPositionManager | `0x4A91677FD35A84085215f8f77c5894cA3Ee2f676` |
+| PerpOrderManager | `0xc79062530aBE30aD38AD8862005523739a3f4e21` |
+| FundingManager | `0x6c0b6f70bD03953AfA4486fe0285f93656620B52` |
+| PerpsEngine | `0xD0540f9dCf8667e60397813F56B49484D55A8bDc` |
+| LiquidationEngine | `0x335D0404e9Bc88E8f8d37A68EB9267EbDfFC31cD` |
+| InsuranceFund | `0xEA90ea0A4a8E3F08DafF44D89d2C94feaA21a8b1` |
+| CrossMarginManager | `0x423f332c325f0D12F8C584E230597f6a6fEa4A23` |
+| SubaccountFactory | `0xe3DB5f7a3C11336c212D699C6D593fFE2E65BD01` |
+| RFQManager | `0x7CF3F244eC6819321980146dA906f51eE7a4F1f1` |
+| NVDA underlying token (mock) | `0x9372ACAe81Ef29FC443d959EDA2CB9E0E3560AA6` |
+| NVDA price feed (mock, seeded $190) | `0x828A77F8ffBa1Ca683ac92A26A0010F51AFd654b` |
+
+The settlement token `0x70b0FDa35dEb7BA710C601Ed9c45b9F992027112` is unchanged. The NVDA mock feed is owned by the keeper `0xa22e9da21Ae258f733EE932f767c46CB6508eD69`.
+
+Confirmed live with `cast`: code at all 21 contract addresses; `vault.withdrawGuard`, `perpsEngine.crossMargin` and `perpsEngine.rfqManager` point at the new managers; the pricing quoter `0xC9FA7B955B9FeffDFC3363e095447B99F8c2D31c` holds `QUOTER_ROLE` on `OptionsEngine` (`QUOTER_ADDRESS` was set, so the deployer never held it); the keeper owns the feed; the index price reads $190. Explorer verification is still pending (the explorer's certificate). Not audited, and the wallet-only flows listed under `[1.3.0-testnet]` are still untried.
+
+### Added — events for four admin setters that emitted nothing (in `[1.4.0-testnet]`)
 
 - `PriceValidator.setMaxPriceAge` emits `MaxPriceAgeUpdated(marketId, value)` and `setMaxDeviationBps` emits `MaxDeviationUpdated(marketId, valueBps)`. These two set the oracle staleness and deviation limits, so a change to them must be visible to the indexer and to monitoring.
 - `FundingManager.setMaxFundingRateBps` emits `MaxFundingRateUpdated(marketId, maxRateBps)`.
@@ -32,7 +65,7 @@ Full redeploy to Robinhood Chain testnet (chain ID 46630) via `script/DeployAll.
 |---|---|
 | MarketRegistry | `0xD1019516182cCC5976884b31e39E63247d5bdA3b` |
 | CollateralManager | `0x3CF01Ed4C450aec514Ed3cFEBF38fCCC8bb9a360` |
-| OrionisVault | `0x2C4751299bf5c3B659da825ce9Ba610D30509d19` |
+| AlphaMarketsVault | `0x2C4751299bf5c3B659da825ce9Ba610D30509d19` |
 | FeeManager | `0xF0B42B2d5eBF0f4b8ae195eb230Aee164914F710` |
 | BuybackModule | `0x1EDF2A8eb01ae0199A605B23482E3266C5BAdeeC` |
 | PriceValidator | `0x3b0Fe50B4FA6A6144F320f34acf7ff29307eFf79` |
@@ -55,7 +88,7 @@ Confirmed live with `cast`: code at every address above; `vault.withdrawGuard`, 
 
 **None of this has been audited.** The parts that hold or move money (cross margin, collateral seizure, the insurance fund, RFQ prices) need the third-party audit in DEVELOPMENT_STEPS.md before any mainnet use. The suite is 216 tests (it was 135); coverage is 96.0% of lines and 66.7% of branches.
 
-Constructor changes (redeploy only, nothing upgrades in place): `PerpsEngine` takes a `crossMargin_` address last (zero turns `openPositionCross` off); `LiquidationEngine` takes `crossMargin_` and `insuranceFund_` last (zero means all positions are isolated and a shortfall is not covered). `OrionisVault` gained `setWithdrawGuard` and `withdrawGuard` (default off).
+Constructor changes (redeploy only, nothing upgrades in place): `PerpsEngine` takes a `crossMargin_` address last (zero turns `openPositionCross` off); `LiquidationEngine` takes `crossMargin_` and `insuranceFund_` last (zero means all positions are isolated and a shortfall is not covered). `AlphaMarketsVault` gained `setWithdrawGuard` and `withdrawGuard` (default off).
 
 ### Added — trigger orders (PROJECT_BRIEF.md Section 39)
 
@@ -109,7 +142,7 @@ Full redeploy to Robinhood Chain testnet (chain ID 46630) via `script/DeployAll.
 |---|---|
 | MarketRegistry | `0x68C4dfB2261A9CAeaE8508C46257857472052384` |
 | CollateralManager | `0x0C959E641B3FFeEA76C5fDbc659311b64C8a1fc3` |
-| OrionisVault | `0x6b38EB431823C82E7899047514411225BF95529C` |
+| AlphaMarketsVault | `0x6b38EB431823C82E7899047514411225BF95529C` |
 | FeeManager | `0x8E29a239E94FF68858a4Bc21ee3c7cB787231cbe` |
 | BuybackModule | `0xc729D0a026dc3CfC378Abf1597499511793b2a98` |
 | PriceValidator | `0x2F2E20EdA39Bc30537Ad6D13267Ed0784a3C21Dd` |
@@ -183,7 +216,7 @@ The suite grew from 70 to 135 tests. Coverage of `src/` went from about 67% of l
 
 1. Generate a dedicated quoter key and set `QUOTER_PRIVATE_KEY` / `QUOTER_ADDRESS` in the root `.env`, and a dedicated keeper key for `services/keeper` (`KEEPER_PRIVATE_KEY`, funded with a little gas). Set `PRICE_FEED_OWNER` to the keeper's address before running `ConfigureMarkets`.
 2. `forge script script/DeployAll.s.sol --rpc-url robinhood_testnet --broadcast` with `NETWORK_NAME=robinhood_testnet` (a dry run costs about 0.0005 ETH of gas).
-3. `pnpm --filter @orionis/config sync:deployments` (it now records `perpOrderManager`), clear any `NEXT_PUBLIC_*` address overrides in `.env`, regenerate the SDK ABIs (`pnpm --filter @orionis/sdk generate:abis`) if a contract changed, and add the new addresses to this changelog.
+3. `pnpm --filter @alphamarkets/config sync:deployments` (it now records `perpOrderManager`), clear any `NEXT_PUBLIC_*` address overrides in `.env`, regenerate the SDK ABIs (`pnpm --filter @alphamarkets/sdk generate:abis`) if a contract changed, and add the new addresses to this changelog.
 4. Run `script/ConfigureMarkets.s.sol` to seed NVDA on the new registry, then `script/verify.sh`.
 5. Reset or re-index the indexer database so rows from the old contracts do not mix with the new ones.
 
@@ -205,7 +238,7 @@ Full redeploy to Robinhood Chain testnet (chain ID 46630) via `script/DeployAll.
 |---|---|
 | MarketRegistry | `0x15F599aFBCE042922716ae2C169e5dB9Be6eA855` |
 | CollateralManager | `0x3bd150A6c70aa668cB6052DD6c4cb44938B1557D` |
-| OrionisVault | `0x5c809C4872c603fBF74f48Fdc8348EaDEC5dFF66` |
+| AlphaMarketsVault | `0x5c809C4872c603fBF74f48Fdc8348EaDEC5dFF66` |
 | FeeManager | `0x15C6b95c289bd093b05B7578257aDfE4CADe8EDF` |
 | BuybackModule | `0x829447D77f25578706d7C84c2756bc793094fCda` |
 | PriceValidator | `0xe4b6E3e7e92F4877F725283D5D3a719f99B0392B` |
@@ -244,7 +277,7 @@ Deployed to Robinhood Chain testnet (chain ID 46630) via `script/DeployAll.s.sol
 |---|---|
 | MarketRegistry | `0x027D56C99D9E486F8911F0bd58EE508a817E9c0e` |
 | CollateralManager | `0x760E82300F3E2095Ae2E04318a0ef03cb693d52c` |
-| OrionisVault | `0x9F05fd9F0fE15fEbBd6EDcd7D63f4D0bCe7d3c1b` |
+| AlphaMarketsVault | `0x9F05fd9F0fE15fEbBd6EDcd7D63f4D0bCe7d3c1b` |
 | FeeManager | `0xa8fF53Fb41Bbf90B79f8c45B1576BB6F93Dc45c3` |
 | BuybackModule | `0x9Ae0Ebf31ee39F74bB412f80c4F7dcA953abBCFf` |
 | PriceValidator | `0x413f505814A0175bb7551EFb966c0580345EbF9F` |
@@ -264,10 +297,10 @@ Full record: `packages/contracts/deployments/robinhood_testnet.json`.
 ### Added
 
 - Foundry project scaffold (`forge init`), `forge-std` and `@openzeppelin/contracts@v5.1.0` dependencies, `foundry.toml` (solc 0.8.26, optimizer 200 runs, fuzz profiles), `remappings.txt`, domain `src/`/`test/` layout (`core/`, `oracle/`, `risk/`, `options/`, `perps/`, `interfaces/`).
-- Interfaces: `IOracle`, `IMarketRegistry`, `IOrionisVault`, `IOptionsEngine`, `IPerpsEngine`, plus `IRiskManager`/`IFeeManager`/`IPriceFeed` (necessary additions beyond PROJECT_BRIEF.md Section 6's literal list, so engines depend on interfaces rather than concrete contracts), and shared `DataTypes.sol`/`Errors.sol`.
+- Interfaces: `IOracle`, `IMarketRegistry`, `IAlphaMarketsVault`, `IOptionsEngine`, `IPerpsEngine`, plus `IRiskManager`/`IFeeManager`/`IPriceFeed` (necessary additions beyond PROJECT_BRIEF.md Section 6's literal list, so engines depend on interfaces rather than concrete contracts), and shared `DataTypes.sol`/`Errors.sol`.
 - `MarketRegistry` — single source of truth for market config, per-market pause.
 - Oracle layer: `PriceValidator` (staleness/deviation checks), `OracleRouter` (routes to primary/fallback `IPriceFeed`, normalizes to 18 decimals, records immutable settlement prices), `MockPriceFeed` (testnet/local stub).
-- `CollateralManager`, `OrionisVault` (deposits/withdrawals/locked margin/PnL settlement/funding transfers/fee transfers), `FeeManager` (per-market fee config + buyback routing), `BuybackModule` (fee-routing stub; real swap deferred to Phase 2/3).
+- `CollateralManager`, `AlphaMarketsVault` (deposits/withdrawals/locked margin/PnL settlement/funding transfers/fee transfers), `FeeManager` (per-market fee config + buyback routing), `BuybackModule` (fee-routing stub; real swap deferred to Phase 2/3).
 - `MarginEngine` (pure isolated-margin math library) and `RiskManager` (per-market leverage tiers, position/OI caps).
 - Options: `OptionPositionManager`, `OptionMarket` (series identifier + OI), `OptionSettlement` (pure intrinsic-value/payout math), `OptionsEngine` (open/close/settleExpired; users only buy, the Vault's shared pool is the implicit writer).
 - Perps: `PerpPositionManager`, `FundingManager`, `PerpsEngine` (open/increase/reduce/close), `LiquidationEngine` (deterministic `isLiquidatable`/`liquidate`, keeper-incentivized, fee+reward capped to the owner's actual available balance so liquidation itself can never revert on a deeply underwater position).

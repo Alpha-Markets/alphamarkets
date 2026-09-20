@@ -1,4 +1,4 @@
-export { Orionis, type OrionisConfig, type OrionisClient } from "./client.js";
+export { AlphaMarkets, type AlphaMarketsConfig, type AlphaMarketsClient } from "./client.js";
 export {
   DeadlineExpiredError,
   InsufficientCollateralError,
@@ -13,8 +13,8 @@ export {
   OpenInterestLimitExceededError,
   OrderExpiredError,
   OrderNotOpenError,
-  OrionisContractError,
-  OrionisError,
+  AlphaMarketsContractError,
+  AlphaMarketsError,
   PositionLimitExceededError,
   QuoteAlreadyUsedError,
   QuoteExpiredError,
@@ -87,7 +87,7 @@ export type { FeeInfo, FeesNamespace } from "./fees.js";
 export type { ExplorerNamespace } from "./explorer.js";
 export type { MarketTick, StreamNamespace, SubscribeOptions, WebSocketConstructor } from "./stream.js";
 
-export * from "@orionis/types";
+export * from "@alphamarkets/types";
 export {
   analyzeStrategy,
   buildStrategy,

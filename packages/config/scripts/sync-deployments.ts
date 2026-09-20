@@ -1,6 +1,6 @@
 /// Rewrites the checked-in `robinhoodTestnetAddresses` literal in `src/deployments.ts` from the
 /// JSON that `packages/contracts/script/DeployAll.s.sol` writes, so a redeploy needs no hand
-/// copying. Usage: `pnpm --filter @orionis/config sync:deployments [network]` (default
+/// copying. Usage: `pnpm --filter @alphamarkets/config sync:deployments [network]` (default
 /// `robinhood_testnet`).
 import { readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";

@@ -1,5 +1,5 @@
-import { Num, toneOf } from "@orionis/ui";
-import type { MarketStats } from "@orionis/sdk";
+import { Num, toneOf } from "@alphamarkets/ui";
+import type { MarketStats } from "@alphamarkets/sdk";
 import { useMarketStats } from "@/hooks/queries";
 import { symbolOf } from "@/lib/market";
 

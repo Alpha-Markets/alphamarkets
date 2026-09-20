@@ -1,8 +1,8 @@
-import { loadDotEnv } from "@orionis/config";
+import { loadDotEnv } from "@alphamarkets/config";
 loadDotEnv();
 
-import { requireEnv, resolveAddresses, resolveChainId } from "@orionis/config";
-import { Orionis } from "@orionis/sdk";
+import { requireEnv, resolveAddresses, resolveChainId } from "@alphamarkets/config";
+import { AlphaMarkets } from "@alphamarkets/sdk";
 import { http, type Hex } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { createHedger } from "./hedger.js";
@@ -15,7 +15,7 @@ const intervalMs = Number(process.env.HEDGER_INTERVAL_MS ?? 60_000);
 /// time someone starts it to look at what it does.
 const execute = process.env.HEDGER_EXECUTE === "true";
 
-const orionis = new Orionis({
+const alphaMarkets = new AlphaMarkets({
   chainId,
   transport: http(requireEnv("RPC_URL")),
   account,
@@ -23,7 +23,7 @@ const orionis = new Orionis({
   apiUrl: requireEnv("API_URL"),
 });
 const hedger = createHedger({
-  orionis,
+  alphaMarkets,
   account: account.address,
   market,
   targetDelta: Number(process.env.HEDGER_TARGET_DELTA ?? 0),

@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import type { Address, Hex } from "@orionis/sdk";
+import type { Address, Hex } from "@alphamarkets/sdk";
 
 /// The request-for-quote broker for perpetuals (PROJECT_BRIEF.md Sections 39 and 40, "market maker
 /// API" and "RFQ"). A user posts a request; connected market makers answer with a signed quote; the

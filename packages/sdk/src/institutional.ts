@@ -1,6 +1,6 @@
-import type { Address } from "@orionis/types";
+import type { Address } from "@alphamarkets/types";
 import { createApiGet } from "./api.js";
-import { OrionisError } from "./errors.js";
+import { AlphaMarketsError } from "./errors.js";
 import { toUnixSeconds } from "./utils.js";
 
 /// Funding, reporting and risk endpoints for institutional users and bots (PROJECT_BRIEF.md
@@ -168,12 +168,12 @@ export function createInstitutional(apiUrl: string | undefined): InstitutionalNa
   async function reportCsv(user: Address, range?: ReportRange): Promise<string> {
     if (!apiUrl) return apiGet<string>("institutional.reportCsv", "");
     const response = await fetch(`${apiUrl}/v1/reports/${user}${reportQuery(range, "csv")}`);
-    if (!response.ok) throw new OrionisError(`institutional.reportCsv: services/api returned ${response.status}`);
+    if (!response.ok) throw new AlphaMarketsError(`institutional.reportCsv: services/api returned ${response.status}`);
     return response.text();
   }
 
   async function risk(user: Address, shocksBps?: number[]): Promise<WalletRisk> {
-    if (shocksBps?.some((shock) => !Number.isInteger(shock))) throw new OrionisError("institutional.risk: shocks must be whole numbers of basis points");
+    if (shocksBps?.some((shock) => !Number.isInteger(shock))) throw new AlphaMarketsError("institutional.risk: shocks must be whole numbers of basis points");
     const query = shocksBps?.length ? `?shocks=${shocksBps.join(",")}` : "";
     const raw = await apiGet<Record<string, any>>("institutional.risk", `/v1/risk/${user}${query}`);
     return {

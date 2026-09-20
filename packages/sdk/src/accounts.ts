@@ -1,10 +1,10 @@
-import type { ContractAddresses } from "@orionis/config";
-import type { Address, Hex } from "@orionis/types";
+import type { ContractAddresses } from "@alphamarkets/config";
+import type { Address, Hex } from "@alphamarkets/types";
 import { subaccountAbi, subaccountFactoryAbi } from "./abis.js";
 import { toBaseUnits, type Amount } from "./amounts.js";
-import type { OrionisClient } from "./client.js";
+import type { AlphaMarketsClient } from "./client.js";
 import type { Erc20Namespace } from "./erc20.js";
-import { NotImplementedError, OrionisError } from "./errors.js";
+import { NotImplementedError, AlphaMarketsError } from "./errors.js";
 import { executeTx, type TxOptions } from "./transactions.js";
 import type { PreparedTx } from "./trading.js";
 import type { VaultBalances, VaultNamespace } from "./vault.js";
@@ -15,7 +15,7 @@ import type { VaultBalances, VaultNamespace } from "./vault.js";
 /// it names, such as a bot or a desk trader) trades through `execute` / `multicall`; only the owner
 /// can `deposit` and `withdraw`, and a withdrawal always goes to the owner.
 ///
-/// To trade from a subaccount, build the transaction with `orionis.trading.prepare*` and send it with
+/// To trade from a subaccount, build the transaction with `alphaMarkets.trading.prepare*` and send it with
 /// `execute`, or send several as one all-or-nothing `multicall` (how a multi-leg package opens
 /// without one leg filling and the other failing).
 export interface Subaccount {
@@ -46,7 +46,7 @@ export interface SubaccountsNamespace {
 }
 
 export interface SubaccountsDeps {
-  client: OrionisClient;
+  client: AlphaMarketsClient;
   addresses: ContractAddresses;
   vault: VaultNamespace;
   erc20: Erc20Namespace;
@@ -109,7 +109,7 @@ export function createSubaccounts(deps: SubaccountsDeps): SubaccountsNamespace {
     },
 
     async multicall(subaccount, calls, tx) {
-      if (calls.length === 0) throw new OrionisError("subaccounts.multicall: at least one call is needed");
+      if (calls.length === 0) throw new AlphaMarketsError("subaccounts.multicall: at least one call is needed");
       const { hash } = await executeTx(
         client,
         () => client.simulateContract({ address: subaccount, abi: subaccountAbi, functionName: "multicall", args: [calls.map((call) => call.to), calls.map((call) => call.data)] }),

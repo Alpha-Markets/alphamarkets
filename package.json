@@ -1,9 +1,9 @@
 {
-  "name": "orionis",
+  "name": "alphamarkets",
   "private": true,
   "version": "0.0.0",
   "type": "module",
-  "description": "Orionis Markets — derivatives for tokenized equities.",
+  "description": "AlphaMarkets — derivatives for tokenized equities.",
   "engines": {
     "node": ">=20",
     "pnpm": ">=9"

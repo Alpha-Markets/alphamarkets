@@ -1,7 +1,7 @@
 "use client";
 
 import { useQueryClient } from "@tanstack/react-query";
-import type { TxOptions } from "@orionis/sdk";
+import type { TxOptions } from "@alphamarkets/sdk";
 import { useTxStore } from "@/stores/tx";
 
 /// Runs one SDK write and mirrors its Section 30 states into the confirmation panel. The SDK

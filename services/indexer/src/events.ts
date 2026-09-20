@@ -1,5 +1,5 @@
-import type { ContractAddresses } from "@orionis/config";
-import type { Address } from "@orionis/types";
+import type { ContractAddresses } from "@alphamarkets/config";
+import type { Address } from "@alphamarkets/types";
 
 /// Every event declared across `packages/contracts/src/**` (PROJECT_BRIEF.md Section 35),
 /// hand-written for the same reason `packages/sdk/src/abis.ts` is: no Foundry toolchain
@@ -245,7 +245,7 @@ export const allEventsAbi = [
 ] as const;
 
 /// Maps a watched address back to a human-readable contract name for the `events.contract_name`
-/// column — built from `@orionis/config` so it stays in sync with the deployment record.
+/// column — built from `@alphamarkets/config` so it stays in sync with the deployment record.
 export function contractNamesByAddress(addresses: ContractAddresses): Map<Address, string> {
   return new Map(
     definedAddresses(addresses).map(([name, address]) => [address.toLowerCase() as Address, name]),

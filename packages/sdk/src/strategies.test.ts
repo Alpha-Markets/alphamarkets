@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { OrionisError } from "./errors.js";
+import { AlphaMarketsError } from "./errors.js";
 import { analyzeStrategy, buildStrategy, payoffCurve, type QuoteLookup } from "./strategies.js";
 
 const close = (actual: number | null, expected: number, tolerance = 1e-9) => {
@@ -52,7 +52,7 @@ test("a strangle needs the put strike below the call strike", () => {
   close(strangle.netPremium, 5);
   close(strangle.maxLoss, 5);
   assert.deepEqual(strangle.breakEvens, [85, 115]);
-  assert.throws(() => buildStrategy("STRANGLE", { putStrike: 110, callStrike: 90 }, { spot: 100, quote }), OrionisError);
+  assert.throws(() => buildStrategy("STRANGLE", { putStrike: 110, callStrike: 90 }, { spot: 100, quote }), AlphaMarketsError);
 });
 
 test("a covered call caps the upside and keeps the downside, and cannot open (short call)", () => {
@@ -119,7 +119,7 @@ test("payoffCurve samples the payoff evenly", () => {
   const curve = payoffCurve(legs, 80, 120, 5);
   assert.deepEqual(curve.map(([price]) => price), [80, 90, 100, 110, 120]);
   close(curve[2]![1], -15);
-  assert.throws(() => payoffCurve(legs, 100, 100), OrionisError);
+  assert.throws(() => payoffCurve(legs, 100, 100), AlphaMarketsError);
 });
 
 test("the payoff at expiry equals the sum of the leg payoffs, whatever the strategy (property check)", () => {

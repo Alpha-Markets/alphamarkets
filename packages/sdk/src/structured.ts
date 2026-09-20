@@ -1,5 +1,5 @@
-import type { Address } from "@orionis/types";
-import { OrionisError } from "./errors.js";
+import type { Address } from "@alphamarkets/types";
+import { AlphaMarketsError } from "./errors.js";
 import type { OptionsNamespace, OptionsQuoteResult, SignedQuote } from "./options.js";
 import type { OracleNamespace } from "./oracle.js";
 import { analyzeStrategy, strategyLegs, type OptionQuote, type StrategyAnalysis, type StrategyKind, type StrategyStrikes } from "./strategies.js";
@@ -86,8 +86,8 @@ export function createStructured(deps: StructuredDeps): StructuredNamespace {
     kinds: () => [...STRUCTURED_KINDS],
 
     async build(request) {
-      if (!STRUCTURED_KINDS.includes(request.kind)) throw new OrionisError(`structured: unknown product ${String(request.kind)}`);
-      if (request.contracts <= 0n) throw new OrionisError("structured: contracts must be above zero");
+      if (!STRUCTURED_KINDS.includes(request.kind)) throw new AlphaMarketsError(`structured: unknown product ${String(request.kind)}`);
+      if (request.contracts <= 0n) throw new AlphaMarketsError("structured: contracts must be above zero");
       const expiry = toUnixSeconds(request.expiry);
 
       const [index, contractSize, settlementDecimals] = await Promise.all([oracle.getIndexPrice(request.market), options.contractSize(request.market), deps.decimals()]);
@@ -108,7 +108,7 @@ export function createStructured(deps: StructuredDeps): StructuredNamespace {
       await Promise.all(
         [...wanted].map(async ([key, leg]) => {
           const quote = await options.quote({ underlying: request.market, type: leg.type, strike: leg.strike.toString(), expiry, contracts: request.contracts, user: request.trader });
-          if (!quote.authorization) throw new OrionisError(`structured: the pricing service did not sign the ${leg.type} ${leg.strike} quote (does it hold a quoter key?)`);
+          if (!quote.authorization) throw new AlphaMarketsError(`structured: the pricing service did not sign the ${leg.type} ${leg.strike} quote (does it hold a quoter key?)`);
           quoted.set(key, quote);
         }),
       );
@@ -119,7 +119,7 @@ export function createStructured(deps: StructuredDeps): StructuredNamespace {
       };
       const legs = strategyLegs(STRATEGY_OF[request.kind], request.strikes, { spot, quantity: units, quote: lookup });
       const analysis = analyzeStrategy(legs);
-      if (!analysis.executable) throw new OrionisError(`structured: ${request.kind} has a leg the contracts cannot open yet`);
+      if (!analysis.executable) throw new AlphaMarketsError(`structured: ${request.kind} has a leg the contracts cannot open yet`);
 
       const calls: PreparedTx[] = [];
       for (const leg of probe) {

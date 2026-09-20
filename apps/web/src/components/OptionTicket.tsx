@@ -1,12 +1,12 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { Button, Panel, Row, TextField } from "@orionis/ui";
+import { Button, Panel, Row, TextField } from "@alphamarkets/ui";
 import { useState } from "react";
 import { useAccount, useSwitchChain } from "wagmi";
 import { useSettlementDecimals, useVaultBalances } from "@/hooks/queries";
 import { useDebounced } from "@/hooks/useDebounced";
-import { useWalletOrionis } from "@/hooks/useOrionis";
+import { useWalletAlphaMarkets } from "@/hooks/useAlphaMarkets";
 import { useTx } from "@/hooks/useTx";
 import { env } from "@/lib/env";
 import { fmtBps, fmtPrice, fmtUsd } from "@/lib/format";
@@ -21,7 +21,7 @@ import {
   ivSourceLabel,
   strikeText,
 } from "@/lib/options";
-import { orionisRead } from "@/lib/orionis";
+import { alphaMarketsRead } from "@/lib/alphamarkets";
 import { chain } from "@/lib/wagmi";
 import { useOptionOrder, type OptionSelection } from "@/stores/optionOrder";
 import { errorMessage } from "@/stores/tx";
@@ -48,7 +48,7 @@ export function OptionTicket() {
   const selection = useOptionOrder((state) => state.selection);
   const { address, isConnected, chainId } = useAccount();
   const { switchChain } = useSwitchChain();
-  const wallet = useWalletOrionis();
+  const wallet = useWalletAlphaMarkets();
   const run = useTx();
   const { data: decimals = 6 } = useSettlementDecimals();
   const { data: balances } = useVaultBalances();
@@ -63,7 +63,7 @@ export function OptionTicket() {
 
   const preview = useQuery({
     queryKey: ["option-preview", selection?.symbol, String(selection?.expiry), String(selection?.strike), selection?.type, debounced, address],
-    queryFn: () => orionisRead.options.previewOpen(previewArgs(selection!, BigInt(debounced), address)),
+    queryFn: () => alphaMarketsRead.options.previewOpen(previewArgs(selection!, BigInt(debounced), address)),
     enabled: Boolean(selection && valid && env.apiUrl),
     refetchInterval: REFRESH_MS,
     placeholderData: (previous) => previous,
@@ -104,7 +104,7 @@ export function OptionTicket() {
     let authorization = p.authorization;
     if (authorization.validUntil <= BigInt(Math.floor(Date.now() / 1000)) + MIN_QUOTE_SECONDS) {
       try {
-        const fresh = await orionisRead.options.previewOpen(previewArgs(selection, BigInt(debounced), address));
+        const fresh = await alphaMarketsRead.options.previewOpen(previewArgs(selection, BigInt(debounced), address));
         if (!fresh.authorization || fresh.premium !== p.premium) {
           setNotice(`The price changed to ${fmtUsd(fresh.premium, decimals)}. Review it and confirm again.`);
           await preview.refetch();

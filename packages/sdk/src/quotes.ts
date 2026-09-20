@@ -1,10 +1,10 @@
-import type { Address, Hex } from "@orionis/types";
+import type { Address, Hex } from "@alphamarkets/types";
 
 /// The EIP-712 shapes `OptionsEngine` verifies (see `packages/contracts/src/options/OptionsEngine.sol`).
 /// This is the single definition of them for TypeScript: the pricing service signs with it and
 /// tests sign with it, so a drift from the contract fails the Anvil integration test instead of
 /// production. The type strings, field order and domain must match the contract exactly.
-export const OPTIONS_QUOTE_DOMAIN_NAME = "OrionisOptionsEngine";
+export const OPTIONS_QUOTE_DOMAIN_NAME = "AlphaMarketsOptionsEngine";
 export const OPTIONS_QUOTE_DOMAIN_VERSION = "1";
 
 const openQuoteTypes = {

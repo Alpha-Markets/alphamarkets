@@ -1,8 +1,8 @@
 {
-  "name": "@orionis/web",
+  "name": "@alphamarkets/web",
   "private": true,
   "version": "0.0.0",
-  "description": "Orionis Markets trading terminal (Next.js).",
+  "description": "AlphaMarkets trading terminal (Next.js).",
   "scripts": {
     "build": "next build",
     "dev": "next dev -p 3000",
@@ -13,10 +13,10 @@
   },
   "type": "module",
   "dependencies": {
-    "@orionis/config": "workspace:*",
-    "@orionis/sdk": "workspace:*",
-    "@orionis/types": "workspace:*",
-    "@orionis/ui": "workspace:*",
+    "@alphamarkets/config": "workspace:*",
+    "@alphamarkets/sdk": "workspace:*",
+    "@alphamarkets/types": "workspace:*",
+    "@alphamarkets/ui": "workspace:*",
     "@tanstack/react-query": "^5",
     "next": "^15",
     "react": "^19",

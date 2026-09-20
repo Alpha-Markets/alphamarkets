@@ -1,15 +1,15 @@
-# ORIONIS MARKETS
+# ALPHAMARKETS
 
 **Derivatives for tokenized equities.**
 
 Trade options and perpetual derivatives on tokenized equities.
 
-Orionis Markets is an onchain derivatives venue for tokenized equities, built for Robinhood Chain. It is not a tokenized-stock spot exchange — it is the derivatives layer built on top of tokenized equities, covering options (volatility, hedging, defined risk) and perpetuals (direction, leverage, long/short).
+AlphaMarkets is an onchain derivatives venue for tokenized equities, built for Robinhood Chain. It is not a tokenized-stock spot exchange — it is the derivatives layer built on top of tokenized equities, covering options (volatility, hedging, defined risk) and perpetuals (direction, leverage, long/short).
 
 ## Repository structure
 
 ```text
-orionis/
+alphamarkets/
 apps/
     web/                Trading terminal (Next.js, React, TypeScript, Tailwind, wagmi, viem)
 services/
@@ -21,7 +21,7 @@ services/
     hedger/             Keeps an options book delta neutral with perps (dry run unless told to trade)
 packages/
     contracts/          Solidity contracts (Foundry + OpenZeppelin)
-    sdk/                @orionis/sdk — the sanctioned client for contracts/API
+    sdk/                @alphamarkets/sdk — the sanctioned client for contracts/API
     ui/                 Shared brand-styled UI primitives
     config/             Chain/market/fee/risk config — single source of truth, env-driven
     types/              Shared TypeScript shapes (MarketConfig, positions, fee config)

@@ -1,18 +1,18 @@
-import type { Address, Orionis } from "@orionis/sdk";
+import type { Address, AlphaMarkets } from "@alphamarkets/sdk";
 import type { FastifyInstance } from "fastify";
 import { getSql } from "../db.js";
 import { jsonSafe } from "../serialize.js";
 
-export function registerPortfolioRoutes(app: FastifyInstance, orionis: Orionis) {
+export function registerPortfolioRoutes(app: FastifyInstance, alphaMarkets: AlphaMarkets) {
   const sql = getSql();
-  const settlementToken = orionis.addresses.settlementToken;
+  const settlementToken = alphaMarkets.addresses.settlementToken;
 
   app.get<{ Params: { wallet: Address } }>("/v1/portfolio/:wallet", async (request) => {
     const { wallet } = request.params;
     const [balance, locked, available] = await Promise.all([
-      orionis.vault.balanceOf(wallet, settlementToken),
-      orionis.vault.lockedMargin(wallet, settlementToken),
-      orionis.vault.availableBalance(wallet, settlementToken),
+      alphaMarkets.vault.balanceOf(wallet, settlementToken),
+      alphaMarkets.vault.lockedMargin(wallet, settlementToken),
+      alphaMarkets.vault.availableBalance(wallet, settlementToken),
     ]);
     // MVP is single-collateral-asset only (PROJECT_BRIEF.md Section 7) — no aggregate
     // unrealized/realized PnL here; combine `/positions/:wallet` client-side for that.
@@ -20,7 +20,7 @@ export function registerPortfolioRoutes(app: FastifyInstance, orionis: Orionis) 
   });
 
   app.get<{ Params: { wallet: Address } }>("/v1/positions/:wallet", async (request) => {
-    const positions = await orionis.portfolio.positions(request.params.wallet);
+    const positions = await alphaMarkets.portfolio.positions(request.params.wallet);
     return jsonSafe(positions);
   });
 

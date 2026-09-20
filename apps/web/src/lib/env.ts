@@ -1,5 +1,5 @@
-import { addressesForChain, resolveChainId, type ChainId, type ContractAddresses } from "@orionis/config";
-import type { Address } from "@orionis/types";
+import { addressesForChain, resolveChainId, type ChainId, type ContractAddresses } from "@alphamarkets/config";
+import type { Address } from "@alphamarkets/types";
 
 /// Every value the terminal needs from the environment (PROJECT_BRIEF.md Section 4). Next only
 /// inlines `process.env.NEXT_PUBLIC_*` when written out literally, so each name appears in full
@@ -10,7 +10,7 @@ const raw = {
   explorerUrl: process.env.NEXT_PUBLIC_EXPLORER_URL,
   apiUrl: process.env.NEXT_PUBLIC_API_URL,
   marketRegistry: process.env.NEXT_PUBLIC_MARKET_REGISTRY,
-  vault: process.env.NEXT_PUBLIC_ORIONIS_VAULT,
+  vault: process.env.NEXT_PUBLIC_ALPHAMARKETS_VAULT,
   optionsEngine: process.env.NEXT_PUBLIC_OPTIONS_ENGINE,
   perpsEngine: process.env.NEXT_PUBLIC_PERPS_ENGINE,
   oracleRouter: process.env.NEXT_PUBLIC_ORACLE_ROUTER,

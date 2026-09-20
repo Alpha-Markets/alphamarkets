@@ -1,4 +1,4 @@
-import { OrionisContractError, OrionisError, type Address, type Hex, type Orionis, type PreparedTx } from "@orionis/sdk";
+import { AlphaMarketsContractError, AlphaMarketsError, type Address, type Hex, type AlphaMarkets, type PreparedTx } from "@alphamarkets/sdk";
 import type { FastifyInstance, FastifyReply } from "fastify";
 
 type Body = Record<string, unknown>;
@@ -65,8 +65,8 @@ const json = (tx: PreparedTx) => ({ to: tx.to, data: tx.data, value: tx.value.to
 ///
 /// Amounts are exact decimal strings (`"1000.50"`), integers that can be large are strings, and
 /// prices are plain decimals (`"190.25"`), the same forms `POST /v1/options/quote` uses.
-export function registerTradeRoutes(app: FastifyInstance, orionis: Orionis) {
-  const { trading } = orionis;
+export function registerTradeRoutes(app: FastifyInstance, alphaMarkets: AlphaMarkets) {
+  const { trading } = alphaMarkets;
 
   async function respond(request: { body: unknown }, reply: FastifyReply, build: (body: Body) => Promise<PreparedTx | PreparedTx[]> | PreparedTx | PreparedTx[]) {
     const body = (request.body ?? {}) as Body;
@@ -82,8 +82,8 @@ export function registerTradeRoutes(app: FastifyInstance, orionis: Orionis) {
       return { transactions: transactions.map(json) };
     } catch (error) {
       if (error instanceof BadRequest) return reply.code(400).send({ error: error.message });
-      if (error instanceof OrionisContractError) return reply.code(422).send({ error: error.errorName, message: error.message });
-      if (error instanceof OrionisError) return reply.code(400).send({ error: error.message });
+      if (error instanceof AlphaMarketsContractError) return reply.code(422).send({ error: error.errorName, message: error.message });
+      if (error instanceof AlphaMarketsError) return reply.code(400).send({ error: error.message });
       request_log(error);
       throw error;
     }

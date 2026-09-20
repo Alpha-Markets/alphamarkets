@@ -1,7 +1,7 @@
 "use client";
 
-import { Panel } from "@orionis/ui";
-import { OptionPositionStatus } from "@orionis/sdk";
+import { Panel } from "@alphamarkets/ui";
+import { OptionPositionStatus } from "@alphamarkets/sdk";
 import { useAccount } from "wagmi";
 import { usePositions } from "@/hooks/queries";
 import { OptionPositionsTable } from "./OptionPositionsTable";

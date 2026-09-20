@@ -1,8 +1,8 @@
 {
-  "name": "@orionis/sdk",
+  "name": "@alphamarkets/sdk",
   "version": "0.1.0",
   "type": "module",
-  "description": "Orionis Markets typed client \u2014 the only sanctioned way to talk to contracts/API from any frontend or integrator.",
+  "description": "AlphaMarkets typed client \u2014 the only sanctioned way to talk to contracts/API from any frontend or integrator.",
   "main": "src/index.ts",
   "types": "src/index.ts",
   "scripts": {
@@ -18,8 +18,8 @@
   },
   "devDependencies": {
     "tsup": "^8",
-    "@orionis/config": "workspace:*",
-    "@orionis/types": "workspace:*"
+    "@alphamarkets/config": "workspace:*",
+    "@alphamarkets/types": "workspace:*"
   },
   "files": [
     "dist",
@@ -48,17 +48,17 @@
   "sideEffects": false,
   "license": "MIT",
   "author": "RubenDev",
-  "homepage": "https://github.com/rubengitdev/orionis/tree/main/packages/sdk#readme",
+  "homepage": "https://github.com/rubengitdev/alphamarkets/tree/main/packages/sdk#readme",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/rubengitdev/orionis.git",
+    "url": "git+https://github.com/rubengitdev/alphamarkets.git",
     "directory": "packages/sdk"
   },
   "bugs": {
-    "url": "https://github.com/rubengitdev/orionis/issues"
+    "url": "https://github.com/rubengitdev/alphamarkets/issues"
   },
   "keywords": [
-    "orionis",
+    "alphamarkets",
     "derivatives",
     "options",
     "perpetuals",

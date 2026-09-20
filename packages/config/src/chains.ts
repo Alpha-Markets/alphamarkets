@@ -28,7 +28,7 @@ export function resolveChainId(value?: string): ChainId {
   const id = Number(value);
   if (!Number.isInteger(id) || !(id in chains)) {
     const supported = Object.keys(chains).join(", ");
-    throw new Error(`@orionis/config: chain ${value} has no deployment recorded (supported: ${supported})`);
+    throw new Error(`@alphamarkets/config: chain ${value} has no deployment recorded (supported: ${supported})`);
   }
   return id as ChainId;
 }

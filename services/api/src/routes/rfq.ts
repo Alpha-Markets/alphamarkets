@@ -1,4 +1,4 @@
-import { resolveMarketId, rfqQuoteTypedData, toBaseUnits, type Address, type Hex, type Orionis } from "@orionis/sdk";
+import { resolveMarketId, rfqQuoteTypedData, toBaseUnits, type Address, type Hex, type AlphaMarkets } from "@alphamarkets/sdk";
 import type { FastifyInstance } from "fastify";
 import { verifyTypedData } from "viem";
 import { parseMakerKeys, RateLimiter, RfqBroker, type MakerQuote, type RfqRequest } from "../rfq.js";
@@ -19,7 +19,7 @@ export interface RfqRouteOptions {
 
 type Result = { ok: true } | { ok: false; status: number; error: string };
 
-const serialize = (request: RfqRequest, orionis: Orionis) => ({
+const serialize = (request: RfqRequest, alphaMarkets: AlphaMarkets) => ({
   id: request.id,
   user: request.user,
   marketId: request.marketId,
@@ -28,8 +28,8 @@ const serialize = (request: RfqRequest, orionis: Orionis) => ({
   leverage: request.leverage.toString(),
   expiresAt: new Date(request.expiresAt).toISOString(),
   /// What a maker needs to sign this request's quote (`rfqQuoteTypedData`).
-  chainId: orionis.chainId,
-  rfqManager: orionis.addresses.rfqManager,
+  chainId: alphaMarkets.chainId,
+  rfqManager: alphaMarkets.addresses.rfqManager,
 });
 
 const serializeQuote = (quote: MakerQuote) => ({
@@ -52,13 +52,13 @@ const serializeQuote = (quote: MakerQuote) => ({
 /// signature (`rfqQuoteTypedData`) and is only accepted when it recovers to the address bound to the
 /// sender's key. The chain re-checks everything, so this layer decides what is worth showing a user,
 /// not what is valid.
-export function registerRfqRoutes(app: FastifyInstance, orionis: Orionis, options: RfqRouteOptions = {}) {
+export function registerRfqRoutes(app: FastifyInstance, alphaMarkets: AlphaMarkets, options: RfqRouteOptions = {}) {
   const now = options.now ?? Date.now;
   const broker = options.broker ?? new RfqBroker({ now });
   const makers = options.makers ?? parseMakerKeys(process.env.MM_API_KEYS);
   const limiter = options.limiter ?? new RateLimiter(Number(process.env.MM_RATE_PER_SECOND ?? 20), Number(process.env.MM_RATE_BURST ?? 40), now);
 
-  const rfqAvailable = () => Boolean(orionis.addresses.rfqManager);
+  const rfqAvailable = () => Boolean(alphaMarkets.addresses.rfqManager);
 
   /// Checks and stores one quote. Shared by REST and the WebSocket.
   async function acceptQuote(maker: Address, id: string, body: Record<string, unknown>): Promise<Result> {
@@ -81,8 +81,8 @@ export function registerRfqRoutes(app: FastifyInstance, orionis: Orionis, option
 
     const priceBase = toBaseUnits(price, 18);
     const typed = rfqQuoteTypedData({
-      chainId: orionis.chainId,
-      rfqManager: orionis.addresses.rfqManager!,
+      chainId: alphaMarkets.chainId,
+      rfqManager: alphaMarkets.addresses.rfqManager!,
       user: request.user,
       marketId: request.marketId,
       isLong: request.isLong,
@@ -97,7 +97,7 @@ export function registerRfqRoutes(app: FastifyInstance, orionis: Orionis, option
 
     // Pre-filter what the contract would refuse anyway, so a user is never shown a quote that cannot fill.
     try {
-      const [{ price: mark }, { maxDeviationBps }] = await Promise.all([orionis.oracle.getMarkPrice(request.marketId), orionis.rfq.parameters()]);
+      const [{ price: mark }, { maxDeviationBps }] = await Promise.all([alphaMarkets.oracle.getMarkPrice(request.marketId), alphaMarkets.rfq.parameters()]);
       const gap = priceBase > mark ? priceBase - mark : mark - priceBase;
       if (gap * 10_000n > mark * maxDeviationBps) return { ok: false, status: 422, error: "the price is outside the band around the mark price that the contract accepts" };
     } catch {
@@ -128,19 +128,19 @@ export function registerRfqRoutes(app: FastifyInstance, orionis: Orionis, option
     const ttlSeconds = body.ttlSeconds === undefined ? undefined : Number(body.ttlSeconds);
     if (ttlSeconds !== undefined && (!Number.isFinite(ttlSeconds) || ttlSeconds <= 0)) return reply.code(400).send({ error: "ttlSeconds must be positive" });
 
-    const decimals = await orionis.erc20.decimals(orionis.addresses.settlementToken);
+    const decimals = await alphaMarkets.erc20.decimals(alphaMarkets.addresses.settlementToken);
     const created = broker.create(
       { user: user as Address, marketId: resolveMarketId(market), isLong: side === "LONG", collateral: toBaseUnits(collateralText, decimals), leverage: BigInt(leverageText) },
       ttlSeconds === undefined ? undefined : ttlSeconds * 1000,
     );
-    return reply.code(201).send(serialize(created, orionis));
+    return reply.code(201).send(serialize(created, alphaMarkets));
   });
 
   app.get<{ Params: { id: string } }>("/v1/rfq/requests/:id", async (request, reply) => {
     const found = broker.get(request.params.id);
     if (!found) return reply.code(404).send({ error: "unknown or expired request" });
     const quotes = broker.quotesFor(found.id);
-    return { request: serialize(found, orionis), quotes: quotes.map(serializeQuote), best: quotes[0] ? serializeQuote(quotes[0]) : null };
+    return { request: serialize(found, alphaMarkets), quotes: quotes.map(serializeQuote), best: quotes[0] ? serializeQuote(quotes[0]) : null };
   });
 
   // ---- market makers -----------------------------------------------------------
@@ -161,7 +161,7 @@ export function registerRfqRoutes(app: FastifyInstance, orionis: Orionis, option
 
   app.get("/v1/mm/rfq/open", async (request, reply) => {
     if (!(await guard(request, reply))) return;
-    return broker.open().map((open) => serialize(open, orionis));
+    return broker.open().map((open) => serialize(open, alphaMarkets));
   });
 
   app.post<{ Params: { id: string }; Body: Record<string, unknown> }>("/v1/mm/rfq/:id/quote", async (request, reply) => {
@@ -189,8 +189,8 @@ export function registerRfqRoutes(app: FastifyInstance, orionis: Orionis, option
         // The socket is closing.
       }
     };
-    for (const open of broker.open()) send({ type: "rfq", request: serialize(open, orionis) });
-    const stop = broker.subscribe((created) => send({ type: "rfq", request: serialize(created, orionis) }));
+    for (const open of broker.open()) send({ type: "rfq", request: serialize(open, alphaMarkets) });
+    const stop = broker.subscribe((created) => send({ type: "rfq", request: serialize(created, alphaMarkets) }));
     socket.on("close", stop);
 
     socket.on("message", async (raw: Buffer) => {

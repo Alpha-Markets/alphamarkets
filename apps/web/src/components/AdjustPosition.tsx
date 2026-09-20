@@ -1,10 +1,10 @@
 "use client";
 
-import { Button, TextField } from "@orionis/ui";
-import { toBaseUnits } from "@orionis/sdk";
-import type { PerpPosition } from "@orionis/types";
+import { Button, TextField } from "@alphamarkets/ui";
+import { toBaseUnits } from "@alphamarkets/sdk";
+import type { PerpPosition } from "@alphamarkets/types";
 import { useState } from "react";
-import { useWalletOrionis } from "@/hooks/useOrionis";
+import { useWalletAlphaMarkets } from "@/hooks/useAlphaMarkets";
 import { useTx } from "@/hooks/useTx";
 import { fmtUsd } from "@/lib/format";
 import { perpLabel } from "@/lib/market";
@@ -15,7 +15,7 @@ const isAmount = (value: string) => /^\d+(\.\d+)?$/.test(value) && Number(value)
 /// units; the contract enforces leverage tiers and margin, so this only checks the input shape and
 /// that a reduction does not exceed the position.
 export function AdjustPosition({ position, decimals }: { position: PerpPosition; decimals: number }) {
-  const wallet = useWalletOrionis();
+  const wallet = useWalletAlphaMarkets();
   const run = useTx();
   const [size, setSize] = useState("");
   const [collateral, setCollateral] = useState("");

@@ -7,9 +7,9 @@ import {
   resolveMarketId,
   stressPortfolio,
   type Address,
-  type Orionis,
+  type AlphaMarkets,
   type StressInput,
-} from "@orionis/sdk";
+} from "@alphamarkets/sdk";
 import type { FastifyInstance } from "fastify";
 import { buildReport, FUNDING_RANGES, parseDate, parseFundingRange, reportToCsv, summarizeFunding, type ReportEvent } from "../advanced.js";
 import { getSql } from "../db.js";
@@ -35,13 +35,13 @@ export function parseShocks(value: string | undefined): number[] | undefined | n
 /// Sections 39 and 40). The first two read the indexed events; the risk routes read the chain
 /// through the SDK. All of it is display and reporting data: it never feeds margin, liquidation
 /// or settlement, which stay onchain.
-export function registerAdvancedRoutes(app: FastifyInstance, orionis: Orionis, sql: Sql = getSql()) {
+export function registerAdvancedRoutes(app: FastifyInstance, alphaMarkets: AlphaMarkets, sql: Sql = getSql()) {
   /// Rate statistics and payment totals for one perp market over a window (`range`: 24h, 7d
   /// default, 30d). `FundingRateUpdated` carries the rate; `FundingPaid` the money, whose side
   /// comes from the position's open event.
   app.get<{ Params: { symbol: string }; Querystring: { range?: string } }>("/v1/perps/:symbol/funding/analytics", async (request, reply) => {
     const range = parseFundingRange(request.query.range);
-    const marketId = await resolveMarket(orionis, request.params.symbol);
+    const marketId = await resolveMarket(alphaMarkets, request.params.symbol);
     if (!marketId) return reply.code(404).send({ error: "unknown market" });
 
     const seconds = FUNDING_RANGES[range];
@@ -111,7 +111,7 @@ export function registerAdvancedRoutes(app: FastifyInstance, orionis: Orionis, s
     if (request.query.format === "csv") {
       return reply
         .header("content-type", "text/csv; charset=utf-8")
-        .header("content-disposition", `attachment; filename="orionis-report-${key.slice(0, 10)}.csv"`)
+        .header("content-disposition", `attachment; filename="alphamarkets-report-${key.slice(0, 10)}.csv"`)
         .send(reportToCsv(report.rows));
     }
     return { wallet, ...report, truncated };
@@ -128,9 +128,9 @@ export function registerAdvancedRoutes(app: FastifyInstance, orionis: Orionis, s
     if (shocks === null) return reply.code(400).send({ error: `shocks must be up to ${MAX_SHOCKS} whole numbers of basis points between -9999 and 100000` });
 
     const [positions, available, decimals] = await Promise.all([
-      orionis.portfolio.positions(wallet as Address),
-      orionis.vault.availableBalance(wallet as Address, orionis.addresses.settlementToken),
-      orionis.erc20.decimals(orionis.addresses.settlementToken),
+      alphaMarkets.portfolio.positions(wallet as Address),
+      alphaMarkets.vault.availableBalance(wallet as Address, alphaMarkets.addresses.settlementToken),
+      alphaMarkets.erc20.decimals(alphaMarkets.addresses.settlementToken),
     ]);
     const openPerps = positions.perps.filter((position) => position.open);
     const openOptions = positions.options.filter((position) => position.status === OptionPositionStatus.OPEN);
@@ -141,9 +141,9 @@ export function registerAdvancedRoutes(app: FastifyInstance, orionis: Orionis, s
     const contractSizes: Record<string, bigint> = {};
     await Promise.all(
       marketIds.map(async (marketId) => {
-        marks[marketId] = (await orionis.oracle.getMarkPrice(marketId)).price;
-        if (openPerps.some((position) => position.marketId === marketId)) maintenance[marketId] = (await orionis.risk.get(marketId)).maintenanceMarginRateBps;
-        if (openOptions.some((position) => position.marketId === marketId)) contractSizes[marketId] = await orionis.options.contractSize(marketId);
+        marks[marketId] = (await alphaMarkets.oracle.getMarkPrice(marketId)).price;
+        if (openPerps.some((position) => position.marketId === marketId)) maintenance[marketId] = (await alphaMarkets.risk.get(marketId)).maintenanceMarginRateBps;
+        if (openOptions.some((position) => position.marketId === marketId)) contractSizes[marketId] = await alphaMarkets.options.contractSize(marketId);
       }),
     );
 
@@ -186,10 +186,10 @@ export function registerAdvancedRoutes(app: FastifyInstance, orionis: Orionis, s
   /// Protocol-wide exposure per perp market: open interest long and short, its net skew and the
   /// share of the cap used. Read from the chain.
   app.get("/v1/risk/protocol/exposure", async () => {
-    const markets = (await orionis.markets.list()).filter((market) => market.perpsEnabled);
+    const markets = (await alphaMarkets.markets.list()).filter((market) => market.perpsEnabled);
     const rows = await Promise.all(
       markets.map(async (market) => {
-        const [interest, risk] = await Promise.all([orionis.risk.openInterest(market.marketId), orionis.risk.get(market.marketId)]);
+        const [interest, risk] = await Promise.all([alphaMarkets.risk.openInterest(market.marketId), alphaMarkets.risk.get(market.marketId)]);
         const cap = risk.openInterestCap;
         return {
           marketId: market.marketId,
@@ -208,8 +208,8 @@ export function registerAdvancedRoutes(app: FastifyInstance, orionis: Orionis, s
 }
 
 /// The market id for a symbol or bytes32 id, when the registry lists it.
-async function resolveMarket(orionis: Orionis, symbol: string): Promise<string | undefined> {
+async function resolveMarket(alphaMarkets: AlphaMarkets, symbol: string): Promise<string | undefined> {
   const marketId = resolveMarketId(symbol).toLowerCase();
-  const markets = await orionis.markets.list();
+  const markets = await alphaMarkets.markets.list();
   return markets.some((market) => market.marketId.toLowerCase() === marketId) ? marketId : undefined;
 }

@@ -1,8 +1,8 @@
-import type { ContractAddresses } from "@orionis/config";
-import type { Address, OptionPosition, PerpPosition } from "@orionis/types";
+import type { ContractAddresses } from "@alphamarkets/config";
+import type { Address, OptionPosition, PerpPosition } from "@alphamarkets/types";
 import { optionPositionManagerAbi, perpPositionManagerAbi } from "./abis.js";
-import type { OrionisClient } from "./client.js";
-import { NotImplementedError, OrionisError } from "./errors.js";
+import type { AlphaMarketsClient } from "./client.js";
+import { NotImplementedError, AlphaMarketsError } from "./errors.js";
 import { readUserOrders, readUserTriggerOrders, type OpenOrder, type TriggerOrder } from "./orders.js";
 import { createApiGet } from "./api.js";
 import { unrealizedPnl } from "./math.js";
@@ -72,7 +72,7 @@ export interface PortfolioNamespace {
   getOptionPosition(positionId: bigint): Promise<OptionPosition>;
   getPerpPosition(positionId: bigint): Promise<PerpPosition>;
   /// Deposit/withdrawal and PnL-settlement history, from `services/indexer` reached through
-  /// `services/api`'s `GET /v1/history/:wallet` — requires `apiUrl` in the `Orionis`
+  /// `services/api`'s `GET /v1/history/:wallet` — requires `apiUrl` in the `AlphaMarkets`
   /// constructor config; throws `NotImplementedError` if it wasn't provided. PROJECT_BRIEF.md
   /// Section 31 requires historical data to come from the indexer, never a substitute built
   /// from frontend RPC calls, so this SDK will not paper over a missing `apiUrl` with one.
@@ -80,7 +80,7 @@ export interface PortfolioNamespace {
 }
 
 export interface PortfolioDeps {
-  client: OrionisClient;
+  client: AlphaMarketsClient;
   addresses: ContractAddresses;
   vault: VaultNamespace;
   oracle: OracleNamespace;
@@ -158,7 +158,7 @@ export function createPortfolio({ client, addresses, vault, oracle, apiUrl }: Po
     if (!apiUrl) {
       throw new NotImplementedError(
         "portfolio.history",
-        "requires `apiUrl` in the Orionis constructor config, pointing at services/api",
+        "requires `apiUrl` in the AlphaMarkets constructor config, pointing at services/api",
       );
     }
 
@@ -169,7 +169,7 @@ export function createPortfolio({ client, addresses, vault, oracle, apiUrl }: Po
 
     const response = await fetch(`${apiUrl}/v1/history/${user}${queryString ? `?${queryString}` : ""}`);
     if (!response.ok) {
-      throw new OrionisError(`portfolio.history: services/api returned ${response.status}`);
+      throw new AlphaMarketsError(`portfolio.history: services/api returned ${response.status}`);
     }
     return (await response.json()) as HistoryEvent[];
   }

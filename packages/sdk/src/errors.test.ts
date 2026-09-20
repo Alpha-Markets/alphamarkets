@@ -6,7 +6,7 @@ import {
   InsufficientMarginError,
   mapError,
   MarketPausedError,
-  OrionisContractError,
+  AlphaMarketsContractError,
   SlippageExceededError,
   StaleOraclePriceError,
   UserRejectedError,
@@ -29,10 +29,10 @@ test("decoded args are exposed", () => {
   assert.deepEqual(mapped.args, [100n, 105n]);
 });
 
-test("an unmapped but decodable error becomes a generic OrionisContractError", () => {
+test("an unmapped but decodable error becomes a generic AlphaMarketsContractError", () => {
   const mapped = mapError(revertWith("ZeroAddress"));
-  assert.ok(mapped instanceof OrionisContractError);
-  assert.equal(mapped.constructor, OrionisContractError);
+  assert.ok(mapped instanceof AlphaMarketsContractError);
+  assert.equal(mapped.constructor, AlphaMarketsContractError);
 });
 
 test("MarketPaused carries the market id", () => {

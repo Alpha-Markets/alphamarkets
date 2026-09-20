@@ -1,7 +1,7 @@
-import { hedgeBook, OptionPositionStatus, OptionType, type HedgeAction, type Orionis, type Address } from "@orionis/sdk";
+import { hedgeBook, OptionPositionStatus, OptionType, type HedgeAction, type AlphaMarkets, type Address } from "@alphamarkets/sdk";
 
 export interface HedgerDeps {
-  orionis: Orionis;
+  alphaMarkets: AlphaMarkets;
   /// The wallet whose options book is hedged. Its perp positions on `market` are the hedge: the
   /// hedger treats every open perp on that market as part of it.
   account: Address;
@@ -35,18 +35,18 @@ export interface HedgeTick {
 export const collateralFor = (notional: bigint, leverage: number): bigint => (notional + BigInt(leverage) - 1n) / BigInt(leverage);
 
 export function createHedger(deps: HedgerDeps) {
-  const { orionis, account, market, execute } = deps;
+  const { alphaMarkets, account, market, execute } = deps;
   const now = deps.now ?? Date.now;
   const log = deps.log ?? ((message) => console.log(`hedger: ${message}`));
 
   async function tick(): Promise<HedgeTick> {
     const [positions, decimals, mark, contractSize] = await Promise.all([
-      orionis.portfolio.positions(account),
-      orionis.erc20.decimals(orionis.addresses.settlementToken),
-      orionis.oracle.getMarkPrice(market),
-      orionis.options.contractSize(market),
+      alphaMarkets.portfolio.positions(account),
+      alphaMarkets.erc20.decimals(alphaMarkets.addresses.settlementToken),
+      alphaMarkets.oracle.getMarkPrice(market),
+      alphaMarkets.options.contractSize(market),
     ]);
-    const marketId = (await orionis.markets.get(market)).marketId;
+    const marketId = (await alphaMarkets.markets.get(market)).marketId;
     const nowSeconds = BigInt(Math.floor(now() / 1000));
 
     const openOptions = positions.options.filter(
@@ -55,7 +55,7 @@ export function createHedger(deps: HedgerDeps) {
     // Each option's delta comes from the pricing model: display analytics, so the hedge is an estimate.
     const options = await Promise.all(
       openOptions.map(async (position) => {
-        const quote = await orionis.options.quote({
+        const quote = await alphaMarkets.options.quote({
           underlying: market,
           type: position.optionType === OptionType.CALL ? "CALL" : "PUT",
           strike: position.strike,
@@ -88,10 +88,10 @@ export function createHedger(deps: HedgerDeps) {
     // In order: each reduce or close frees exposure before a new position adds it.
     for (const action of plan.actions) {
       try {
-        if (action.type === "close") await orionis.perps.closePosition(action.positionId, { tx: { wait: true } });
-        else if (action.type === "reduce") await orionis.perps.reducePosition(action.positionId, { size: action.size, tx: { wait: true } });
+        if (action.type === "close") await alphaMarkets.perps.closePosition(action.positionId, { tx: { wait: true } });
+        else if (action.type === "reduce") await alphaMarkets.perps.reducePosition(action.positionId, { size: action.size, tx: { wait: true } });
         else {
-          await orionis.perps.openPosition({
+          await alphaMarkets.perps.openPosition({
             market,
             side: action.side,
             collateral: collateralFor(action.notional, deps.leverage),

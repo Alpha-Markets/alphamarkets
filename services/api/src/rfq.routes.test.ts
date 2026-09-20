@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import websocket from "@fastify/websocket";
-import { resolveMarketId, rfqQuoteTypedData, type Orionis } from "@orionis/sdk";
+import { resolveMarketId, rfqQuoteTypedData, type AlphaMarkets } from "@alphamarkets/sdk";
 import Fastify from "fastify";
 import { generatePrivateKey, privateKeyToAccount } from "viem/accounts";
 import { registerRfqRoutes } from "./routes/rfq.js";
@@ -19,21 +19,21 @@ const makerB = privateKeyToAccount(generatePrivateKey());
 const KEY_A = "maker-a-key-0123456789";
 const KEY_B = "maker-b-key-0123456789";
 
-function fakeOrionis(over: { rfqManager?: string | undefined; mark?: bigint } = {}) {
+function fakeAlphaMarkets(over: { rfqManager?: string | undefined; mark?: bigint } = {}) {
   return {
     chainId: 46630,
     addresses: { rfqManager: "rfqManager" in over ? over.rfqManager : RFQ_MANAGER, settlementToken: `0x${"aa".repeat(20)}` },
     erc20: { decimals: async () => 6 },
     oracle: { getMarkPrice: async () => ({ price: over.mark ?? 190n * WAD, timestamp: 1n }) },
     rfq: { parameters: async () => ({ maxDeviationBps: 100n, blockMinNotional: 0n, blockMaxNotional: 0n }) },
-  } as unknown as Orionis;
+  } as unknown as AlphaMarkets;
 }
 
-async function build(over: Parameters<typeof fakeOrionis>[0] = {}, limiter?: RateLimiter) {
+async function build(over: Parameters<typeof fakeAlphaMarkets>[0] = {}, limiter?: RateLimiter) {
   const app = Fastify();
   await app.register(websocket);
   const broker = new RfqBroker({ now: () => NOW_MS });
-  registerRfqRoutes(app, fakeOrionis(over), {
+  registerRfqRoutes(app, fakeAlphaMarkets(over), {
     broker,
     makers: new Map([[KEY_A, makerA.address], [KEY_B, makerB.address]]),
     limiter: limiter ?? new RateLimiter(1000, 1000, () => NOW_MS),

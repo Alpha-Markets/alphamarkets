@@ -1,4 +1,4 @@
-import type { StrategyKind, StrategyStrikes } from "@orionis/sdk";
+import type { StrategyKind, StrategyStrikes } from "@alphamarkets/sdk";
 
 export const STRATEGY_LABEL: Record<StrategyKind, string> = {
   COVERED_CALL: "Covered call",

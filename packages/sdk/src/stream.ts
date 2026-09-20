@@ -1,6 +1,6 @@
-import { OrionisError } from "./errors.js";
+import { AlphaMarketsError } from "./errors.js";
 import { resolveMarketId } from "./utils.js";
-import type { Hex } from "@orionis/types";
+import type { Hex } from "@alphamarkets/types";
 
 /// One `tick` message from `services/api`'s `GET /v1/ws` (PROJECT_BRIEF.md Section 33 "WebSocket
 /// market data"). Values arrive as decimal strings because JSON cannot carry `bigint`.
@@ -14,7 +14,7 @@ export interface MarketTick {
 }
 
 /// Minimal surface of the standard `WebSocket` this module needs, so Node < 22 callers can pass
-/// the `ws` package's class through `OrionisConfig.webSocket`.
+/// the `ws` package's class through `AlphaMarketsConfig.webSocket`.
 export interface WebSocketLike {
   onopen: ((event: unknown) => void) | null;
   onmessage: ((event: { data: unknown }) => void) | null;
@@ -44,12 +44,12 @@ const MAX_BACKOFF_MS = 30_000;
 export function createStream(apiUrl?: string, webSocket?: WebSocketConstructor): StreamNamespace {
   function subscribe(options: SubscribeOptions): () => void {
     if (!apiUrl) {
-      throw new OrionisError("stream.subscribe: requires `apiUrl` in the Orionis constructor config");
+      throw new AlphaMarketsError("stream.subscribe: requires `apiUrl` in the AlphaMarkets constructor config");
     }
     const Impl = webSocket ?? (globalThis as { WebSocket?: WebSocketConstructor }).WebSocket;
     if (!Impl) {
-      throw new OrionisError(
-        "stream.subscribe: no global WebSocket in this runtime — pass `webSocket` (e.g. the `ws` package) in the Orionis config",
+      throw new AlphaMarketsError(
+        "stream.subscribe: no global WebSocket in this runtime — pass `webSocket` (e.g. the `ws` package) in the AlphaMarkets config",
       );
     }
 

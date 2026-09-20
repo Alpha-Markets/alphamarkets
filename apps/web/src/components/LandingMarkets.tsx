@@ -1,6 +1,6 @@
 "use client";
 
-import { Num, Panel, Skeleton } from "@orionis/ui";
+import { Num, Panel, Skeleton } from "@alphamarkets/ui";
 import Link from "next/link";
 import { useMemo } from "react";
 import { formatUnits } from "viem";

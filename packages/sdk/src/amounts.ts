@@ -1,5 +1,5 @@
 import { formatUnits, parseUnits } from "viem";
-import { OrionisError } from "./errors.js";
+import { AlphaMarketsError } from "./errors.js";
 
 /// Money and price inputs are either a raw base-unit `bigint` (used as-is) or a decimal string
 /// like `"1000.50"` (scaled by the relevant decimals). JS `number` is deliberately not accepted:
@@ -13,11 +13,11 @@ export const PRICE_DECIMALS = 18;
 export function toBaseUnits(value: Amount, decimals: number): bigint {
   if (typeof value === "bigint") return value;
   if (typeof value !== "string") {
-    throw new OrionisError(`Amount must be a bigint or decimal string, received ${typeof value}`);
+    throw new AlphaMarketsError(`Amount must be a bigint or decimal string, received ${typeof value}`);
   }
   const trimmed = value.trim();
   if (!/^\d+(\.\d+)?$/.test(trimmed)) {
-    throw new OrionisError(`Invalid decimal amount: "${value}"`);
+    throw new AlphaMarketsError(`Invalid decimal amount: "${value}"`);
   }
   return parseUnits(trimmed, decimals);
 }

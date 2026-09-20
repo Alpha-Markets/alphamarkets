@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to `@orionis/sdk`. It follows semantic versioning; before 1.0 a minor version may include breaking changes.
+All notable changes to `@alphamarkets/sdk`. It follows semantic versioning; before 1.0 a minor version may include breaking changes.
 
 ## [0.1.0] - unreleased
 
@@ -25,4 +25,4 @@ First version prepared for external use. It targets the contracts in `packages/c
 
 - `openPosition({ orderType: "LIMIT" })` now fails with a message that points to `placeLimitOrder`, instead of "not supported yet".
 - The option risk checks in `previewOpen` use the notional in settlement-token units, matching `OptionsEngine` `[1.2.0]`.
-- The package is publishable: `@orionis/config` and `@orionis/types` are bundled into `dist/`, and only `viem` is a runtime dependency.
+- The package is publishable: `@alphamarkets/config` and `@alphamarkets/types` are bundled into `dist/`, and only `viem` is a runtime dependency.

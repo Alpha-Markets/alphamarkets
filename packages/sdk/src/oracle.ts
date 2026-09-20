@@ -1,6 +1,6 @@
-import type { ContractAddresses } from "@orionis/config";
+import type { ContractAddresses } from "@alphamarkets/config";
 import { oracleRouterAbi } from "./abis.js";
-import type { OrionisClient } from "./client.js";
+import type { AlphaMarketsClient } from "./client.js";
 import { createApiGet } from "./api.js";
 import { toUnixSeconds, resolveMarketId } from "./utils.js";
 
@@ -62,7 +62,7 @@ export interface PricesNamespace {
 }
 
 export function createPrices(
-  client: OrionisClient,
+  client: AlphaMarketsClient,
   addresses: ContractAddresses,
   oracle: OracleNamespace,
   apiUrl?: string,
@@ -114,7 +114,7 @@ export function createPrices(
   return { get, settlement, history, candles };
 }
 
-export function createOracle(client: OrionisClient, addresses: ContractAddresses): OracleNamespace {
+export function createOracle(client: AlphaMarketsClient, addresses: ContractAddresses): OracleNamespace {
   function reading(functionName: "getIndexPrice" | "getMarkPrice" | "getLastPrice") {
     return async (marketIdOrSymbol: string): Promise<PriceReading> => {
       const [price, timestamp] = await client.readContract({

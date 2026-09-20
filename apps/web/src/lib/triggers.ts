@@ -1,4 +1,4 @@
-import { triggerFiresBelow, type TriggerKind, type TriggerOrder } from "@orionis/sdk";
+import { triggerFiresBelow, type TriggerKind, type TriggerOrder } from "@alphamarkets/sdk";
 import { parseUnits } from "viem";
 import { PRICE_DECIMALS, fmtPrice } from "./format";
 import { parseLimitPrice } from "./limit";

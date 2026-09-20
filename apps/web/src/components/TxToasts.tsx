@@ -1,9 +1,9 @@
 "use client";
 
-import { Button, cn } from "@orionis/ui";
+import { Button, cn } from "@alphamarkets/ui";
 import { useEffect } from "react";
-import type { TxStatus } from "@orionis/sdk";
-import { orionisRead } from "@/lib/orionis";
+import type { TxStatus } from "@alphamarkets/sdk";
+import { alphaMarketsRead } from "@/lib/alphamarkets";
 import { shortHash } from "@/lib/format";
 import { useTxStore, type TxRecord } from "@/stores/tx";
 
@@ -20,7 +20,7 @@ const steps: Array<{ status: TxStatus; label: string }> = [
 function explorerLink(hash: `0x${string}` | undefined): string | undefined {
   if (!hash) return undefined;
   try {
-    return orionisRead.explorer.txUrl(hash);
+    return alphaMarketsRead.explorer.txUrl(hash);
   } catch {
     return undefined; // NEXT_PUBLIC_EXPLORER_URL is not set
   }

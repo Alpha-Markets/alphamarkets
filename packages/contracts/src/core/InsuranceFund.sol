@@ -5,7 +5,7 @@ import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import {OrionisVault} from "./OrionisVault.sol";
+import {AlphaMarketsVault} from "./AlphaMarketsVault.sol";
 
 /// @notice The protocol's loss buffer, the last step of the clearing waterfall (PROJECT_BRIEF.md
 /// Section 40, "clearing infrastructure"). When a liquidated position has lost more than its owner
@@ -21,7 +21,7 @@ contract InsuranceFund is AccessControl, ReentrancyGuard {
 
     bytes32 public constant FUND_ADMIN_ROLE = keccak256("FUND_ADMIN_ROLE");
 
-    OrionisVault public immutable vault;
+    AlphaMarketsVault public immutable vault;
     address public immutable settlementToken;
 
     error ZeroAddress();
@@ -32,7 +32,7 @@ contract InsuranceFund is AccessControl, ReentrancyGuard {
 
     constructor(address admin, address vault_, address settlementToken_) {
         if (admin == address(0) || vault_ == address(0) || settlementToken_ == address(0)) revert ZeroAddress();
-        vault = OrionisVault(vault_);
+        vault = AlphaMarketsVault(vault_);
         settlementToken = settlementToken_;
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
         _grantRole(FUND_ADMIN_ROLE, admin);

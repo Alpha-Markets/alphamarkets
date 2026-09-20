@@ -1,4 +1,4 @@
-import { cn } from "@orionis/ui";
+import { cn } from "@alphamarkets/ui";
 
 /// A price line with no axes, in the market's direction colour. Enough points to see the shape of
 /// the day; the figures next to it carry the numbers.

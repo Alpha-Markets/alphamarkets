@@ -1,4 +1,4 @@
-import type { OpenOrder } from "@orionis/sdk";
+import type { OpenOrder } from "@alphamarkets/sdk";
 
 export type OrderState = "open" | "filled" | "cancelled" | "expired";
 
