@@ -3,7 +3,7 @@ loadDotEnv();
 
 const { buildServer } = await import("./server.js");
 
-const port = Number(process.env.PRICING_PORT ?? 4100);
+const port = Number(process.env.PRICING_PORT ?? process.env.PORT ?? 4100);
 const app = buildServer();
 
 app
