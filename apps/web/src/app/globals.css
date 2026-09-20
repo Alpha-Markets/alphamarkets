@@ -142,6 +142,53 @@ body {
   animation: silk-cue 2.4s ease-in-out infinite;
 }
 
+/* Landing hero lockup (components/HeroMark.tsx). The animated parts start hidden and GSAP reveals them.
+   Without JavaScript, or when the GSAP chunk never loads, a CSS fade shows them after 3 s so the
+   logo is never lost; GSAP turns that fade off (`hero-js`) before it starts. With reduced motion (or
+   no script) the final state shows at once. `--reveal` and `--sheen` are percentages GSAP tweens:
+   a wide alpha mask slides across the mark to unfold it, and a highlight slides across the ribbon. */
+@keyframes hero-failsafe {
+  to {
+    opacity: 1;
+  }
+}
+
+.hero-anim {
+  opacity: 0;
+  animation: hero-failsafe 0.4s ease-out 3s forwards;
+}
+
+.hero-js .hero-anim {
+  animation: none;
+}
+
+.hero-mark {
+  --reveal: 0;
+  mask-image: linear-gradient(90deg, #000 40%, transparent 60%);
+  mask-size: 300% 100%;
+  mask-repeat: no-repeat;
+  mask-position: calc(var(--reveal) * 1%) 0;
+}
+
+.hero-sheen {
+  --sheen: 100;
+  position: absolute;
+  inset: 0;
+  background-image: linear-gradient(105deg, transparent 38%, rgb(255 255 255 / 0.6) 50%, transparent 62%);
+  background-size: 300% 100%;
+  background-repeat: no-repeat;
+  background-position: calc(var(--sheen) * 1%) 0;
+  mask-size: 100% 100%;
+  mask-repeat: no-repeat;
+}
+
+/* The headline block owns the lower left; on a short landscape phone there is no room above it. */
+@media (max-height: 640px) and (max-width: 1023px) {
+  .hero-lockup {
+    display: none;
+  }
+}
+
 /* Navigation bar (app/loading.tsx): waits 150ms before appearing so a quick page change shows nothing. */
 @keyframes nav-progress-in {
   from {
@@ -176,5 +223,10 @@ body {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
+  }
+
+  .hero-anim {
+    opacity: 1;
+    animation: none !important;
   }
 }
