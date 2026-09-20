@@ -4,6 +4,7 @@ import websocket from "@fastify/websocket";
 import Fastify from "fastify";
 import { http } from "viem";
 import { registerCors } from "./cors.js";
+import { registerAnalyticsRoutes } from "./routes/analytics.js";
 import { registerMarketRoutes } from "./routes/markets.js";
 import { registerOptionRoutes } from "./routes/options.js";
 import { registerPerpRoutes } from "./routes/perps.js";
@@ -29,6 +30,7 @@ export function buildServer() {
     registerPriceRoutes(instance, orionis);
     registerPortfolioRoutes(instance, orionis);
     registerStatsRoutes(instance);
+    registerAnalyticsRoutes(instance);
     registerWebSocket(instance, orionis);
   });
 

@@ -135,3 +135,64 @@ test("close quotes need a signing key", async () => {
   const response = await app.inject({ method: "POST", url: "/quote/close", payload: { positionId: "5", user: USER } });
   assert.equal(response.statusCode, 503);
 });
+
+// ---- bid/ask spread and volatility source -----------------------------------
+
+/// 60 samples, 30 minutes apart, moving about 0.3% each step.
+const history = async () =>
+  Array.from({ length: 60 }, (_, i) => ({ time: i * 1800, price: 190 * Math.exp(i % 2 === 0 ? 0 : 0.003) }));
+const noHistory = async () => [];
+
+test("opening pays the ask and closing receives the bid, both signed for the whole order", async () => {
+  const app = buildServer({ orionis: fakeOrionis(openPosition), account: quoter, now: () => NOW_MS, spreadBps: 400, priceHistory: noHistory });
+
+  const open = (await app.inject({ method: "POST", url: "/quote", payload: body })).json();
+  assert.ok(open.ask > open.premium && open.bid < open.premium);
+  assert.ok(Math.abs(open.ask - open.premium * 1.02) < 1e-9);
+  // per-unit ask * 100 units per contract * 10 contracts, at 6 decimals
+  assert.ok(Math.abs(Number(open.authorization.premium) - Math.round(open.ask * 100 * 10 * 1e6)) <= 1_000);
+  // Break-even follows the price actually paid.
+  assert.ok(Math.abs(open.breakEven - (190 + open.ask)) < 1e-9);
+
+  const close = (await app.inject({ method: "POST", url: "/quote/close", payload: { positionId: "5", user: USER } })).json();
+  assert.ok(Math.abs(Number(close.authorization.premium) - Math.round(close.bid * 100 * 10 * 1e6)) <= 1_000);
+  assert.ok(BigInt(close.authorization.premium) < BigInt(open.authorization.premium));
+});
+
+test("without a spread bid, ask and mark are the same price", async () => {
+  const app = buildServer({ orionis: fakeOrionis(), now: () => NOW_MS, spreadBps: 0, priceHistory: noHistory });
+  const json = (await app.inject({ method: "POST", url: "/quote", payload: body })).json();
+  assert.equal(json.bid, json.premium);
+  assert.equal(json.ask, json.premium);
+});
+
+test("volatility is realized from price history when there is enough, and the source says which", async () => {
+  const realized = buildServer({ orionis: fakeOrionis(), now: () => NOW_MS, priceHistory: history });
+  const a = (await realized.inject({ method: "POST", url: "/quote", payload: body })).json();
+  assert.equal(a.ivSource, "realized");
+  assert.notEqual(a.iv, 0.5);
+
+  const assumed = buildServer({ orionis: fakeOrionis(), now: () => NOW_MS, priceHistory: noHistory });
+  const b = (await assumed.inject({ method: "POST", url: "/quote", payload: body })).json();
+  assert.equal(b.ivSource, "default");
+  assert.equal(b.iv, 0.5);
+});
+
+test("a history lookup that fails prices with the default instead of failing the quote", async () => {
+  const app = buildServer({ orionis: fakeOrionis(), now: () => NOW_MS, priceHistory: async () => [] });
+  assert.equal((await app.inject({ method: "POST", url: "/quote", payload: body })).statusCode, 200);
+});
+
+test("history is cached between quotes", async () => {
+  let calls = 0;
+  const app = buildServer({
+    orionis: fakeOrionis(),
+    now: () => NOW_MS,
+    priceHistory: async () => {
+      calls++;
+      return history();
+    },
+  });
+  for (let i = 0; i < 3; i++) await app.inject({ method: "POST", url: "/quote", payload: body });
+  assert.equal(calls, 1);
+});

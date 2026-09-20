@@ -120,6 +120,26 @@ export const allEventsAbi = [
     { name: "positionId", type: "uint256", indexed: true },
     { name: "realizedPnl", type: "int256", indexed: false },
   ] },
+  { type: "event", name: "LimitOrderPlaced", inputs: [
+    { name: "orderId", type: "uint256", indexed: true },
+    { name: "owner", type: "address", indexed: true },
+    { name: "marketId", type: "bytes32", indexed: true },
+    { name: "isLong", type: "bool", indexed: false },
+    { name: "collateral", type: "uint256", indexed: false },
+    { name: "leverage", type: "uint256", indexed: false },
+    { name: "triggerPrice", type: "uint256", indexed: false },
+    { name: "expiry", type: "uint256", indexed: false },
+  ] },
+  { type: "event", name: "LimitOrderCancelled", inputs: [
+    { name: "orderId", type: "uint256", indexed: true },
+    { name: "owner", type: "address", indexed: true },
+  ] },
+  { type: "event", name: "LimitOrderExecuted", inputs: [
+    { name: "orderId", type: "uint256", indexed: true },
+    { name: "owner", type: "address", indexed: true },
+    { name: "positionId", type: "uint256", indexed: true },
+    { name: "executionPrice", type: "uint256", indexed: false },
+  ] },
   { type: "event", name: "OptionPositionOpened", inputs: [
     { name: "positionId", type: "uint256", indexed: true },
     { name: "owner", type: "address", indexed: true },
@@ -151,10 +171,16 @@ export const allEventsAbi = [
 /// column — built from `@orionis/config` so it stays in sync with the deployment record.
 export function contractNamesByAddress(addresses: ContractAddresses): Map<Address, string> {
   return new Map(
-    Object.entries(addresses).map(([name, address]) => [address.toLowerCase() as Address, name]),
+    definedAddresses(addresses).map(([name, address]) => [address.toLowerCase() as Address, name]),
   );
 }
 
 export function watchedAddresses(addresses: ContractAddresses): Address[] {
-  return Object.values(addresses);
+  return definedAddresses(addresses).map(([, address]) => address);
+}
+
+/// A deployment made before a contract existed (e.g. no `perpOrderManager` before limit orders)
+/// leaves that address undefined; there is nothing to watch for it.
+function definedAddresses(addresses: ContractAddresses): [string, Address][] {
+  return Object.entries(addresses).filter((entry): entry is [string, Address] => entry[1] !== undefined);
 }

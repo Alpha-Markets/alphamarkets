@@ -87,16 +87,16 @@ importers:
 
   packages/sdk:
     dependencies:
+      viem:
+        specifier: ^2.21.0
+        version: 2.56.8(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@5.0.10)(zod@4.6.5)
+    devDependencies:
       '@orionis/config':
         specifier: workspace:*
         version: link:../config
       '@orionis/types':
         specifier: workspace:*
         version: link:../types
-      viem:
-        specifier: ^2.21.0
-        version: 2.56.8(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@5.0.10)(zod@4.6.5)
-    devDependencies:
       tsup:
         specifier: ^8
         version: 8.5.1(jiti@2.7.0)(postcss@8.5.28)(tsx@4.23.13)(typescript@5.9.3)
@@ -160,6 +160,18 @@ importers:
       drizzle-kit:
         specifier: ^0.28.0
         version: 0.28.1
+
+  services/keeper:
+    dependencies:
+      '@orionis/config':
+        specifier: workspace:*
+        version: link:../../packages/config
+      '@orionis/sdk':
+        specifier: workspace:*
+        version: link:../../packages/sdk
+      viem:
+        specifier: ^2.21.0
+        version: 2.56.8(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@5.0.10)(zod@4.6.5)
 
   services/pricing:
     dependencies:

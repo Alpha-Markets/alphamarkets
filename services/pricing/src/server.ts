@@ -17,10 +17,22 @@ import Fastify from "fastify";
 import { http, isAddress, type LocalAccount } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { quote, type OptionType } from "./blackScholes.js";
+import { applySpread } from "./spread.js";
+import { chooseVolatility, type PriceSample, type Volatility } from "./volatility.js";
 
 const YEAR_SECONDS = 365 * 24 * 60 * 60;
 const DEFAULT_IV = Number(process.env.DEFAULT_IV_BPS ?? 5000) / 10_000;
 const RISK_FREE_RATE = Number(process.env.RISK_FREE_RATE_BPS ?? 0) / 10_000;
+/// Full bid-ask spread as basis points of the mark, split evenly around it. Opening pays the ask and
+/// closing receives the bid. 0 (the default) keeps both equal to the mark. A placeholder until
+/// product sets one, like the fee schedule in `ConfigureMarkets.s.sol`.
+const SPREAD_BPS = Number(process.env.OPTION_SPREAD_BPS ?? 0);
+/// Realized volatility is measured from this much index-price history, served by services/api.
+const VOL_HISTORY_RANGE = process.env.VOLATILITY_HISTORY_RANGE ?? "7d";
+const VOL_MIN_SAMPLES = Number(process.env.VOLATILITY_MIN_SAMPLES ?? 24);
+const VOL_MIN = Number(process.env.VOLATILITY_MIN_BPS ?? 1000) / 10_000;
+const VOL_MAX = Number(process.env.VOLATILITY_MAX_BPS ?? 30_000) / 10_000;
+const VOL_CACHE_MS = Number(process.env.VOLATILITY_CACHE_SECONDS ?? 300) * 1000;
 /// A signed quote is a price the chain will honour, so it lives only briefly: a longer window is a
 /// longer window for the spot price to move against the protocol.
 const QUOTE_TTL_SECONDS = BigInt(process.env.QUOTE_TTL_SECONDS ?? 30);
@@ -49,6 +61,31 @@ export interface PricingOptions {
   /// authorization, so nothing can be opened or closed against its prices.
   account?: LocalAccount;
   now?: () => number;
+  /// Index-price history for a market, for realized volatility. Injected in tests; otherwise read
+  /// from `API_URL` (services/api) and empty when that is unset or unreachable.
+  priceHistory?: (market: string) => Promise<PriceSample[]>;
+  /// Overrides `OPTION_SPREAD_BPS`.
+  spreadBps?: number;
+}
+
+/// Reads the indexer's index-price history through services/api's public endpoint, so this service
+/// never touches the indexer's database. Any failure means "no history": the caller then prices
+/// with the flat default volatility instead of failing the quote.
+function apiPriceHistory(): (market: string) => Promise<PriceSample[]> {
+  const apiUrl = process.env.API_URL;
+  return async (market) => {
+    if (!apiUrl) return [];
+    try {
+      const response = await fetch(`${apiUrl}/v1/prices/${market}/history?range=${VOL_HISTORY_RANGE}`, {
+        signal: AbortSignal.timeout(3_000),
+      });
+      if (!response.ok) return [];
+      const rows = (await response.json()) as Array<{ time: number; price: string }>;
+      return rows.map((row) => ({ time: row.time, price: Number(row.price) / 1e18 }));
+    } catch {
+      return [];
+    }
+  };
 }
 
 function quoterFromEnv(): LocalAccount | undefined {
@@ -68,10 +105,27 @@ export function buildServer(options: PricingOptions = {}) {
     options.orionis ?? new Orionis({ chainId, transport: http(requireEnv("RPC_URL")) });
   const account = options.account ?? quoterFromEnv();
   const now = options.now ?? Date.now;
+  const spreadBps = options.spreadBps ?? SPREAD_BPS;
 
   const app = Fastify({ logger: true });
 
   const nowSeconds = () => BigInt(Math.floor(now() / 1000));
+
+  const loadHistory = options.priceHistory ?? apiPriceHistory();
+  const volatilityCache = new Map<string, { at: number; value: Volatility }>();
+  /// Realized volatility for a market, cached briefly: every chain row asks for a quote, and the
+  /// history barely changes within minutes.
+  async function volatilityFor(market: string): Promise<Volatility> {
+    const cached = volatilityCache.get(market);
+    if (cached && now() - cached.at < VOL_CACHE_MS) return cached.value;
+    const value = chooseVolatility(await loadHistory(market), DEFAULT_IV, {
+      minSamples: VOL_MIN_SAMPLES,
+      min: VOL_MIN,
+      max: VOL_MAX,
+    });
+    volatilityCache.set(market, { at: now(), value });
+    return value;
+  }
 
   app.post<{ Body: QuoteRequestBody }>("/quote", async (request, reply) => {
     const { underlying, strike, expiry, type, contracts, user } = request.body;
@@ -112,14 +166,20 @@ export function buildServer(options: PricingOptions = {}) {
     // requested `contracts` count, so `contracts` does not scale the analytics below; a caller
     // multiplies by it for a total position cost. The signed authorization, by contrast, is for
     // the whole order.
-    const result = quote({
-      spot,
-      strike: strikeNumber,
-      timeToExpiryYears,
-      volatility: DEFAULT_IV,
-      riskFreeRate: RISK_FREE_RATE,
-      optionType: type,
-    });
+    const volatility = await volatilityFor(underlying);
+    const result = applySpread(
+      quote({
+        spot,
+        strike: strikeNumber,
+        timeToExpiryYears,
+        volatility: volatility.value,
+        riskFreeRate: RISK_FREE_RATE,
+        optionType: type,
+      }),
+      spreadBps,
+      strikeNumber,
+      type,
+    );
 
     let authorization;
     if (account && user) {
@@ -128,7 +188,8 @@ export function buildServer(options: PricingOptions = {}) {
         orionis.options.contractSize(underlying),
         orionis.erc20.decimals(orionis.addresses.settlementToken),
       ]);
-      const premium = premiumForOrder(result.premium, contractSize, BigInt(contracts), tokenDecimals);
+      // Opening pays the ask.
+      const premium = premiumForOrder(result.ask, contractSize, BigInt(contracts), tokenDecimals);
       const validUntil = nowSeconds() + QUOTE_TTL_SECONDS;
       const nonce = randomNonce();
       const signature = await account.signTypedData(
@@ -155,7 +216,7 @@ export function buildServer(options: PricingOptions = {}) {
       };
     }
 
-    return { ...result, spot, ...(authorization ? { authorization } : {}) };
+    return { ...result, spot, ivSource: volatility.source, ...(authorization ? { authorization } : {}) };
   });
 
   /// Prices closing an open position at the current spot and signs it for the position's owner.
@@ -182,20 +243,22 @@ export function buildServer(options: PricingOptions = {}) {
 
     const { price: spotRaw } = await orionis.oracle.getIndexPrice(position.marketId);
     const spot = Number(spotRaw) / 1e18;
-    const result = quote({
-      spot,
-      strike: Number(fromBaseUnits(position.strike, 18)),
-      timeToExpiryYears,
-      volatility: DEFAULT_IV,
-      riskFreeRate: RISK_FREE_RATE,
-      optionType: position.optionType === ChainOptionType.CALL ? "CALL" : "PUT",
-    });
+    const optionType = position.optionType === ChainOptionType.CALL ? "CALL" : "PUT";
+    const strike = Number(fromBaseUnits(position.strike, 18));
+    const volatility = await volatilityFor(position.marketId);
+    const result = applySpread(
+      quote({ spot, strike, timeToExpiryYears, volatility: volatility.value, riskFreeRate: RISK_FREE_RATE, optionType }),
+      spreadBps,
+      strike,
+      optionType,
+    );
 
     const [contractSize, tokenDecimals] = await Promise.all([
       orionis.options.contractSize(position.marketId),
       orionis.erc20.decimals(orionis.addresses.settlementToken),
     ]);
-    const premium = premiumForOrder(result.premium, contractSize, position.contracts, tokenDecimals);
+    // Closing receives the bid.
+    const premium = premiumForOrder(result.bid, contractSize, position.contracts, tokenDecimals);
     const validUntil = nowSeconds() + QUOTE_TTL_SECONDS;
     const nonce = randomNonce();
     const signature = await account.signTypedData(
@@ -213,6 +276,7 @@ export function buildServer(options: PricingOptions = {}) {
     return {
       ...result,
       spot,
+      ivSource: volatility.source,
       authorization: {
         premium: premium.toString(),
         validUntil: validUntil.toString(),

@@ -24,12 +24,6 @@ export function registerPortfolioRoutes(app: FastifyInstance, orionis: Orionis) 
     return jsonSafe(positions);
   });
 
-  // No limit-order engine exists yet (DEVELOPMENT_STEPS.md Phase 7 / PROJECT_BRIEF.md
-  // Section 39) — every trade executes immediately via openPosition, so there is nothing
-  // "resting" to list. Kept as a real (stubbed) route rather than omitted, since
-  // PROJECT_BRIEF.md Section 33 lists it explicitly.
-  app.get("/v1/orders/:wallet", async () => []);
-
   app.get<{ Params: { wallet: Address }; Querystring: { limit?: string; cursor?: string } }>(
     "/v1/history/:wallet",
     async (request) => {
