@@ -41,7 +41,7 @@ function Toast({ record }: { record: TxRecord }) {
   }, [done, dismiss, record.id]);
 
   return (
-    <li className="pointer-events-auto w-full border border-line bg-raised p-3 sm:w-80">
+    <li className="pointer-events-auto w-full rounded-lg border border-line bg-raised p-3 sm:w-80">
       <div className="flex items-start justify-between gap-3">
         <p className="font-medium">{done ? `${record.title} confirmed` : failed ? `${record.title} failed` : record.title}</p>
         {done || failed ? (

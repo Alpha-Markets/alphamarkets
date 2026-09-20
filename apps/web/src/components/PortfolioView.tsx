@@ -32,7 +32,7 @@ function Empty({ children, action }: { children: string; action?: { href: string
     <div className="flex flex-wrap items-center justify-between gap-3 p-3">
       <p className="text-muted">{children}</p>
       {action ? (
-        <Link href={action.href} className="inline-flex h-8 items-center rounded-[3px] border border-line px-2.5 text-xs font-medium hover:border-faint hover:bg-raised">
+        <Link href={action.href} className="inline-flex h-8 items-center rounded-md border border-line px-2.5 text-xs font-medium hover:border-faint hover:bg-raised">
           {action.label}
         </Link>
       ) : null}
@@ -84,8 +84,8 @@ export function PortfolioView() {
   const value = summary ? summary.balances.balance + summary.unrealizedPerpPnl : undefined;
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="border border-line bg-surface p-4">
+    <div className="flex flex-col gap-6">
+      <div className="rounded-[10px] border border-line/70 bg-surface p-6">
         <p className="text-xs text-muted">Portfolio value</p>
         <p className="mt-1 text-[2.5rem] font-light leading-tight tabular-nums">
           {isPending ? <Skeleton className="h-9 w-56" /> : fmtUsd(value, decimals)}

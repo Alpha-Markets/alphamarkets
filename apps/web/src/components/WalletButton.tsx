@@ -52,7 +52,7 @@ export function WalletButton() {
         </span>
       </Button>
       {open ? (
-        <div role="menu" className="absolute right-0 top-full z-50 mt-1 w-56 border border-line bg-raised py-1">
+        <div role="menu" className="absolute right-0 top-full z-50 mt-1 w-56 overflow-hidden rounded-lg border border-line bg-raised py-1">
           <p className="px-3 py-1.5 text-xs text-muted">Connected to {chain.name}</p>
           <button
             type="button"

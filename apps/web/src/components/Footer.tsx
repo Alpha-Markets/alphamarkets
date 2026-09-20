@@ -20,7 +20,7 @@ export function Footer() {
         <div>
           <p className="text-sm font-medium tracking-[0.32em]">ORIONIS</p>
           <p className="mt-2 max-w-xs text-muted">Derivatives for tokenized equities.</p>
-          <p className="mt-4 inline-flex items-center gap-2 border border-line px-2 py-1 text-xs text-muted">
+          <p className="mt-4 inline-flex items-center gap-2 rounded-md border border-line px-2 py-1 text-xs text-muted">
             <span aria-hidden="true" className="size-1.5 rounded-full bg-up" />
             {chains[env.chainId].name}
           </p>

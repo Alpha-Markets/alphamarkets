@@ -22,7 +22,7 @@ export function Button({ variant = "secondary", size = "md", className, type = "
     <button
       type={type}
       className={cn(
-        "inline-flex items-center justify-center gap-2 rounded-[3px] font-medium transition-colors disabled:cursor-not-allowed",
+        "inline-flex items-center justify-center gap-2 rounded-md font-medium transition-colors disabled:cursor-not-allowed",
         size === "sm" ? "h-7 px-2.5 text-xs" : "h-10 px-4 text-sm",
         variants[variant],
         className,

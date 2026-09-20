@@ -40,7 +40,7 @@ export function LandingHero() {
 
   return (
     <Panel title={symbol ? `${symbol}-PERP` : "Perpetual market"} actions={symbol ? <Link href={`/perpetuals?market=${symbol}`} className="text-sm underline underline-offset-2">Trade {symbol}</Link> : undefined}>
-      <div className="flex flex-col gap-4 p-4">
+      <div className="flex flex-col gap-5 p-5">
         <div className="flex items-baseline gap-3">
           <Num className="text-display font-light">{data ? fmtPrice(data.markPrice) : <Skeleton className="h-12 w-56" />}</Num>
           <Change stats={stats} className="text-base" />

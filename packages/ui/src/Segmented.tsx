@@ -22,7 +22,7 @@ const active = { up: "bg-up text-ground", down: "bg-down text-ground", neutral: 
 
 export function Segmented<T extends string | number>({ options, value, onChange, label, activeTone, className, size = "md" }: SegmentedProps<T>) {
   return (
-    <div role="radiogroup" aria-label={label} className={cn("flex gap-px rounded-[3px] bg-line p-px", className)}>
+    <div role="radiogroup" aria-label={label} className={cn("flex gap-px overflow-hidden rounded-md bg-line p-px", className)}>
       {options.map((option) => {
         const selected = option.value === value;
         return (

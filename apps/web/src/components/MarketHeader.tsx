@@ -19,16 +19,16 @@ export function MarketHeader() {
   const now = useNow();
 
   return (
-    <div className="flex shrink-0 flex-col gap-3 border border-line bg-surface p-3 lg:flex-row lg:items-center lg:gap-8 lg:px-4">
+    <div className="flex shrink-0 flex-col gap-3 rounded-[10px] border border-line/70 bg-surface p-3 lg:flex-row lg:items-center lg:gap-8 lg:px-4">
       <div className="flex items-center justify-between gap-3 xl:block">
-        <h1 className="text-title font-medium">{symbol ? `${symbol}-PERP` : "–"}</h1>
+        <h1 className="text-title font-normal">{symbol ? `${symbol}-PERP` : "–"}</h1>
         {markets && markets.length > 1 ? (
           <label className="xl:hidden">
             <span className="sr-only">Market</span>
             <select
               value={symbol}
               onChange={(event) => setSymbol(event.target.value)}
-              className="h-9 rounded-[3px] border border-line bg-ground px-2 text-sm"
+              className="h-9 rounded-md border border-line bg-ground px-2 text-sm"
             >
               {markets.map((market) => {
                 const value = symbolOf(market.marketId);

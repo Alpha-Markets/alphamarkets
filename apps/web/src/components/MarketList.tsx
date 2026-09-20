@@ -93,7 +93,7 @@ export function MarketList() {
             placeholder="Filter markets"
             value={filter}
             onChange={(event) => setFilter(event.target.value)}
-            className="h-9 w-full rounded-[3px] border border-line bg-ground px-2 text-sm outline-none placeholder:text-faint focus:border-text"
+            className="h-9 w-full rounded-md border border-line bg-ground px-2 text-sm outline-none placeholder:text-faint focus:border-text"
           />
         </div>
       ) : null}

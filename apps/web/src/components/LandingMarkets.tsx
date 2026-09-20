@@ -2,21 +2,34 @@
 
 import { Num, Panel, Skeleton } from "@orionis/ui";
 import Link from "next/link";
-import { usePerpMarket, usePerpMarkets } from "@/hooks/queries";
-import { fmtBps, fmtPrice } from "@/lib/format";
+import { useMemo } from "react";
+import { formatUnits } from "viem";
+import { usePerpMarket, usePerpMarkets, usePriceHistory } from "@/hooks/queries";
+import { PRICE_DECIMALS, fmtBps, fmtPrice } from "@/lib/format";
 import { symbolOf } from "@/lib/market";
 import { Change, useStatsFor } from "./Change";
+import { Sparkline } from "./Sparkline";
+
+/// Points kept for the sparkline; the indexer samples more than a small chart can show.
+const SPARK_POINTS = 48;
 
 function Row({ symbol }: { symbol: string }) {
   const { data } = usePerpMarket(symbol);
   const stats = useStatsFor(symbol);
+  const { data: history } = usePriceHistory(symbol, "24h");
+  const points = useMemo(() => {
+    const all = (history ?? []).map((point) => Number(formatUnits(point.price, PRICE_DECIMALS)));
+    const step = Math.max(1, Math.floor(all.length / SPARK_POINTS));
+    return all.filter((_, index) => index % step === 0 || index === all.length - 1);
+  }, [history]);
   return (
     <li>
       <Link
         href={`/perpetuals?market=${symbol}`}
-        className="grid grid-cols-[1fr_auto_auto] items-baseline gap-x-6 px-4 py-3 hover:bg-raised/60 sm:grid-cols-[1fr_8rem_6rem_6rem]"
+        className="grid grid-cols-[1fr_auto_auto] items-center gap-x-6 px-5 py-4 hover:bg-raised/60 sm:grid-cols-[1fr_7rem_8rem_6rem_6rem]"
       >
-        <span className="font-medium">{symbol}</span>
+        <span className="text-base">{symbol}</span>
+        <Sparkline points={points} className="hidden h-7 w-full sm:block" />
         <Num className="text-right">{data ? fmtPrice(data.markPrice) : <Skeleton className="w-14" />}</Num>
         <Change stats={stats} className="text-right" />
         <Num tone="muted" className="hidden text-right sm:block" title="Funding rate">

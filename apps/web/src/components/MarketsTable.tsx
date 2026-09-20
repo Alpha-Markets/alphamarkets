@@ -30,7 +30,7 @@ const columns: Array<{ key: SortKey; label: string; hide?: string }> = [
 ];
 
 const cell = "px-3 py-2.5 text-right tabular-nums first:text-left max-md:px-2";
-const linkClass = "inline-flex h-8 items-center rounded-[3px] border border-line px-2.5 text-xs font-medium hover:border-faint hover:bg-raised";
+const linkClass = "inline-flex h-8 items-center rounded-md border border-line px-2.5 text-xs font-medium hover:border-faint hover:bg-raised";
 
 interface Line {
   market: MarketConfig;
@@ -97,7 +97,7 @@ function MarketRow({ line, decimals }: { line: Line; decimals: number }) {
           ) : (
             <span className="font-medium">{symbol}</span>
           )}
-          {market.active ? null : <span className="border border-down px-1 text-xs text-down">Paused</span>}
+          {market.active ? null : <span className="rounded-sm border border-down px-1 text-xs text-down">Paused</span>}
         </div>
         {market.optionsEnabled ? (
           <Link
@@ -189,7 +189,7 @@ export function MarketsTable() {
             placeholder="Filter markets"
             value={filter}
             onChange={(event) => setFilter(event.target.value)}
-            className="my-1 h-8 w-44 rounded-[3px] border border-line bg-ground px-2 text-sm outline-none placeholder:text-faint focus:border-text"
+            className="my-1 h-8 w-44 rounded-md border border-line bg-ground px-2 text-sm outline-none placeholder:text-faint focus:border-text"
           />
         ) : null
       }

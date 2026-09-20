@@ -47,7 +47,7 @@ export function ConnectButton({ variant = "primary", size = "md", className }: P
         {isPending ? "Connecting…" : "Connect wallet"}
       </Button>
       {open ? (
-        <div role="menu" className="absolute right-0 top-full z-50 mt-1 w-64 border border-line bg-raised p-1">
+        <div role="menu" className="absolute right-0 top-full z-50 mt-1 w-64 rounded-lg border border-line bg-raised p-1">
           {error ? (
             <p role="alert" className="p-2 text-xs leading-snug text-down">
               {connectMessage(error)}
