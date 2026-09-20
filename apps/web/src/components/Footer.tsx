@@ -1,6 +1,7 @@
 import { chains } from "@orionis/config";
 import Link from "next/link";
 import { env } from "@/lib/env";
+import { PAGE_FRAME } from "@/lib/frame";
 
 const explorerAddress = (address: string) => (env.explorerUrl ? `${env.explorerUrl.replace(/\/+$/, "")}/address/${address}` : undefined);
 
@@ -16,7 +17,7 @@ const contracts = [
 export function Footer() {
   return (
     <footer className="border-t border-line">
-      <div className="mx-auto grid w-full max-w-6xl gap-8 px-4 py-8 sm:grid-cols-[1fr_auto_auto] sm:px-6">
+      <div className={`${PAGE_FRAME} grid gap-8 py-8 sm:grid-cols-[1fr_auto_auto]`}>
         <div>
           <p className="text-sm font-medium tracking-[0.32em]">ORIONIS</p>
           <p className="mt-2 max-w-xs text-muted">Derivatives for tokenized equities.</p>

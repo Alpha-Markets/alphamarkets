@@ -1,7 +1,9 @@
 import type { Metadata, Viewport } from "next";
 import { Geist } from "next/font/google";
+import { preconnect } from "react-dom";
 import type { ReactNode } from "react";
 import { AppShell } from "@/components/AppShell";
+import { env } from "@/lib/env";
 import { Providers } from "../providers";
 import "./globals.css";
 
@@ -28,7 +30,20 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = { themeColor: "#1a1a19" };
 
+/// Open the connections to the chain RPC and the API while the page is still loading, so the first
+/// read does not also pay for DNS and TLS (about two seconds cold, against about 0.3 s warm).
+const origin = (url: string | undefined) => {
+  try {
+    return url ? new URL(url).origin : undefined;
+  } catch {
+    return undefined;
+  }
+};
+
 export default function RootLayout({ children }: { children: ReactNode }) {
+  for (const target of new Set([origin(env.rpcUrl), origin(env.apiUrl)])) {
+    if (target) preconnect(target, { crossOrigin: "anonymous" });
+  }
   return (
     <html lang="en" className={geist.variable}>
       <body>

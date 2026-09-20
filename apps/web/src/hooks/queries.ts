@@ -10,18 +10,24 @@ import { seriesKey } from "@/lib/options";
 
 const TICK_MS = 4_000;
 
+// Query definitions are exported next to their hooks so `Prefetch` can warm the same cache entries
+// (same key, same function) before a page asks for them.
+export const perpMarketsQuery = () => ({ queryKey: ["perp-markets"], queryFn: () => orionisRead.perps.list(), refetchInterval: 30_000 });
+
 export function usePerpMarkets() {
-  return useQuery({ queryKey: ["perp-markets"], queryFn: () => orionisRead.perps.list(), refetchInterval: 30_000 });
+  return useQuery(perpMarketsQuery());
 }
 
 /// Config, risk parameters, funding and the three live prices for one market.
+export const perpMarketQuery = (symbol: string) => ({
+  queryKey: ["perp-market", symbol],
+  queryFn: () => orionisRead.perps.get(symbol),
+  enabled: Boolean(symbol),
+  refetchInterval: TICK_MS,
+});
+
 export function usePerpMarket(symbol: string) {
-  return useQuery({
-    queryKey: ["perp-market", symbol],
-    queryFn: () => orionisRead.perps.get(symbol),
-    enabled: Boolean(symbol),
-    refetchInterval: TICK_MS,
-  });
+  return useQuery(perpMarketQuery(symbol));
 }
 
 export function useSettlementDecimals() {
@@ -63,19 +69,23 @@ export function usePositions() {
 }
 
 /// Every market on the registry, perps and options alike.
+export const allMarketsQuery = () => ({ queryKey: ["all-markets"], queryFn: () => orionisRead.markets.list(), refetchInterval: 30_000 });
+
 export function useAllMarkets() {
-  return useQuery({ queryKey: ["all-markets"], queryFn: () => orionisRead.markets.list(), refetchInterval: 30_000 });
+  return useQuery(allMarketsQuery());
 }
 
 /// Statistics need `services/api`; without it the query is off and pages show "–".
+export const marketStatsQuery = () => ({
+  queryKey: ["market-stats"],
+  queryFn: () => orionisRead.markets.stats(),
+  enabled: Boolean(env.apiUrl),
+  refetchInterval: 60_000,
+  retry: false,
+});
+
 export function useMarketStats() {
-  return useQuery({
-    queryKey: ["market-stats"],
-    queryFn: () => orionisRead.markets.stats(),
-    enabled: Boolean(env.apiUrl),
-    refetchInterval: 60_000,
-    retry: false,
-  });
+  return useQuery(marketStatsQuery());
 }
 
 /// What the Markets page needs per market from the chain. Each read is settled separately so one
@@ -90,7 +100,7 @@ async function fetchMarketOverview(symbol: string) {
   return { prices: value(prices), funding: value(funding), openInterest: value(openInterest) };
 }
 
-const overviewQuery = (symbol: string) => ({
+export const overviewQuery = (symbol: string) => ({
   queryKey: ["market-overview", symbol],
   queryFn: () => fetchMarketOverview(symbol),
   refetchInterval: TICK_MS,
@@ -138,14 +148,16 @@ export function useHistory() {
   });
 }
 
+export const priceHistoryQuery = (symbol: string, range: "1h" | "6h" | "24h" | "7d") => ({
+  queryKey: ["price-history", symbol, range],
+  queryFn: () => orionisRead.prices.history(symbol, range),
+  enabled: Boolean(symbol && env.apiUrl),
+  refetchInterval: 60_000,
+  retry: false,
+});
+
 export function usePriceHistory(symbol: string, range: "1h" | "6h" | "24h" | "7d") {
-  return useQuery({
-    queryKey: ["price-history", symbol, range],
-    queryFn: () => orionisRead.prices.history(symbol, range),
-    enabled: Boolean(symbol && env.apiUrl),
-    refetchInterval: 60_000,
-    retry: false,
-  });
+  return useQuery(priceHistoryQuery(symbol, range));
 }
 
 /// Markets the registry allows options on. The underlying selector on the Options page reads this.
