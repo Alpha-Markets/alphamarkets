@@ -27,6 +27,11 @@ const contracts = {
   PerpOrderManager: "perpOrderManagerAbi",
   FundingManager: "fundingManagerAbi",
   LiquidationEngine: "liquidationEngineAbi",
+  InsuranceFund: "insuranceFundAbi",
+  CrossMarginManager: "crossMarginAbi",
+  SubaccountFactory: "subaccountFactoryAbi",
+  Subaccount: "subaccountAbi",
+  RFQManager: "rfqManagerAbi",
 };
 
 /// Contracts whose custom errors can surface through the contracts above (e.g. PriceValidator

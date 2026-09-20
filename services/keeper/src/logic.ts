@@ -1,4 +1,4 @@
-import type { OpenOrder } from "@orionis/sdk";
+import { triggerFiresBelow, type OpenOrder, type TriggerOrder } from "@orionis/sdk";
 
 /// A limit order can be filled when it is open, has not expired, and the mark price has reached
 /// its trigger: at or below it for a long, at or above it for a short. This mirrors
@@ -10,10 +10,24 @@ export function isFillable(order: OpenOrder, markPrice: bigint, nowSeconds: bigi
   return order.isLong ? markPrice <= order.triggerPrice : markPrice >= order.triggerPrice;
 }
 
+/// A stop-loss or take-profit can fire when it is open, has not expired, and the mark price has
+/// reached its trigger: at or below it for a long's stop-loss and a short's take-profit, at or
+/// above it otherwise. `isLong` is the side of the position it is attached to. This mirrors
+/// `PerpsEngine.executeTriggerOrder`; the contract makes the final call.
+export function isTriggerReached(order: TriggerOrder, isLong: boolean, markPrice: bigint, nowSeconds: bigint): boolean {
+  if (order.status !== "OPEN") return false;
+  if (nowSeconds > order.expiry) return false;
+  return triggerFiresBelow(isLong, order.kind) ? markPrice <= order.triggerPrice : markPrice >= order.triggerPrice;
+}
+
 /// The lowest order id still worth looking at: every order below it is settled (filled or
 /// cancelled) or expired. Orders are stored by ascending id, so the scan can start here next time.
-/// `orders` must be ascending and start at `from`.
-export function nextCursor(orders: OpenOrder[], from: bigint, nowSeconds: bigint): bigint {
+/// `orders` must be ascending and start at `from`. Works for limit and trigger orders alike.
+export function nextCursor(
+  orders: Array<{ id: bigint; status: OpenOrder["status"]; expiry: bigint }>,
+  from: bigint,
+  nowSeconds: bigint,
+): bigint {
   let cursor = from;
   for (const order of orders) {
     const finished = order.status !== "OPEN" || nowSeconds > order.expiry;

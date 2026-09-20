@@ -240,3 +240,25 @@ test("the risk checks see the option notional in settlement-token units, as Opti
   const size = calls.find((call) => call.functionName === "checkPositionSize");
   assert.equal(size?.args?.[1], 190_000_000_000n);
 });
+
+test("surface asks the API for the model's grid and passes strikes and expiries on the query", async () => {
+  const urls: string[] = [];
+  globalThis.fetch = (async (url: string) => {
+    urls.push(url);
+    return new Response(JSON.stringify({ spot: 190, ivSource: "default", baseVolatility: 0.5, shape: { skewSlope: 0, smileCurve: 0, termSlope: 0 }, strikes: [180, 200], expiries: [] }), { status: 200 });
+  }) as typeof fetch;
+  const { options } = setup();
+
+  const plain = await options.surface("NVDA");
+  assert.equal(plain.ivSource, "default");
+  assert.equal(urls[0], "http://api.test/v1/options/NVDA/surface");
+
+  await options.surface("NVDA", { strikes: [180, 200.5], expiries: [1_800_000_000n, "2027-01-01"] });
+  assert.equal(urls[1], `http://api.test/v1/options/NVDA/surface?expiries=1800000000%2C${Date.parse("2027-01-01") / 1000}&strikes=180%2C200.5`);
+});
+
+test("surface needs apiUrl and reports a failed request", async () => {
+  await assert.rejects(setup(null).options.surface("NVDA"), NotImplementedError);
+  globalThis.fetch = (async () => new Response("{}", { status: 504 })) as typeof fetch;
+  await assert.rejects(setup().options.surface("NVDA"), /returned 504/);
+});

@@ -1,6 +1,6 @@
 import { OrionisContractError, type Orionis } from "@orionis/sdk";
 import { parseAbi, type Account, type PublicClient, type WalletClient } from "viem";
-import { feedNeedsRefresh, isFillable, nextCursor } from "./logic.js";
+import { feedNeedsRefresh, isFillable, isTriggerReached, nextCursor } from "./logic.js";
 
 const feedAbi = parseAbi([
   "function owner() view returns (address)",
@@ -22,8 +22,9 @@ export interface KeeperDeps {
 }
 
 export interface Keeper {
-  /// One pass: refresh stale feeds, then fill any limit order whose trigger is reached.
-  tick(): Promise<{ refreshed: number; filled: number }>;
+  /// One pass: refresh stale feeds, fill any limit order whose trigger is reached, then fire any
+  /// stop-loss or take-profit whose trigger is reached.
+  tick(): Promise<{ refreshed: number; filled: number; triggered: number }>;
 }
 
 /// One line a person can act on: viem's short message when there is one, else the first line.
@@ -40,6 +41,7 @@ export function createKeeper(deps: KeeperDeps): Keeper {
   const account: Account = walletClient.account;
   const log = deps.log ?? ((message) => console.log(`keeper: ${message}`));
   let orderCursor = 1n;
+  let triggerCursor = 1n;
 
   async function chainNow(): Promise<bigint> {
     return (await publicClient.getBlock()).timestamp;
@@ -105,12 +107,55 @@ export function createKeeper(deps: KeeperDeps): Keeper {
     return filled;
   }
 
+  /// Fires every stop-loss and take-profit whose trigger is reached. Like `executeLimitOrder`,
+  /// `executeTriggerOrder` is permissionless, so this needs only gas. An order whose position was
+  /// closed or liquidated some other way can never fire; it is skipped and the cursor moves past
+  /// it. Any other failure leaves the order open to be tried again next tick.
+  async function fireTriggers(now: bigint): Promise<number> {
+    // A deployment made before `[1.3.0]` has an order manager without trigger orders: nothing to scan.
+    if (!(await orionis.perps.supportsTriggerOrders())) return 0;
+
+    const orders = await orionis.perps.scanTriggerOrders(triggerCursor);
+    const dead = new Set<bigint>();
+    const marks = new Map<string, bigint>();
+    let triggered = 0;
+    for (const order of orders) {
+      if (order.status !== "OPEN" || now > order.expiry) continue;
+      try {
+        const position = await orionis.portfolio.getPerpPosition(order.positionId);
+        if (!position.open) {
+          dead.add(order.id);
+          continue;
+        }
+        if (!marks.has(position.marketId)) marks.set(position.marketId, (await orionis.oracle.getMarkPrice(position.marketId)).price);
+        if (!isTriggerReached(order, position.isLong, marks.get(position.marketId)!, now)) continue;
+
+        const hash = await orionis.perps.executeTriggerOrder(order.id, { wait: true });
+        triggered++;
+        log(`fired ${order.kind} order ${order.id} on position ${order.positionId} (${hash})`);
+      } catch (error) {
+        log(`trigger order ${order.id} not fired: ${describe(error)}`);
+      }
+    }
+    triggerCursor = nextCursor(
+      orders.map((order) => (dead.has(order.id) ? { ...order, status: "CANCELLED" as const } : order)),
+      triggerCursor,
+      now,
+    );
+    return triggered;
+  }
+
   return {
     async tick() {
       const now = await chainNow();
       const refreshed = deps.refreshFeeds ? await refreshFeeds(now) : 0;
       const filled = await fillOrders(now);
-      return { refreshed, filled };
+      // A failure here must not hide the limit orders and feed refresh above from the caller.
+      const triggered = await fireTriggers(now).catch((error) => {
+        log(`could not scan trigger orders: ${describe(error)}`);
+        return 0;
+      });
+      return { refreshed, filled, triggered };
     },
   };
 }

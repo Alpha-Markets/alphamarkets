@@ -34,6 +34,7 @@ export function OrderPanel() {
 
   const [side, setSide] = useState<Side>("LONG");
   const [orderType, setOrderType] = useState<OrderType>("MARKET");
+  const [marginMode, setMarginMode] = useState<"ISOLATED" | "CROSS">("ISOLATED");
   const [limitPrice, setLimitPrice] = useState("");
   const [expiry, setExpiry] = useState<LimitExpiry>("24h");
   const [collateral, setCollateral] = useState("");
@@ -50,6 +51,9 @@ export function OrderPanel() {
     Number(debouncedCollateral) > 0;
 
   const isLimit = orderType === "LIMIT";
+  /// A limit order fills later through the keeper, which opens an isolated position, so cross margin
+  /// applies to market orders only.
+  const useCross = marginMode === "CROSS" && env.crossMargin && !isLimit;
   const debouncedLimit = useDebounced(limitPrice);
   const trigger = parseLimitPrice(debouncedLimit);
   const validLimit = !isLimit || trigger !== undefined;
@@ -110,7 +114,14 @@ export function OrderPanel() {
           }),
         )
       : await run({ title: `Open ${direction}`, summary }, (tx) =>
-          wallet.perps.openPosition({ market: symbol, side, collateral: toBaseUnits(debouncedCollateral, decimals), leverage, tx }),
+          wallet.perps.openPosition({
+            market: symbol,
+            side,
+            collateral: toBaseUnits(debouncedCollateral, decimals),
+            leverage,
+            ...(useCross ? { marginMode: "CROSS" as const } : {}),
+            tx,
+          }),
         );
     if (result.ok) {
       setCollateral("");
@@ -166,6 +177,22 @@ export function OrderPanel() {
             { value: "LIMIT", label: "Limit", disabled: !env.limitOrders },
           ]}
         />
+        {env.crossMargin ? (
+          <Segmented
+            label="Margin mode"
+            value={marginMode}
+            onChange={setMarginMode}
+            options={[
+              { value: "ISOLATED", label: "Isolated" },
+              { value: "CROSS", label: "Cross", disabled: isLimit },
+            ]}
+          />
+        ) : null}
+        {useCross ? (
+          <p className="text-xs leading-snug text-muted">
+            Cross: this position is backed by your whole account, not only its own margin. It is liquidated when the account&apos;s equity falls under its requirement, and withdrawals that would leave it too thin are refused.
+          </p>
+        ) : null}
         {env.limitOrders ? null : (
           <p className="text-xs leading-snug text-muted">Limit orders need the latest contracts, which are not deployed on this network yet.</p>
         )}

@@ -14,6 +14,10 @@ export const addresses = new Proxy({} as ContractAddresses, {
   get: (_target, key) => `0x${String(key).length.toString(16).padStart(40, "0")}`,
 });
 
+/// The deployment with the named contracts absent, as a deployment made before they existed has it.
+export const addressesWithout = (...keys: string[]): ContractAddresses =>
+  new Proxy(addresses, { get: (target, key) => (keys.includes(String(key)) ? undefined : target[key as keyof ContractAddresses]) });
+
 export const activeMarket: MarketConfig = {
   marketId: NVDA,
   underlyingToken: USER,

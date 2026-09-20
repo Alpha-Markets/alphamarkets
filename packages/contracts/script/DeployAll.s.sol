@@ -17,6 +17,10 @@ import {OptionMarket} from "../src/options/OptionMarket.sol";
 import {OptionsEngine} from "../src/options/OptionsEngine.sol";
 import {PerpPositionManager} from "../src/perps/PerpPositionManager.sol";
 import {PerpOrderManager} from "../src/perps/PerpOrderManager.sol";
+import {InsuranceFund} from "../src/core/InsuranceFund.sol";
+import {CrossMarginManager} from "../src/risk/CrossMarginManager.sol";
+import {SubaccountFactory} from "../src/accounts/SubaccountFactory.sol";
+import {RFQManager} from "../src/perps/RFQManager.sol";
 import {FundingManager} from "../src/perps/FundingManager.sol";
 import {PerpsEngine} from "../src/perps/PerpsEngine.sol";
 import {LiquidationEngine} from "../src/perps/LiquidationEngine.sol";
@@ -50,6 +54,10 @@ contract DeployAll is Script {
         address fundingManager;
         address perpsEngine;
         address liquidationEngine;
+        address insuranceFund;
+        address crossMargin;
+        address subaccountFactory;
+        address rfqManager;
         address settlementToken;
     }
 
@@ -93,6 +101,22 @@ contract DeployAll is Script {
             )
         );
 
+        d.insuranceFund = address(new InsuranceFund(admin, d.vault, settlementToken));
+        d.crossMargin = address(
+            new CrossMarginManager(
+                admin,
+                d.oracleRouter,
+                d.riskManager,
+                d.vault,
+                d.perpPositionManager,
+                d.optionPositionManager,
+                d.optionMarket,
+                settlementToken,
+                d.insuranceFund
+            )
+        );
+        d.subaccountFactory = address(new SubaccountFactory(admin, d.vault));
+
         d.perpsEngine = address(
             new PerpsEngine(
                 d.marketRegistry,
@@ -103,7 +127,8 @@ contract DeployAll is Script {
                 d.perpPositionManager,
                 d.perpOrderManager,
                 d.fundingManager,
-                settlementToken
+                settlementToken,
+                d.crossMargin
             )
         );
 
@@ -115,9 +140,18 @@ contract DeployAll is Script {
                 d.riskManager,
                 d.perpPositionManager,
                 d.fundingManager,
-                settlementToken
+                settlementToken,
+                d.crossMargin,
+                d.insuranceFund
             )
         );
+
+        // RFQ and block trades: the engine only opens at a quoted price for this manager. The maker
+        // role goes to the market maker's signing address (default: the deployer, for local runs).
+        d.rfqManager = address(new RFQManager(admin, d.perpsEngine, d.oracleRouter));
+        PerpsEngine(d.perpsEngine).setRfqManager(d.rfqManager);
+        RFQManager rfq = RFQManager(d.rfqManager);
+        rfq.grantRole(rfq.MAKER_ROLE(), vm.envOr("MAKER_ADDRESS", admin));
 
         _wireRoles(d);
 
@@ -155,6 +189,19 @@ contract DeployAll is Script {
         vault.grantRole(vaultEngineRole, d.liquidationEngine);
         vault.grantRole(vaultEngineRole, d.fundingManager);
         vault.grantRole(vault.FEE_MANAGER_ROLE(), d.feeManager);
+
+        // Account-level margin: the cross-margin manager seizes collateral through the Vault, and
+        // the Vault asks it before every withdrawal.
+        vault.grantRole(vaultEngineRole, d.crossMargin);
+        vault.setWithdrawGuard(d.crossMargin);
+        CrossMarginManager cross = CrossMarginManager(d.crossMargin);
+        cross.grantRole(cross.ENGINE_ROLE(), d.perpsEngine);
+        cross.grantRole(cross.LIQUIDATOR_ROLE(), d.liquidationEngine);
+
+        // A subaccount may call the trading engines, never the Vault or a token.
+        SubaccountFactory factory = SubaccountFactory(d.subaccountFactory);
+        factory.setTargetAllowed(d.perpsEngine, true);
+        factory.setTargetAllowed(d.optionsEngine, true);
     }
 
     function _wireFeesAndRisk(Deployment memory d) internal {
@@ -221,6 +268,10 @@ contract DeployAll is Script {
         vm.serializeAddress(json, "fundingManager", d.fundingManager);
         vm.serializeAddress(json, "perpsEngine", d.perpsEngine);
         vm.serializeAddress(json, "liquidationEngine", d.liquidationEngine);
+        vm.serializeAddress(json, "insuranceFund", d.insuranceFund);
+        vm.serializeAddress(json, "crossMargin", d.crossMargin);
+        vm.serializeAddress(json, "subaccountFactory", d.subaccountFactory);
+        vm.serializeAddress(json, "rfqManager", d.rfqManager);
         string memory finalJson = vm.serializeAddress(json, "settlementToken", d.settlementToken);
 
         string memory network = vm.envOr("NETWORK_NAME", string("localhost"));
@@ -245,5 +296,9 @@ contract DeployAll is Script {
         console.log("FundingManager:        ", d.fundingManager);
         console.log("PerpsEngine:           ", d.perpsEngine);
         console.log("LiquidationEngine:     ", d.liquidationEngine);
+        console.log("InsuranceFund:         ", d.insuranceFund);
+        console.log("CrossMarginManager:    ", d.crossMargin);
+        console.log("SubaccountFactory:     ", d.subaccountFactory);
+        console.log("RFQManager:            ", d.rfqManager);
     }
 }

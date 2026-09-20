@@ -17,7 +17,7 @@ if (!match) throw new Error("sync-deployments: robinhoodTestnetAddresses literal
 
 // Contracts added after the first deployment. A deployment that predates one omits it, and the
 // SDK treats the feature as unavailable; a newer deployment must record it.
-const OPTIONAL_KEYS = ["perpOrderManager"];
+const OPTIONAL_KEYS = ["perpOrderManager", "insuranceFund", "crossMargin", "subaccountFactory", "rfqManager"];
 
 const deployed = JSON.parse(readFileSync(jsonPath, "utf8")) as Record<string, unknown>;
 // The existing literal fixes the key order and the required key set the JSON must match; optional

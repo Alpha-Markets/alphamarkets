@@ -7,13 +7,14 @@ import {IMarketRegistry} from "../interfaces/IMarketRegistry.sol";
 import {IOrionisVault} from "../interfaces/IOrionisVault.sol";
 import {IFeeManager} from "../interfaces/IFeeManager.sol";
 import {IRiskManager} from "../interfaces/IRiskManager.sol";
-import {FeeConfig} from "../interfaces/DataTypes.sol";
+import {FeeConfig, TriggerKind} from "../interfaces/DataTypes.sol";
 import {MarketPaused, DeadlineExpired, SlippageExceeded} from "../interfaces/Errors.sol";
 import {PerpPositionManager} from "./PerpPositionManager.sol";
 import {PerpOrderManager} from "./PerpOrderManager.sol";
 import {OracleRouter} from "../oracle/OracleRouter.sol";
 import {FundingManager} from "./FundingManager.sol";
 import {MarginEngine} from "../risk/MarginEngine.sol";
+import {CrossMarginManager} from "../risk/CrossMarginManager.sol";
 
 /// @notice Orchestrates opening, increasing, reducing, and closing perpetual positions
 /// (PROJECT_BRIEF.md Section 11), and filling resting limit orders (Section 39). Entry/exit
@@ -31,7 +32,16 @@ contract PerpsEngine is IPerpsEngine, ReentrancyGuard {
     PerpOrderManager public immutable orderManager;
     FundingManager public immutable fundingManager;
     address public immutable settlementToken;
+    /// @notice Account-level margin. Zero on a deployment without it, which turns `openPositionCross` off.
+    CrossMarginManager public immutable crossMargin;
+    /// @notice Whoever deployed this engine wires the RFQ manager once (the two need each other's address).
+    address public immutable deployer;
+    /// @notice The only caller of {openPositionAtPrice}. Zero until set.
+    address public rfqManager;
 
+    error CrossMarginDisabled();
+    error NotRfqManager();
+    error RfqManagerAlreadySet();
     error PerpsNotEnabled(bytes32 marketId);
     error ZeroAmount();
     error InsufficientCollateral();
@@ -41,6 +51,7 @@ contract PerpsEngine is IPerpsEngine, ReentrancyGuard {
     error OrderNotOpen(uint256 orderId);
     error OrderExpired(uint256 orderId, uint256 expiry);
     error LimitPriceNotReached(uint256 orderId, uint256 triggerPrice, uint256 markPrice);
+    error TriggerPriceNotReached(uint256 orderId, uint256 triggerPrice, uint256 markPrice);
 
     event PerpPositionOpened(
         uint256 indexed positionId,
@@ -71,6 +82,19 @@ contract PerpsEngine is IPerpsEngine, ReentrancyGuard {
         uint256 indexed orderId, address indexed owner, uint256 indexed positionId, uint256 executionPrice
     );
 
+    event TriggerOrderPlaced(
+        uint256 indexed orderId,
+        address indexed owner,
+        uint256 indexed positionId,
+        TriggerKind kind,
+        uint256 triggerPrice,
+        uint256 expiry
+    );
+    event TriggerOrderCancelled(uint256 indexed orderId, address indexed owner);
+    event TriggerOrderExecuted(
+        uint256 indexed orderId, address indexed owner, uint256 indexed positionId, uint256 executionPrice
+    );
+
     constructor(
         address marketRegistry_,
         address oracleRouter_,
@@ -80,7 +104,8 @@ contract PerpsEngine is IPerpsEngine, ReentrancyGuard {
         address positionManager_,
         address orderManager_,
         address fundingManager_,
-        address settlementToken_
+        address settlementToken_,
+        address crossMargin_
     ) {
         marketRegistry = IMarketRegistry(marketRegistry_);
         oracleRouter = OracleRouter(oracleRouter_);
@@ -91,6 +116,34 @@ contract PerpsEngine is IPerpsEngine, ReentrancyGuard {
         orderManager = PerpOrderManager(orderManager_);
         fundingManager = FundingManager(fundingManager_);
         settlementToken = settlementToken_;
+        crossMargin = CrossMarginManager(crossMargin_);
+        deployer = msg.sender;
+    }
+
+    /// @notice One-time wiring of the RFQ manager, by the deployer.
+    function setRfqManager(address manager) external {
+        if (msg.sender != deployer) revert NotRfqManager();
+        if (rfqManager != address(0)) revert RfqManagerAlreadySet();
+        rfqManager = manager;
+    }
+
+    /// @notice Opens a position for `trader` at a price the RFQ manager has verified (a maker's signed
+    /// quote), instead of the mark price. `isBlock` waives the per-position cap for a block trade the
+    /// manager has bounded itself. Only the RFQ manager can call it: the price is not checked here.
+    function openPositionAtPrice(
+        address trader,
+        bytes32 marketId,
+        bool isLong,
+        uint256 collateral,
+        uint256 leverage,
+        uint256 entryPrice,
+        bool isBlock
+    ) external nonReentrant returns (uint256 positionId) {
+        if (msg.sender != rfqManager) revert NotRfqManager();
+        return
+            _openAt(
+                trader, OpenParams(marketId, isLong, collateral, leverage, 0, type(uint256).max), entryPrice, isBlock
+            );
     }
 
     // ---------------------------------------------------------------------
@@ -117,21 +170,47 @@ contract PerpsEngine is IPerpsEngine, ReentrancyGuard {
         return _openPosition(msg.sender, OpenParams(marketId, isLong, collateral, leverage, limitPrice, deadline));
     }
 
+    /// @notice Opens a CROSS-margin position: it is backed by the whole account (free balance, the
+    /// other cross positions, other collateral) instead of only its own margin, and is liquidated
+    /// when the account's equity falls under its requirement (see CrossMarginManager). The margin is
+    /// still locked from the free balance at the position's leverage, as for {openPosition}.
+    function openPositionCross(
+        bytes32 marketId,
+        bool isLong,
+        uint256 collateral,
+        uint256 leverage,
+        uint256 limitPrice,
+        uint256 deadline
+    ) external nonReentrant returns (uint256 positionId) {
+        if (address(crossMargin) == address(0)) revert CrossMarginDisabled();
+        positionId = _openPosition(msg.sender, OpenParams(marketId, isLong, collateral, leverage, limitPrice, deadline));
+        crossMargin.markCross(positionId, msg.sender);
+    }
+
     /// @dev `trader` owns the position and pays the margin and fee. It is `msg.sender` for a market
     /// order and the order's owner when a keeper fills a limit order.
     function _openPosition(address trader, OpenParams memory p) internal returns (uint256 positionId) {
         if (block.timestamp > p.deadline) revert DeadlineExpired(p.deadline, block.timestamp);
+        (uint256 entryPrice,) = oracleRouter.getMarkPrice(p.marketId);
+        _checkLimitPrice(p.isLong, entryPrice, p.limitPrice);
+        return _openAt(trader, p, entryPrice, false);
+    }
+
+    /// @dev The rest of an open, at an already-chosen `entryPrice`: the mark price for a market or
+    /// limit order, the quoted price for an RFQ. `skipSizeCheck` waives the ordinary per-position
+    /// cap for a block trade that RFQManager has bounded itself; the open-interest cap still applies.
+    function _openAt(address trader, OpenParams memory p, uint256 entryPrice, bool skipSizeCheck)
+        internal
+        returns (uint256 positionId)
+    {
         if (!marketRegistry.isActive(p.marketId)) revert MarketPaused(p.marketId);
         if (!marketRegistry.isPerpsEnabled(p.marketId)) revert PerpsNotEnabled(p.marketId);
         if (p.collateral == 0) revert ZeroAmount();
 
         riskManager.checkLeverage(p.marketId, p.leverage);
         uint256 notional = p.collateral * p.leverage;
-        riskManager.checkPositionSize(p.marketId, notional);
+        if (!skipSizeCheck) riskManager.checkPositionSize(p.marketId, notional);
         riskManager.checkOpenInterest(p.marketId, p.isLong, notional);
-
-        (uint256 entryPrice,) = oracleRouter.getMarkPrice(p.marketId);
-        _checkLimitPrice(p.isLong, entryPrice, p.limitPrice);
 
         uint256 fee = _chargeTakerFee(p.marketId, p.collateral, notional);
         if (vault.availableBalance(trader, settlementToken) < p.collateral + fee) revert InsufficientCollateral();
@@ -314,6 +393,90 @@ contract PerpsEngine is IPerpsEngine, ReentrancyGuard {
     }
 
     // ---------------------------------------------------------------------
+    // Trigger orders (stop-loss / take-profit)
+    // ---------------------------------------------------------------------
+
+    /// @notice Attaches a stop-loss or take-profit to an open position. Once the mark price reaches
+    /// `triggerPrice` anyone may call {executeTriggerOrder}, which closes the whole remaining
+    /// position at the mark price. For a long, a stop-loss must sit below the current mark and a
+    /// take-profit above it; a short is the mirror image. A trigger that is already reached is
+    /// rejected, because it would close the position at once.
+    function placeTriggerOrder(uint256 positionId, TriggerKind kind, uint256 triggerPrice, uint256 expiry)
+        external
+        nonReentrant
+        returns (uint256 orderId)
+    {
+        if (block.timestamp >= expiry) revert DeadlineExpired(expiry, block.timestamp);
+        if (triggerPrice == 0) revert InvalidTriggerPrice();
+
+        PerpPositionManager.PerpPosition memory pos = positionManager.getPosition(positionId);
+        if (pos.owner != msg.sender) revert NotPositionOwner();
+        if (!pos.open) revert PositionNotOpen();
+
+        (uint256 markPrice,) = oracleRouter.getMarkPrice(pos.marketId);
+        bool fireWhenBelow = _firesBelow(pos.isLong, kind);
+        if (fireWhenBelow ? triggerPrice >= markPrice : triggerPrice <= markPrice) revert InvalidTriggerPrice();
+
+        orderId = orderManager.createTriggerOrder(
+            PerpOrderManager.TriggerOrder({
+                positionId: positionId,
+                kind: kind,
+                triggerPrice: triggerPrice,
+                expiry: expiry,
+                owner: msg.sender,
+                status: PerpOrderManager.OrderStatus.OPEN
+            })
+        );
+
+        emit TriggerOrderPlaced(orderId, msg.sender, positionId, kind, triggerPrice, expiry);
+    }
+
+    /// @notice Cancels an open trigger order. Only its owner can.
+    function cancelTriggerOrder(uint256 orderId) external nonReentrant {
+        PerpOrderManager.TriggerOrder memory order = orderManager.getTriggerOrder(orderId);
+        if (order.owner != msg.sender) revert NotPositionOwner();
+        if (order.status != PerpOrderManager.OrderStatus.OPEN) revert OrderNotOpen(orderId);
+
+        orderManager.markTriggerCancelled(orderId);
+        emit TriggerOrderCancelled(orderId, msg.sender);
+    }
+
+    /// @notice Closes the position of an open trigger order once the mark price has reached its
+    /// trigger. Permissionless: the price condition is checked here and the position closes at the
+    /// current mark price, which can be worse than the trigger if the price gapped (there is no
+    /// slippage bound: a stop-loss must get out). The margin, PnL and taker fee settle for the
+    /// position's owner exactly as in {closePosition}. Reverts and leaves the order open when the
+    /// trigger is not reached or the order has expired; reverts with {PositionNotOpen} when the
+    /// position was already closed or liquidated.
+    function executeTriggerOrder(uint256 orderId) external nonReentrant {
+        PerpOrderManager.TriggerOrder memory order = orderManager.getTriggerOrder(orderId);
+        if (order.owner == address(0) || order.status != PerpOrderManager.OrderStatus.OPEN) {
+            revert OrderNotOpen(orderId);
+        }
+        if (block.timestamp > order.expiry) revert OrderExpired(orderId, order.expiry);
+
+        PerpPositionManager.PerpPosition memory pos = positionManager.getPosition(order.positionId);
+        if (!pos.open) revert PositionNotOpen();
+
+        (uint256 markPrice,) = oracleRouter.getMarkPrice(pos.marketId);
+        bool reached =
+            _firesBelow(pos.isLong, order.kind) ? markPrice <= order.triggerPrice : markPrice >= order.triggerPrice;
+        if (!reached) revert TriggerPriceNotReached(orderId, order.triggerPrice, markPrice);
+
+        orderManager.markTriggerExecuted(orderId);
+        _settleFunding(order.positionId, pos.marketId);
+        _applyReduce(order.positionId, pos, pos.size, markPrice, true);
+
+        emit TriggerOrderExecuted(orderId, order.owner, order.positionId, markPrice);
+    }
+
+    /// @dev A long's stop-loss and a short's take-profit fire when the mark falls to the trigger;
+    /// a long's take-profit and a short's stop-loss fire when it rises to it.
+    function _firesBelow(bool isLong, TriggerKind kind) internal pure returns (bool) {
+        return (kind == TriggerKind.STOP_LOSS) == isLong;
+    }
+
+    // ---------------------------------------------------------------------
     // Reduce / Close
     // ---------------------------------------------------------------------
 
@@ -344,6 +507,19 @@ contract PerpsEngine is IPerpsEngine, ReentrancyGuard {
         (uint256 exitPrice,) = oracleRouter.getMarkPrice(pos.marketId);
         _checkExitLimitPrice(pos.isLong, exitPrice, limitPrice);
 
+        _applyReduce(positionId, pos, sizeDelta, exitPrice, isFullClose);
+    }
+
+    /// @dev Settles a reduction or close at `exitPrice`: PnL, margin release, taker fee, open
+    /// interest and the position record. The caller has already checked ownership, the limit price
+    /// (or trigger) and settled funding.
+    function _applyReduce(
+        uint256 positionId,
+        PerpPositionManager.PerpPosition memory pos,
+        uint256 sizeDelta,
+        uint256 exitPrice,
+        bool isFullClose
+    ) internal {
         int256 pnl = MarginEngine.unrealizedPnl(pos.isLong, pos.entryPrice, exitPrice, sizeDelta);
         uint256 collateralReleased = (pos.collateral * sizeDelta) / pos.size;
 

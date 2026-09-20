@@ -140,6 +140,70 @@ export const allEventsAbi = [
     { name: "positionId", type: "uint256", indexed: true },
     { name: "executionPrice", type: "uint256", indexed: false },
   ] },
+  { type: "event", name: "TriggerOrderPlaced", inputs: [
+    { name: "orderId", type: "uint256", indexed: true },
+    { name: "owner", type: "address", indexed: true },
+    { name: "positionId", type: "uint256", indexed: true },
+    { name: "kind", type: "uint8", indexed: false },
+    { name: "triggerPrice", type: "uint256", indexed: false },
+    { name: "expiry", type: "uint256", indexed: false },
+  ] },
+  { type: "event", name: "TriggerOrderCancelled", inputs: [
+    { name: "orderId", type: "uint256", indexed: true },
+    { name: "owner", type: "address", indexed: true },
+  ] },
+  { type: "event", name: "TriggerOrderExecuted", inputs: [
+    { name: "orderId", type: "uint256", indexed: true },
+    { name: "owner", type: "address", indexed: true },
+    { name: "positionId", type: "uint256", indexed: true },
+    { name: "executionPrice", type: "uint256", indexed: false },
+  ] },
+  { type: "event", name: "ShortfallCovered", inputs: [
+    { name: "positionId", type: "uint256", indexed: true },
+    { name: "owner", type: "address", indexed: true },
+    { name: "amount", type: "uint256", indexed: false },
+  ] },
+  { type: "event", name: "BadDebt", inputs: [
+    { name: "positionId", type: "uint256", indexed: true },
+    { name: "owner", type: "address", indexed: true },
+    { name: "amount", type: "uint256", indexed: false },
+  ] },
+  { type: "event", name: "PositionMarkedCross", inputs: [
+    { name: "positionId", type: "uint256", indexed: true },
+    { name: "owner", type: "address", indexed: true },
+  ] },
+  { type: "event", name: "CollateralSeized", inputs: [
+    { name: "owner", type: "address", indexed: true },
+    { name: "token", type: "address", indexed: true },
+    { name: "amount", type: "uint256", indexed: false },
+    { name: "valueCovered", type: "uint256", indexed: false },
+  ] },
+  { type: "event", name: "CollateralConfigured", inputs: [
+    { name: "token", type: "address", indexed: true },
+    { name: "factorBps", type: "uint16", indexed: false },
+    { name: "priceMarketId", type: "bytes32", indexed: false },
+    { name: "enabled", type: "bool", indexed: false },
+  ] },
+  { type: "event", name: "PortfolioMarginSet", inputs: [
+    { name: "owner", type: "address", indexed: true },
+    { name: "enabled", type: "bool", indexed: false },
+  ] },
+  { type: "event", name: "PortfolioOptionAdded", inputs: [
+    { name: "owner", type: "address", indexed: true },
+    { name: "optionPositionId", type: "uint256", indexed: true },
+  ] },
+  { type: "event", name: "SubaccountCreated", inputs: [
+    { name: "owner", type: "address", indexed: true },
+    { name: "index", type: "uint256", indexed: true },
+    { name: "subaccount", type: "address", indexed: false },
+  ] },
+  { type: "event", name: "RFQExecuted", inputs: [
+    { name: "user", type: "address", indexed: true },
+    { name: "maker", type: "address", indexed: true },
+    { name: "positionId", type: "uint256", indexed: true },
+    { name: "price", type: "uint256", indexed: false },
+    { name: "isBlock", type: "bool", indexed: false },
+  ] },
   { type: "event", name: "OptionPositionOpened", inputs: [
     { name: "positionId", type: "uint256", indexed: true },
     { name: "owner", type: "address", indexed: true },

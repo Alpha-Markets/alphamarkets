@@ -23,6 +23,12 @@ struct FeeConfig {
     uint256 liquidationFee;
 }
 
+/// @notice Kind of a trigger order attached to an open perpetual position.
+enum TriggerKind {
+    STOP_LOSS,
+    TAKE_PROFIT
+}
+
 /// @notice European option side.
 enum OptionType {
     CALL,

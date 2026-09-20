@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { InsufficientMarginError, NotImplementedError, OrionisError, PositionLimitExceededError } from "./errors.js";
+import { triggerFiresBelow } from "./orders.js";
 import { createPerps, type PerpsDeps } from "./perps.js";
 import { activeMarket, addresses, fakeClient, NVDA, revertError, USER, WAD } from "./testing.js";
 
@@ -190,6 +191,91 @@ test("scanOrders reads every order from the given id up to the newest", async ()
   const orders = await perps.scanOrders(2n);
   assert.deepEqual(orders.map((o) => o.id), [2n, 3n]);
   assert.equal(calls.filter((c) => c.functionName === "getOrder").length, 2);
+});
+
+const triggerOrder = (overrides: Record<string, unknown> = {}) => ({
+  positionId: 5n,
+  kind: 0,
+  triggerPrice: 170n * WAD,
+  expiry: 2_000_000_000n,
+  owner: USER,
+  status: 0,
+  ...overrides,
+});
+
+test("placeTriggerOrder sends the position, kind, trigger and expiry to the engine", async () => {
+  const { perps, simulated } = setup();
+  const { orderId } = await perps.placeTriggerOrder({
+    positionId: 5n,
+    kind: "TAKE_PROFIT",
+    triggerPrice: "210.25",
+    expiry: 2_000_000_000n,
+  });
+
+  assert.equal(orderId, 42n);
+  const call = simulated()[0]!;
+  assert.equal(call.functionName, "placeTriggerOrder");
+  assert.deepEqual(call.args, [5n, 1, 210_250_000_000_000_000_000n, 2_000_000_000n]);
+});
+
+test("placeTriggerOrder rejects an unknown kind before any RPC call", async () => {
+  const { perps, simulated } = setup();
+  await assert.rejects(
+    perps.placeTriggerOrder({ positionId: 5n, kind: "TRAILING" as never, triggerPrice: "1" }),
+    OrionisError,
+  );
+  assert.equal(simulated().length, 0);
+});
+
+test("trigger orders are unavailable on a deployment without a PerpOrderManager", async () => {
+  const bare = new Proxy(addresses, { get: (target, key) => (key === "perpOrderManager" ? undefined : target[key as keyof typeof target]) });
+  const { perps } = setup({}, activeMarket, bare);
+  await assert.rejects(perps.placeTriggerOrder({ positionId: 1n, kind: "STOP_LOSS", triggerPrice: "1" }), NotImplementedError);
+  assert.deepEqual(await perps.triggerOrders(USER), []);
+});
+
+test("trigger orders are refused on a deployment whose order manager predates them", async () => {
+  const { perps, simulated } = setup({ nextTriggerOrderId: new Error("execution reverted") });
+  assert.equal(await perps.supportsTriggerOrders(), false);
+  await assert.rejects(perps.placeTriggerOrder({ positionId: 1n, kind: "STOP_LOSS", triggerPrice: "1" }), NotImplementedError);
+  assert.equal(simulated().length, 0, "nothing is simulated or sent");
+});
+
+test("supportsTriggerOrders is true once the order manager answers, and remembered", async () => {
+  const { perps, calls } = setup({ nextTriggerOrderId: 0n });
+  assert.equal(await perps.supportsTriggerOrders(), true);
+  assert.equal(await perps.supportsTriggerOrders(), true);
+  assert.equal(calls.filter((c) => c.functionName === "nextTriggerOrderId").length, 1);
+});
+
+test("cancel and execute a trigger order go to the engine; getTriggerOrder decodes it", async () => {
+  const { perps, simulated } = setup({ getTriggerOrder: triggerOrder({ kind: 1, status: 1 }) });
+  await perps.cancelTriggerOrder(3n);
+  await perps.executeTriggerOrder(4n);
+  assert.deepEqual(simulated().map((call) => [call.functionName, call.args]), [
+    ["cancelTriggerOrder", [3n]],
+    ["executeTriggerOrder", [4n]],
+  ]);
+
+  const read = await perps.getTriggerOrder(9n);
+  assert.equal(read.id, 9n);
+  assert.equal(read.kind, "TAKE_PROFIT");
+  assert.equal(read.status, "EXECUTED");
+  assert.equal(read.positionId, 5n);
+});
+
+test("scanTriggerOrders reads every trigger order from the given id up to the newest", async () => {
+  const { perps, calls } = setup({ nextTriggerOrderId: 3n, getTriggerOrder: triggerOrder() });
+  const orders = await perps.scanTriggerOrders(2n);
+  assert.deepEqual(orders.map((o) => o.id), [2n, 3n]);
+  assert.equal(calls.filter((c) => c.functionName === "getTriggerOrder").length, 2);
+});
+
+test("a trigger fires below the mark for a long's stop-loss and a short's take-profit", () => {
+  assert.equal(triggerFiresBelow(true, "STOP_LOSS"), true);
+  assert.equal(triggerFiresBelow(true, "TAKE_PROFIT"), false);
+  assert.equal(triggerFiresBelow(false, "STOP_LOSS"), false);
+  assert.equal(triggerFiresBelow(false, "TAKE_PROFIT"), true);
 });
 
 test("closing a long uses a lower-bound exit price; a short uses an upper bound", async () => {

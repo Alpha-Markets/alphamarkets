@@ -256,3 +256,40 @@ export function useOrders() {
     refetchInterval: 8_000,
   });
 }
+
+/// Whether the deployment has stop-loss and take-profit orders. A deployment made before `[1.3.0]`
+/// has limit orders without them. Cached for the session once known.
+export function useTriggerSupport() {
+  return useQuery({
+    queryKey: ["trigger-support"],
+    queryFn: () => orionisRead.perps.supportsTriggerOrders(),
+    enabled: env.limitOrders,
+    staleTime: Number.POSITIVE_INFINITY,
+  });
+}
+
+/// The connected wallet's stop-loss and take-profit orders, oldest first, read from the chain.
+/// Off where the deployment has none.
+export function useTriggerOrders() {
+  const { address } = useAccount();
+  const { data: supported } = useTriggerSupport();
+  return useQuery({
+    queryKey: ["trigger-orders", address],
+    queryFn: () => orionisRead.portfolio.triggerOrders(address as Address),
+    enabled: Boolean(address && supported),
+    refetchInterval: 8_000,
+  });
+}
+
+/// Ids of the connected wallet's cross-margin positions, as strings. Off where the deployment has no
+/// cross margin. A cross position is liquidated on the account's health, so its own liquidation price
+/// would mislead.
+export function useCrossPositions() {
+  const { address } = useAccount();
+  return useQuery({
+    queryKey: ["cross-positions", address],
+    queryFn: async () => new Set((await orionisRead.crossMargin.positions(address as Address)).map((id) => id.toString())),
+    enabled: Boolean(address && env.crossMargin),
+    refetchInterval: 15_000,
+  });
+}

@@ -71,7 +71,7 @@ await orionis.perps.closePosition(positionId, { tx: { wait: true } });
 - **Markets.** Pass a symbol (`"NVDA"`), a label (`"NVDA-PERP"`) or a bytes32 id. Markets come from MarketRegistry, never from a list in this package, so a new market needs no SDK change.
 - **Previews.** `perps.previewOpen` and `options.previewOpen` return the fee, break-even, max loss, liquidation price and every onchain rule the order would break. They are display data; the contracts stay the source of truth for margin, liquidation and settlement.
 - **Transactions.** Every write simulates first, so a revert is decoded before the wallet is asked to sign. Pass `tx.onStatus` to receive `preparing`, `awaiting_wallet`, `submitted` and, with `tx.wait: true`, `confirming` then `confirmed` or `failed`.
-- **Errors.** Contract reverts become typed errors, all extending `OrionisContractError`: `MarketPausedError`, `StaleOraclePriceError`, `InsufficientMarginError`, `PositionLimitExceededError`, `OpenInterestLimitExceededError`, `SlippageExceededError`, `DeadlineExpiredError`, and for limit orders `OrderNotOpenError`, `OrderExpiredError`, `LimitPriceNotReachedError`. A wallet rejection is `UserRejectedError`. Anything the SDK cannot decode is returned unchanged.
+- **Errors.** Contract reverts become typed errors, all extending `OrionisContractError`: `MarketPausedError`, `StaleOraclePriceError`, `InsufficientMarginError`, `PositionLimitExceededError`, `OpenInterestLimitExceededError`, `SlippageExceededError`, `DeadlineExpiredError`, and for limit and trigger orders `OrderNotOpenError`, `OrderExpiredError`, `LimitPriceNotReachedError`, `TriggerPriceNotReachedError`. A wallet rejection is `UserRejectedError`. Anything the SDK cannot decode is returned unchanged.
 - **Display data.** History, candles, statistics, open interest and funding history come from `services/indexer` through the API. They never feed margin, liquidation or settlement.
 
 ## Perpetuals
@@ -84,6 +84,33 @@ await orionis.perps.closePosition(positionId);
 ```
 
 `increasePosition` charges the taker fee on the added size and rejects a resulting leverage above the market's maximum.
+
+### Strategies, the volatility surface and risk
+
+```ts
+import { buildStrategy } from "@orionis/sdk";
+
+// A straddle from the live chain: quote each side, then analyse.
+const quotes = { CALL: await orionis.options.quote({ underlying: "NVDA", type: "CALL", strike: "190", expiry, contracts: 1 }),
+                 PUT: await orionis.options.quote({ underlying: "NVDA", type: "PUT", strike: "190", expiry, contracts: 1 }) };
+const straddle = buildStrategy("STRADDLE", { strike: 190 }, {
+  spot: 190,
+  quote: (type) => ({ mark: quotes[type].premium, bid: quotes[type].bid, ask: quotes[type].ask }),
+});
+straddle.netPremium; straddle.maxLoss; straddle.breakEvens; straddle.payoffAt(200);
+```
+
+`strategies` covers the seven strategies of the brief. It is analytics: `OptionsEngine` only lets a user buy options, so a strategy with a short leg (`executable: false`) cannot be opened. `options.surface("NVDA")` returns the model's volatility, prices and Greeks per strike and expiry: it is the pricing model's surface, not a market-implied one (there is no order book to imply it from), flat until a skew is configured. `institutional.risk(user)` stress-tests a wallet's open positions (perps at the shocked mark, options at intrinsic value) and `institutional.report(user)` / `reportCsv(user)` return its activity between two dates.
+
+### Trading API, hedging and market makers
+
+`orionis.trading.prepare*` builds an UNSIGNED transaction for every action (deposit, open, close, orders, options, RFQ) and `simulate(tx, from)` runs it as an `eth_call` first, so a bot in any language can sign with its own key: `services/api` serves the same thing as `POST /v1/trade/...`. `hedgeBook` and `planHedge` work out the perp trades that neutralise an options book's delta (`services/hedger` runs them, and only reports unless told to trade).
+
+Market makers answer request-for-quote over `services/api` (`/v1/rfq/...`, and `/v1/mm/...` with an API key) by signing `rfq.typedData(quote)`; a user then calls `rfq.execute(quote)` and the position opens at the quoted price, within a band around the mark. Signing keys are critical secrets (see `packages/contracts/CHANGELOG.md`).
+
+### Subaccounts, cross margin and structured products
+
+`subaccounts.create(index)` makes a separate trading account: send engine calls as it with `subaccounts.execute` / `multicall` (all or nothing), and name a delegate that can trade but never withdraw. `perps.openPosition({ marginMode: "CROSS" })` backs a position with the whole account; `crossMargin.health(user)` returns the contract's own equity and requirement, and `setPortfolioMargin(true)` charges a hedged book less. `structured.build({ kind: "PROTECTED_LONG", ... })` prices a package (a protected long, a straddle, a strangle), signs its option quotes for the subaccount and returns the calls to open them together. All of these need a deployment made after `[1.3.0]`, and none of the contract features is audited.
 
 ### Limit orders
 
@@ -175,7 +202,29 @@ cd packages/contracts && forge build
 pnpm --filter @orionis/sdk generate:abis
 ```
 
-The integration test (`src/integration.test.ts`) deploys the contracts to a local Anvil node and runs deposit, open, increase, close, withdraw, signed option quotes and limit orders through the SDK. Set `SKIP_ANVIL_TESTS=1` to skip it.
+The integration test (`src/integration.test.ts`) deploys the contracts to a local Anvil node and runs deposit, open, increase, close, withdraw, signed option quotes, limit orders and stop-loss orders through the SDK. Set `SKIP_ANVIL_TESTS=1` to skip it.
+
+
+### Stop-loss and take-profit
+
+A trigger order is attached to an open perp position. When the mark price reaches the trigger, the whole remaining position closes at the mark price. A long's stop-loss and a short's take-profit fire as the price falls to the trigger; a long's take-profit and a short's stop-loss fire as it rises to it.
+
+```ts
+const { orderId } = await orionis.perps.placeTriggerOrder({
+  positionId,
+  kind: "STOP_LOSS", // or "TAKE_PROFIT"
+  triggerPrice: "180",
+  expiry: new Date("2026-12-31"), // default: 30 days
+  tx: { wait: true },
+});
+
+await orionis.perps.cancelTriggerOrder(orderId);
+const mine = await orionis.portfolio.triggerOrders(user); // filter on status === "OPEN"
+```
+
+At placement the trigger must sit on the side of the current mark that has not fired yet (a long's stop-loss below it, its take-profit above it; a short is the mirror image), or the call fails with `InvalidTriggerPriceError`. Anyone can fire an order whose trigger is reached with `executeTriggerOrder(orderId)`; `services/keeper` does this. Before then it fails with `TriggerPriceNotReachedError`.
+
+The exit has no slippage bound: if the price jumps past the trigger, the position closes at the new price, not at the trigger. An order on a position that closed another way can never fire (`executeTriggerOrder` fails with the contract's `PositionNotOpen`); cancel it or let it expire. Trigger orders need a deployment made after `[1.3.0]`: `perps.supportsTriggerOrders()` tells you, and `placeTriggerOrder` throws `NotImplementedError` without it.
 
 ### Publishing
 

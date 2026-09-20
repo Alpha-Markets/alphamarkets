@@ -1,10 +1,22 @@
 import type { ContractAddresses } from "@orionis/config";
 import type { Address, Hex, MarketConfig } from "@orionis/types";
-import { perpPositionManagerAbi, perpsEngineAbi, vaultAbi } from "./abis.js";
-import { readOrder, readOrderRange, readUserOrders, requireOrderManager, type OpenOrder } from "./orders.js";
+import { perpOrderManagerAbi, perpPositionManagerAbi, perpsEngineAbi, vaultAbi } from "./abis.js";
+import {
+  readOrder,
+  readOrderRange,
+  readTriggerOrder,
+  readTriggerOrderRange,
+  readUserOrders,
+  readUserTriggerOrders,
+  requireOrderManager,
+  TRIGGER_KINDS,
+  type OpenOrder,
+  type TriggerKind,
+  type TriggerOrder,
+} from "./orders.js";
 import { PRICE_DECIMALS, toBaseUnits, type Amount } from "./amounts.js";
 import type { OrionisClient } from "./client.js";
-import { OrionisError, type OrionisContractError } from "./errors.js";
+import { NotImplementedError, OrionisError, type OrionisContractError } from "./errors.js";
 import type { FeesNamespace } from "./fees.js";
 import type { FundingInfo, FundingNamespace } from "./funding.js";
 import { applyBps, feeFromBps, liquidationPrice } from "./math.js";
@@ -44,6 +56,10 @@ export interface OpenPerpPositionParams extends PriceBound {
   /// against the per-market tiers in RiskManager, never in this SDK.
   leverage: number | bigint;
   orderType?: OrderType;
+  /// `ISOLATED` (default): the position is backed only by its own margin. `CROSS`: it is backed by
+  /// the whole account (free balance, other cross positions, other collateral) and is liquidated when
+  /// the account's equity falls under its requirement. Needs a deployment with `CrossMarginManager`.
+  marginMode?: "ISOLATED" | "CROSS";
   /// The trigger price of a `LIMIT` order (decimal string or 18-decimal `bigint`): a long fills at
   /// or below it, a short at or above it. Required by `previewOpen` for `LIMIT`; ignored for
   /// `MARKET`.
@@ -59,6 +75,18 @@ export interface PlaceLimitOrderParams {
   limitPrice: Amount;
   /// Unix seconds, `Date` or ISO string after which the order can no longer fill. Defaults to 24
   /// hours from now.
+  expiry?: bigint | Date | string;
+  tx?: TxOptions;
+}
+
+export interface PlaceTriggerOrderParams {
+  positionId: bigint;
+  kind: TriggerKind;
+  /// Mark price that fires the order. For a long a stop-loss must sit below the current mark and a
+  /// take-profit above it; a short is the mirror image. A trigger already reached is rejected.
+  triggerPrice: Amount;
+  /// Unix seconds, `Date` or ISO string after which the order can no longer fire. Defaults to 30
+  /// days from now.
   expiry?: bigint | Date | string;
   tx?: TxOptions;
 }
@@ -137,6 +165,26 @@ export interface PerpsNamespace {
   orders(user: Address): Promise<OpenOrder[]>;
   /// Orders with ids from `fromId` up to the newest, for a keeper scanning the book.
   scanOrders(fromId?: bigint): Promise<OpenOrder[]>;
+  /// Attaches a stop-loss or take-profit to an open position. When the mark price reaches the
+  /// trigger anyone can fire it (`executeTriggerOrder`) and the whole remaining position closes at
+  /// the mark price, which can be worse than the trigger if the price gapped. Its owner can cancel
+  /// it. An order left on a position that closed another way can never fire. Needs a deployment
+  /// with trigger orders (`[1.3.0]` or later).
+  placeTriggerOrder(params: PlaceTriggerOrderParams): Promise<{ hash: Hex; orderId: bigint }>;
+  cancelTriggerOrder(orderId: bigint, tx?: TxOptions): Promise<Hex>;
+  /// Whether the deployment has trigger orders. The record of a deployment made before `[1.3.0]`
+  /// has a `PerpOrderManager` (limit orders) without them, and the trigger methods fail there;
+  /// call this first to hide or skip them. A failed probe (for example an unreachable RPC) reads as
+  /// `false` and is retried on the next call.
+  supportsTriggerOrders(): Promise<boolean>;
+  /// Closes the position of an open trigger order whose trigger has been reached (a keeper does
+  /// this). Reverts with `TriggerPriceNotReachedError` before then.
+  executeTriggerOrder(orderId: bigint, tx?: TxOptions): Promise<Hex>;
+  getTriggerOrder(orderId: bigint): Promise<TriggerOrder>;
+  /// Every trigger order the user placed, oldest first.
+  triggerOrders(user: Address): Promise<TriggerOrder[]>;
+  /// Trigger orders with ids from `fromId` up to the newest, for a keeper scanning the book.
+  scanTriggerOrders(fromId?: bigint): Promise<TriggerOrder[]>;
   increasePosition(positionId: bigint, params: IncreasePerpPositionParams): Promise<Hex>;
   reducePosition(positionId: bigint, params: ReducePerpPositionParams): Promise<Hex>;
   closePosition(positionId: bigint, params: ClosePerpPositionParams): Promise<Hex>;
@@ -278,13 +326,18 @@ export function createPerps(deps: PerpsDeps): PerpsNamespace {
     const worstPrice = await priceBound(params, isLong, true, marketId);
     const deadline = deadlineOf(params);
 
+    if (params.marginMode === "CROSS" && !addresses.crossMargin) {
+      throw new NotImplementedError("perps.openPosition", "cross margin needs a deployment with a CrossMarginManager (made after [1.3.0])");
+    }
+    const functionName = params.marginMode === "CROSS" ? "openPositionCross" : "openPosition";
+
     const { hash, result } = await executeTx(
       client,
       () =>
         client.simulateContract({
           address: addresses.perpsEngine,
           abi: perpsEngineAbi,
-          functionName: "openPosition",
+          functionName,
           args: [marketId, isLong, collateral, leverage, worstPrice, deadline],
         }),
       params.tx,
@@ -330,6 +383,61 @@ export function createPerps(deps: PerpsDeps): PerpsNamespace {
       tx,
     );
     return { hash, positionId: result };
+  }
+
+  let triggerSupport = false;
+  async function supportsTriggerOrders(): Promise<boolean> {
+    if (triggerSupport) return true;
+    if (!addresses.perpOrderManager) return false;
+    try {
+      await client.readContract({ address: addresses.perpOrderManager, abi: perpOrderManagerAbi, functionName: "nextTriggerOrderId" });
+      triggerSupport = true;
+    } catch {
+      return false;
+    }
+    return true;
+  }
+
+  async function placeTriggerOrder(params: PlaceTriggerOrderParams) {
+    requireOrderManager(addresses, "perps.placeTriggerOrder");
+    if (!(await supportsTriggerOrders())) {
+      throw new NotImplementedError("perps.placeTriggerOrder", "this deployment has no trigger orders (they need a deployment made after [1.3.0])");
+    }
+    const kind = TRIGGER_KINDS.indexOf(params.kind);
+    if (kind < 0) throw new OrionisError(`perps.placeTriggerOrder: unknown kind ${String(params.kind)}`);
+    const triggerPrice = toBaseUnits(params.triggerPrice, PRICE_DECIMALS);
+    const expiry = params.expiry === undefined ? BigInt(Math.floor(Date.now() / 1000) + 30 * 86_400) : toUnixSeconds(params.expiry);
+
+    const { hash, result } = await executeTx(
+      client,
+      () =>
+        client.simulateContract({
+          address: addresses.perpsEngine,
+          abi: perpsEngineAbi,
+          functionName: "placeTriggerOrder",
+          args: [params.positionId, kind, triggerPrice, expiry],
+        }),
+      params.tx,
+    );
+    return { hash, orderId: result };
+  }
+
+  async function cancelTriggerOrder(orderId: bigint, tx?: TxOptions) {
+    const { hash } = await executeTx(
+      client,
+      () => client.simulateContract({ address: addresses.perpsEngine, abi: perpsEngineAbi, functionName: "cancelTriggerOrder", args: [orderId] }),
+      tx,
+    );
+    return hash;
+  }
+
+  async function executeTriggerOrder(orderId: bigint, tx?: TxOptions) {
+    const { hash } = await executeTx(
+      client,
+      () => client.simulateContract({ address: addresses.perpsEngine, abi: perpsEngineAbi, functionName: "executeTriggerOrder", args: [orderId] }),
+      tx,
+    );
+    return hash;
   }
 
   async function positionMarket(positionId: bigint): Promise<{ isLong: boolean; marketId: Hex }> {
@@ -415,6 +523,13 @@ export function createPerps(deps: PerpsDeps): PerpsNamespace {
     getOrder: (orderId) => readOrder(client, addresses, orderId),
     orders: (user) => readUserOrders(client, addresses, user),
     scanOrders: (fromId = 1n) => readOrderRange(client, addresses, fromId),
+    placeTriggerOrder,
+    cancelTriggerOrder,
+    supportsTriggerOrders,
+    executeTriggerOrder,
+    getTriggerOrder: (orderId) => readTriggerOrder(client, addresses, orderId),
+    triggerOrders: (user) => readUserTriggerOrders(client, addresses, user),
+    scanTriggerOrders: (fromId = 1n) => readTriggerOrderRange(client, addresses, fromId),
     increasePosition,
     reducePosition,
     closePosition,

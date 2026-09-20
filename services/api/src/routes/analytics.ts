@@ -180,4 +180,31 @@ export function registerAnalyticsRoutes(app: FastifyInstance) {
       order by p.id
     `;
   });
+
+  /// Open stop-loss and take-profit orders for a wallet, from the indexed events: placed, not
+  /// cancelled or fired, not expired, and whose position is still open (a position closed or
+  /// liquidated some other way leaves its trigger orders behind onchain, where they can never
+  /// fire). `kind` is 0 for a stop-loss and 1 for a take-profit. The chain (`PerpOrderManager`)
+  /// is the source of truth.
+  app.get<{ Params: { wallet: string } }>("/v1/trigger-orders/:wallet", async (request) => {
+    const wallet = request.params.wallet.toLowerCase();
+    return sql`
+      select p.args ->> 'orderId' as id, p.args ->> 'positionId' as position_id, (p.args ->> 'kind')::int as kind,
+        p.args ->> 'triggerPrice' as trigger_price, p.args ->> 'expiry' as expiry,
+        p.args ->> 'owner' as owner, 'OPEN' as status
+      from events p
+      where p.event_name = 'TriggerOrderPlaced'
+        and lower(p.args ->> 'owner') = ${wallet}
+        and (p.args ->> 'expiry')::numeric > extract(epoch from now())
+        and not exists (
+          select 1 from events x
+          where x.event_name in ('TriggerOrderCancelled', 'TriggerOrderExecuted') and x.args ->> 'orderId' = p.args ->> 'orderId'
+        )
+        and not exists (
+          select 1 from events c
+          where c.event_name in ('PerpPositionClosed', 'PositionLiquidated') and c.args ->> 'positionId' = p.args ->> 'positionId'
+        )
+      order by p.id
+    `;
+  });
 }

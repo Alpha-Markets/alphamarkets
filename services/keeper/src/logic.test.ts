@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import type { OpenOrder } from "@orionis/sdk";
-import { feedNeedsRefresh, isFillable, nextCursor } from "./logic.js";
+import type { OpenOrder, TriggerOrder } from "@orionis/sdk";
+import { feedNeedsRefresh, isFillable, isTriggerReached, nextCursor } from "./logic.js";
 
 const WAD = 10n ** 18n;
 const order = (overrides: Partial<OpenOrder> = {}): OpenOrder => ({
@@ -52,4 +52,42 @@ test("the cursor skips finished orders but stops at the first live one", () => {
 test("a feed is refreshed once it is old enough, not before", () => {
   assert.equal(feedNeedsRefresh(1_000n, 2_799n, 1_800n), false);
   assert.equal(feedNeedsRefresh(1_000n, 2_800n, 1_800n), true);
+});
+
+const trigger = (overrides: Partial<TriggerOrder> = {}): TriggerOrder => ({
+  id: 1n,
+  positionId: 5n,
+  kind: "STOP_LOSS",
+  triggerPrice: 180n * WAD,
+  expiry: 2_000n,
+  owner: `0x${"01".repeat(20)}`,
+  status: "OPEN",
+  ...overrides,
+});
+
+test("a long's stop-loss fires at or below its trigger, its take-profit at or above", () => {
+  assert.equal(isTriggerReached(trigger(), true, 181n * WAD, 100n), false);
+  assert.equal(isTriggerReached(trigger(), true, 180n * WAD, 100n), true);
+  assert.equal(isTriggerReached(trigger(), true, 170n * WAD, 100n), true);
+
+  const profit = trigger({ kind: "TAKE_PROFIT", triggerPrice: 200n * WAD });
+  assert.equal(isTriggerReached(profit, true, 199n * WAD, 100n), false);
+  assert.equal(isTriggerReached(profit, true, 200n * WAD, 100n), true);
+});
+
+test("a short's stop-loss fires at or above its trigger, its take-profit at or below", () => {
+  const stop = trigger({ triggerPrice: 200n * WAD });
+  assert.equal(isTriggerReached(stop, false, 199n * WAD, 100n), false);
+  assert.equal(isTriggerReached(stop, false, 200n * WAD, 100n), true);
+
+  const profit = trigger({ kind: "TAKE_PROFIT", triggerPrice: 170n * WAD });
+  assert.equal(isTriggerReached(profit, false, 171n * WAD, 100n), false);
+  assert.equal(isTriggerReached(profit, false, 170n * WAD, 100n), true);
+});
+
+test("a fired, cancelled or expired trigger order never fires", () => {
+  assert.equal(isTriggerReached(trigger({ status: "EXECUTED" }), true, 1n, 100n), false);
+  assert.equal(isTriggerReached(trigger({ status: "CANCELLED" }), true, 1n, 100n), false);
+  assert.equal(isTriggerReached(trigger({ expiry: 100n }), true, 1n, 101n), false);
+  assert.equal(isTriggerReached(trigger({ expiry: 100n }), true, 1n, 100n), true, "the last second still counts");
 });

@@ -3,7 +3,7 @@ import type { Address, OptionPosition, PerpPosition } from "@orionis/types";
 import { optionPositionManagerAbi, perpPositionManagerAbi } from "./abis.js";
 import type { OrionisClient } from "./client.js";
 import { NotImplementedError, OrionisError } from "./errors.js";
-import { readUserOrders, type OpenOrder } from "./orders.js";
+import { readUserOrders, readUserTriggerOrders, type OpenOrder, type TriggerOrder } from "./orders.js";
 import { createApiGet } from "./api.js";
 import { unrealizedPnl } from "./math.js";
 import type { OracleNamespace } from "./oracle.js";
@@ -60,6 +60,10 @@ export interface PortfolioNamespace {
   /// Filter on `status === "OPEN"` for the ones still resting. Empty on a deployment that
   /// predates limit orders.
   orders(user: Address): Promise<OpenOrder[]>;
+  /// Every stop-loss and take-profit the user placed, oldest first, read from the chain. Filter on
+  /// `status === "OPEN"` for the ones still resting; one on a position that has since closed can
+  /// never fire, so also check the position is open.
+  triggerOrders(user: Address): Promise<TriggerOrder[]>;
   /// Reads open/closed/settled positions directly from the position-manager contracts.
   positions(user: Address): Promise<PortfolioPositions>;
   /// Single-position lookups by id — used by callers (e.g. `services/risk-monitor`) that
@@ -195,6 +199,10 @@ export function createPortfolio({ client, addresses, vault, oracle, apiUrl }: Po
     return readUserOrders(client, addresses, user);
   }
 
+  function triggerOrders(user: Address): Promise<TriggerOrder[]> {
+    return readUserTriggerOrders(client, addresses, user);
+  }
+
   async function funding(user: Address, options?: { limit?: number; cursor?: number }): Promise<FundingPayment[]> {
     const query = new URLSearchParams();
     if (options?.limit) query.set("limit", String(options.limit));
@@ -207,5 +215,5 @@ export function createPortfolio({ client, addresses, vault, oracle, apiUrl }: Po
     return rows.map((row) => ({ ...row, positionId: BigInt(row.positionId), amount: BigInt(row.amount) }));
   }
 
-  return { summary, orders, positions, funding, getOptionPosition, getPerpPosition, history };
+  return { summary, orders, triggerOrders, positions, funding, getOptionPosition, getPerpPosition, history };
 }

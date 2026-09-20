@@ -67,6 +67,28 @@ export function registerOptionRoutes(app: FastifyInstance, _orionis: Orionis) {
     return reply.code(response.status).send(body);
   }
 
+  /// The pricing model's volatility surface for one underlying (a GET, so `expiries` and `strikes`
+  /// ride on the query string). Forwarded as is: the API adds nothing to the numbers.
+  app.get<{ Params: { symbol: string }; Querystring: { expiries?: string; strikes?: string } }>(
+    "/v1/options/:symbol/surface",
+    async (request, reply) => {
+      const pricingUrl = process.env.PRICING_SERVICE_URL ?? "http://localhost:4100";
+      const timeoutMs = Number(process.env.PRICING_REQUEST_TIMEOUT_MS ?? 10_000);
+      const query = new URLSearchParams({ underlying: request.params.symbol });
+      for (const key of ["expiries", "strikes"] as const) {
+        const value = request.query[key];
+        if (value) query.set(key, value);
+      }
+      try {
+        const response = await fetch(`${pricingUrl}/surface?${query}`, { signal: AbortSignal.timeout(timeoutMs) });
+        return reply.code(response.status).send(await response.json());
+      } catch (error) {
+        request.log.error({ error, pricingUrl }, "options surface: pricing service unreachable or timed out");
+        return reply.code(504).send({ error: "pricing service unreachable or timed out" });
+      }
+    },
+  );
+
   app.post<{ Body: unknown }>("/v1/options/quote", (request, reply) => proxyToPricing("/quote", request, reply));
   app.post<{ Body: unknown }>("/v1/options/quote/close", (request, reply) =>
     proxyToPricing("/quote/close", request, reply),
