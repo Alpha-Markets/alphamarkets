@@ -11,8 +11,8 @@ import { WalletButton } from "./WalletButton";
 const items = [
   { label: "Markets", href: "/markets" },
   { label: "Options", href: "/options" },
-  { label: "Strategies", href: "/strategies" },
   { label: "Perpetuals", href: "/perpetuals" },
+  { label: "Strategies", href: "/strategies" },
   { label: "Portfolio", href: "/portfolio" },
   { label: "Activity", href: "/activity" },
 ];
