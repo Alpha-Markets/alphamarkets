@@ -3,6 +3,27 @@
 All notable changes to Orionis Markets smart contracts are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [Unreleased]
+
+Not deployed. Found by auditing the cross-cutting rules in DEVELOPMENT_STEPS.md against `[1.3.0-testnet]`; these changes reach a chain with the next redeploy.
+
+### Added — events for four admin setters that emitted nothing
+
+- `PriceValidator.setMaxPriceAge` emits `MaxPriceAgeUpdated(marketId, value)` and `setMaxDeviationBps` emits `MaxDeviationUpdated(marketId, valueBps)`. These two set the oracle staleness and deviation limits, so a change to them must be visible to the indexer and to monitoring.
+- `FundingManager.setMaxFundingRateBps` emits `MaxFundingRateUpdated(marketId, maxRateBps)`.
+- `PerpsEngine.setRfqManager` emits `RfqManagerSet(manager)`.
+- All four are in `services/indexer` and the SDK's generated ABIs. Tests: `test/core/AdminEvents.t.sol`.
+
+### Added — admin handover script
+
+- `script/HandOverAdmin.s.sol` moves `DEFAULT_ADMIN_ROLE` and every `*_ADMIN_ROLE` on the 18 AccessControl contracts from the deployer to a multisig or timelock, in two steps (grant, then revoke with `RENOUNCE=true`). It refuses a zero address, the current admin, and an address without code unless `ALLOW_EOA=true`. It leaves the operational roles (`ENGINE_ROLE`, `QUOTER_ROLE`, `MAKER_ROLE` and the like) alone.
+- `script/check-admin-roles.sh` runs in the contracts workflow and fails when a contract declares an `*_ADMIN_ROLE` the script does not move.
+- Tests: `test/core/AdminHandover.t.sol` (8 cases, on the full stack: both admins after step one, only the new admin after step two, the new admin can change parameters and the old cannot).
+
+### Added — margin math parity vectors
+
+- `test/vectors/margin.json` holds liquidation price, PnL and margin ratio cases. `test/risk/MarginParity.t.sol` runs them against `MarginEngine`, and `packages/sdk/src/math.test.ts` runs the same file against the SDK's bigint mirror that the web app uses for previews. If the two drift, one suite fails. `foundry.toml` allows reading `test/vectors`.
+
 ## [1.3.0-testnet] - 2026-09-20
 
 Full redeploy to Robinhood Chain testnet (chain ID 46630) via `script/DeployAll.s.sol` then `script/ConfigureMarkets.s.sol`, from the deployer `0xC804c6c50CE6F5B5dFB035378A3F84145914697F`. It replaces `[1.2.0-testnet]`, which is abandoned. Phase 7: trigger orders, subaccounts, cross margin, other collateral, portfolio margin, the insurance fund and RFQ. The settlement token `0x70b0FDa35dEb7BA710C601Ed9c45b9F992027112` is unchanged, and the NVDA mock feed (`0xFB1000c1Bf239D34Af27f54686C9D077F1938Be0`, seeded at $190) is owned by the keeper `0xa22e9da21Ae258f733EE932f767c46CB6508eD69`.

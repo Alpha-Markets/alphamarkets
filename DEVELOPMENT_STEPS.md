@@ -230,7 +230,7 @@ Run before any public deployment or handoff:
 
 Not built until MVP (Priority 0–2) is live and stable. (Work started before that: the MVP is not hosted yet, and the first slice was chosen because it extends the Phase 5 limit orders directly.)
 
-**Phase 7 progress** (2026-09-20). Contracts: 216 tests pass, coverage 96.0% of lines and 66.7% of branches. SDK: 155 tests including the Anvil deployment test, which opens a stop-loss, a cross-margin position, an RFQ position and a subaccount trade on the real deployed contracts. All new contracts are wired by `DeployAll.s.sol`. **Nothing below is deployed, and nothing that holds or moves money is audited.**
+**Phase 7 progress** (2026-09-20). Contracts: 231 tests pass (216 before the cross-cutting audit), coverage 96.0% of lines and 66.7% of branches as of the last measure. SDK: 158 tests including the Anvil deployment test, which opens a stop-loss, a cross-margin position, an RFQ position and a subaccount trade on the real deployed contracts. All new contracts are wired by `DeployAll.s.sol`. **Nothing below is deployed, and nothing that holds or moves money is audited.**
 
 Phase 2 list (Section 39):
 
@@ -275,6 +275,14 @@ Phase 3 list (Section 40):
 - Liquidation and settlement logic always onchain and deterministic; offchain analytics (pricing service) is display-only, never source of truth.
 - Every privileged contract action emits an event.
 - Every admin action path should be built assuming eventual migration to multisig/timelock/governance (Section 37).
+
+**Audit of these rules (2026-09-20, against `[1.3.0-testnet]`).** Each rule was checked across `packages/contracts`, `services/`, `packages/sdk` and `apps/web`.
+
+- *Never hardcode.* No contract address, market symbol, fee or leverage value is baked into the SDK, services or web app; markets, risk limits and fees come from the registry, the chain and `packages/config`. Found and fixed: every service imported the testnet chain id as a constant, and `verify.sh` hardcoded `46630`. A service now reads `CHAIN_ID` and the web app `NEXT_PUBLIC_CHAIN_ID` through `resolveChainId` in `packages/config`, which rejects a chain with no recorded deployment instead of falling back. The frontend's strike ladder and expiries (`NEXT_PUBLIC_OPTION_*`) stay env-driven by design: they are proposals, since the options contract lists no strikes.
+- *One market list.* The indexer fills its `markets` table from `MarketAdded` / `MarketUpdated`, and the API, SDK and web app read that. No second list exists.
+- *Onchain truth, offchain display.* Liquidation, funding and settlement run in the contracts; the trigger and limit-order conditions and the quote signature are re-checked onchain; the risk monitor and hedger only report unless told to act. The web app previews liquidation price, PnL and margin ratio with the SDK's bigint mirror of `MarginEngine`, and a cross position shows "Account" rather than a price. New: `packages/contracts/test/vectors/margin.json` is run by both `MarginParityTest` and the SDK's `math.test.ts`, so the mirror cannot drift silently. The mirror ignores funding accrued and not yet settled, like the contract's isolated formula.
+- *Events for privileged actions.* Four admin setters emitted nothing: `PriceValidator.setMaxPriceAge` and `setMaxDeviationBps` (the oracle staleness and deviation limits), `FundingManager.setMaxFundingRateBps` and `PerpsEngine.setRfqManager`. They emit now (`test/core/AdminEvents.t.sol`), and the indexer and SDK ABIs include them. This reaches a chain with the next redeploy: `[1.3.0-testnet]` still has the gaps. `MockPriceFeed.setPrice` has no event either; it is a testnet mock replaced before mainnet.
+- *Ready for a multisig or timelock.* Every admin path is behind an AccessControl role, but the deployer key held all of them and there was no way to move them. `script/HandOverAdmin.s.sol` now moves the default admin and every `*_ADMIN_ROLE` in two steps (grant, then revoke), and `script/check-admin-roles.sh` in CI fails when a new admin role is not covered. Steps are in `packages/contracts/README.md`. **Still open, needs product:** `OracleRouter.pauseMarket` shares `ORACLE_ADMIN_ROLE` with the oracle source setters, so a timelocked admin also delays an emergency pause, and a fast pause key could swap the oracle. A separate pauser role is a contract change. Also: no timelock contract is deployed or chosen, and the handover has not been run on testnet.
 
 ## Testing & Pre-Deployment
 

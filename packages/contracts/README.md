@@ -46,3 +46,22 @@ forge script script/DeployAll.s.sol --rpc-url robinhood_testnet --broadcast --ve
 ```
 
 Writes addresses to `deployments/<NETWORK_NAME>.json` (checked into the repo as the canonical record) and prints a summary. Verified end-to-end with a local dry run (no `--rpc-url`, ephemeral in-memory EVM) — all 15 contracts deploy and every AccessControl role wires correctly.
+
+## Handing admin to a multisig or timelock
+
+The deployer key starts with every admin role. Before mainnet, move them (Section 37). Run these in order, each from `packages/contracts`:
+
+1. Grant the roles to the new admin (the deployer keeps its own, so nothing is lost if the address is wrong):
+
+    ```bash
+    export PRIVATE_KEY=0x... NETWORK_NAME=robinhood_testnet && NEW_ADMIN=0xMULTISIG forge script script/HandOverAdmin.s.sol --rpc-url robinhood_testnet --broadcast
+    ```
+
+2. From the multisig or timelock, send one admin call (for example `MarketRegistry.setActive` with the current value) and confirm it succeeds.
+3. Revoke the deployer:
+
+    ```bash
+    export PRIVATE_KEY=0x... NETWORK_NAME=robinhood_testnet && NEW_ADMIN=0xMULTISIG RENOUNCE=true forge script script/HandOverAdmin.s.sol --rpc-url robinhood_testnet --broadcast
+    ```
+
+The script does not move the service keys: rotate `QUOTER_ROLE` (`OptionsEngine`) and `MAKER_ROLE` (`RFQManager`) from the new admin. `PerpsEngine` has no admin. `OracleRouter.pauseMarket` shares `ORACLE_ADMIN_ROLE` with `setPrimarySource`, so a timelock in front of that role also delays an emergency pause, and a separate fast key holding it could swap the oracle too. A separate pauser role is a contract change: decide it with product before mainnet.
