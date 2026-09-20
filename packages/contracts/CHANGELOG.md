@@ -5,14 +5,42 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
-### Changed — rebrand from Orionis to AlphaMarkets
+## [1.4.0-testnet] - 2026-09-21
 
-- Renamed `OrionisVault` to `AlphaMarketsVault` and `IOrionisVault` to `IAlphaMarketsVault`. The EIP-712 domain names changed from `OrionisOptionsEngine` to `AlphaMarketsOptionsEngine` and from `OrionisRFQ` to `AlphaMarketsRFQ`, and the SDK signs with the new names.
-- **Every version below, up to `[1.3.0-testnet]`, was deployed under the old names.** The deployed `OptionsEngine` and `RFQManager` still verify the old domains, so signed option quotes and RFQ prices from the renamed SDK and pricing service revert on that deployment. Redeploy to make them work; addresses in older entries stay as recorded.
+Full redeploy to Robinhood Chain testnet (chain ID 46630) via `script/DeployAll.s.sol` then `script/ConfigureMarkets.s.sol`, from the deployer `0xC804c6c50CE6F5B5dFB035378A3F84145914697F`, first block `122118624` (use it as `INDEXER_START_BLOCK`). It replaces `[1.3.0-testnet]`, which is abandoned. Same code as `[1.3.0-testnet]` plus the rebrand and the audit changes below.
 
-Not deployed. Includes the rebrand from Orionis to AlphaMarkets, and the changes found by auditing the cross-cutting rules in DEVELOPMENT_STEPS.md against `[1.3.0-testnet]`; these changes reach a chain with the next redeploy.
+The rebrand renamed `OrionisVault` to `AlphaMarketsVault` and `IOrionisVault` to `IAlphaMarketsVault`, and the EIP-712 domain names from `OrionisOptionsEngine` to `AlphaMarketsOptionsEngine` and from `OrionisRFQ` to `AlphaMarketsRFQ`. **Every version below, down to `[1.0.0-testnet]`, was deployed under the old names.** Their `OptionsEngine` and `RFQManager` verify the old domains, so signed option quotes and RFQ prices from the current SDK and pricing service revert there. This deployment fixes that: `OptionsEngine.eip712Domain()` reports `AlphaMarketsOptionsEngine`.
 
-### Added — events for four admin setters that emitted nothing
+| Contract | Address |
+|---|---|
+| MarketRegistry | `0x9BC1F3927EF19E5CE75Ce964ddf1ECCBfbc75860` |
+| CollateralManager | `0x4cB54d06104BF249c158704Dd55C51E859091238` |
+| AlphaMarketsVault | `0x2EFE37890e3Dce8a18B75fFBE17b941952B25245` |
+| FeeManager | `0xD931b01626Ca93ceB9DF00f5AdD87cBcC7960709` |
+| BuybackModule | `0x88c404731358C75d7286a450850a0AaB8133462d` |
+| PriceValidator | `0x8202ECC35c540158ebbb9bA3228EE194Cb5E83c4` |
+| OracleRouter | `0x92e506941Fa70821888bB0A06FD9B9DFF39DaC4a` |
+| RiskManager | `0xA6f31aDaF3d685a9b0079e22454ED69B0A812F6D` |
+| OptionPositionManager | `0x71DFEd832a096C51B72247F567e0de1c1AC141D1` |
+| OptionMarket | `0xc03122Df09F563C215A9dF5da0b75ab822f0115E` |
+| OptionsEngine | `0x2d02597B4576b4804600C08519351792D376644e` |
+| PerpPositionManager | `0x4A91677FD35A84085215f8f77c5894cA3Ee2f676` |
+| PerpOrderManager | `0xc79062530aBE30aD38AD8862005523739a3f4e21` |
+| FundingManager | `0x6c0b6f70bD03953AfA4486fe0285f93656620B52` |
+| PerpsEngine | `0xD0540f9dCf8667e60397813F56B49484D55A8bDc` |
+| LiquidationEngine | `0x335D0404e9Bc88E8f8d37A68EB9267EbDfFC31cD` |
+| InsuranceFund | `0xEA90ea0A4a8E3F08DafF44D89d2C94feaA21a8b1` |
+| CrossMarginManager | `0x423f332c325f0D12F8C584E230597f6a6fEa4A23` |
+| SubaccountFactory | `0xe3DB5f7a3C11336c212D699C6D593fFE2E65BD01` |
+| RFQManager | `0x7CF3F244eC6819321980146dA906f51eE7a4F1f1` |
+| NVDA underlying token (mock) | `0x9372ACAe81Ef29FC443d959EDA2CB9E0E3560AA6` |
+| NVDA price feed (mock, seeded $190) | `0x828A77F8ffBa1Ca683ac92A26A0010F51AFd654b` |
+
+The settlement token `0x70b0FDa35dEb7BA710C601Ed9c45b9F992027112` is unchanged. The NVDA mock feed is owned by the keeper `0xa22e9da21Ae258f733EE932f767c46CB6508eD69`.
+
+Confirmed live with `cast`: code at all 21 contract addresses; `vault.withdrawGuard`, `perpsEngine.crossMargin` and `perpsEngine.rfqManager` point at the new managers; the pricing quoter `0xC9FA7B955B9FeffDFC3363e095447B99F8c2D31c` holds `QUOTER_ROLE` on `OptionsEngine` (`QUOTER_ADDRESS` was set, so the deployer never held it); the keeper owns the feed; the index price reads $190. Explorer verification is still pending (the explorer's certificate). Not audited, and the wallet-only flows listed under `[1.3.0-testnet]` are still untried.
+
+### Added — events for four admin setters that emitted nothing (in `[1.4.0-testnet]`)
 
 - `PriceValidator.setMaxPriceAge` emits `MaxPriceAgeUpdated(marketId, value)` and `setMaxDeviationBps` emits `MaxDeviationUpdated(marketId, valueBps)`. These two set the oracle staleness and deviation limits, so a change to them must be visible to the indexer and to monitoring.
 - `FundingManager.setMaxFundingRateBps` emits `MaxFundingRateUpdated(marketId, maxRateBps)`.

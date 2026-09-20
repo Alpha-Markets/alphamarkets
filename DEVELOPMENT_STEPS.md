@@ -17,8 +17,8 @@ Derived from PROJECT_BRIEF.md. Sequenced by MVP Priority 0 → 1 → 2, then pos
 | Phase | Status |
 |---|---|
 | 0 Scaffolding | Done |
-| 1 Contracts | Deployed as `[1.3.0-testnet]` (2026-09-20): the Phase 7 contracts on top of the `[1.2.0-testnet]` fixes (`increasePosition`, limit orders, options decimals). Explorer verification pending. |
-| 2 Backend services | Done and running against `1.3.0-testnet`. Nothing is hosted yet: the Railway project has only the Postgres database, and the services run from a developer machine. The indexer database was reset on 2026-09-20. A fresh database now fills `markets` from the registry when the indexer starts, and replays history when `INDEXER_START_BLOCK` (the deploy block, `122013174` for `1.3.0-testnet`) is set; see the readiness check under Testing & Pre-Deployment. New in Phase 5: `services/keeper`, analytics endpoints, bid/ask (spread `OPTION_SPREAD_BPS=200`) and realized volatility in `services/pricing`. |
+| 1 Contracts | Deployed as `[1.4.0-testnet]` (2026-09-21): the `[1.3.0-testnet]` code redeployed under AlphaMarkets names, so the EIP-712 domains match the SDK. Explorer verification pending. |
+| 2 Backend services | Done. Hosting on Railway is set up in the "Hosting on Railway" section below; the indexer database must be reset and replayed from block `122118624` for `1.4.0-testnet`. Earlier: running against `1.3.0-testnet`. Nothing is hosted yet: the Railway project has only the Postgres database, and the services run from a developer machine. The indexer database was reset on 2026-09-20. A fresh database now fills `markets` from the registry when the indexer starts, and replays history when `INDEXER_START_BLOCK` (the deploy block, `122013174` for `1.3.0-testnet`) is set; see the readiness check under Testing & Pre-Deployment. New in Phase 5: `services/keeper`, analytics endpoints, bid/ask (spread `OPTION_SPREAD_BPS=200`) and realized volatility in `services/pricing`. |
 | 3 SDK | Done. Package and docs are ready to publish (`0.1.0`); not published. |
 | 4 Frontend | Done. Accepted with a real wallet on `1.1.0-testnet` (Phase 4) and again on `1.2.0-testnet` (Phase 5: option chain with bid/ask and Greeks, candles, funding and open interest views, limit order placed and cancelled). |
 | 5 Polish | **Done** (2026-09-20): built, tested, deployed as `1.2.0-testnet`, merged into `main` (PR #1) and accepted on testnet. Open follow-ups, none blocking Phase 6: run the keeper continuously (the mock NVDA feed goes stale after 1 hour without it), publish the SDK, explorer verification, and the items marked "not done" in Phase 5. |
@@ -116,7 +116,7 @@ Package: `packages/contracts/` (Foundry + Solidity + OpenZeppelin).
 14. Foundry test suite: unit tests per contract, fuzz tests on margin/liquidation math, integration tests for full open→settle/liquidate flows.
 15. Deploy to testnet. Verify contracts, record addresses into `.env`.
 
-**Status:** deployed as `[1.3.0-testnet]` on Robinhood Chain testnet on 2026-09-20, replacing `[1.2.0-testnet]` (which had replaced `1.1.0-testnet` with: signed-quote `OptionsEngine`, dedicated quoter, `increasePosition` fix, limit orders, options decimals fix, NVDA seeded). Addresses are in `deployments/robinhood_testnet.json` and synced into `packages/config` with `pnpm --filter @alphamarkets/config sync:deployments`. Explorer verification is pending: Robinhood's explorer certificate fails validation, so re-run `script/verify.sh` later. The mock NVDA price feed goes stale after 1 hour; `services/keeper` refreshes it, so the keeper must be running (a real feed is needed before mainnet).
+**Status:** deployed as `[1.4.0-testnet]` on 2026-09-21 (the `[1.3.0-testnet]` code under AlphaMarkets names; first block `122118624`), replacing `[1.3.0-testnet]`, which had replaced `[1.2.0-testnet]` (which had replaced `1.1.0-testnet` with: signed-quote `OptionsEngine`, dedicated quoter, `increasePosition` fix, limit orders, options decimals fix, NVDA seeded). Addresses are in `deployments/robinhood_testnet.json` and synced into `packages/config` with `pnpm --filter @alphamarkets/config sync:deployments`. Explorer verification is pending: Robinhood's explorer certificate fails validation, so re-run `script/verify.sh` later. The mock NVDA price feed goes stale after 1 hour; `services/keeper` refreshes it, so the keeper must be running (a real feed is needed before mainnet).
 
 ---
 
@@ -139,7 +139,7 @@ Package: `packages/contracts/` (Foundry + Solidity + OpenZeppelin).
 7. **CORS**: `services/api` allows only the origins in `CORS_ORIGINS` (no wildcard).
 8. **Signed option quotes** — `services/pricing` signs each open and close premium (EIP-712, `QUOTER_PRIVATE_KEY`); see Phase 1 step 7.
 
-**Status:** steps 1–8 implemented and running against `1.3.0-testnet`. Phase 5 added `services/keeper`, candles, funding history, open interest history, option series statistics and open limit orders to the API, and bid/ask plus realized volatility to the pricing service (see Phase 5).
+**Status:** steps 1–8 implemented and tested against `1.3.0-testnet`; pointed at `1.4.0-testnet` by the config sync. Phase 5 added `services/keeper`, candles, funding history, open interest history, option series statistics and open limit orders to the API, and bid/ask plus realized volatility to the pricing service (see Phase 5).
 
 ---
 
@@ -230,7 +230,7 @@ Run before any public deployment or handoff:
 
 Product name changed to AlphaMarkets. Done in this repo: every package is `@alphamarkets/*`, env vars use the `ALPHAMARKETS_` prefix (`ALPHAMARKETS_ADDRESSES`, `NEXT_PUBLIC_ALPHAMARKETS_VAULT`), the SDK class is `AlphaMarkets`, and the vault contract is `AlphaMarketsVault`. `pnpm check:brand` now also rejects `orionis`. Earlier sections of this file keep their history under the new name.
 
-- **Not yet true on chain.** `[1.3.0-testnet]` was deployed under the old names, and its EIP-712 domains (`OrionisOptionsEngine`, `OrionisRFQ`) differ from the ones the SDK now signs with. Signed option quotes and RFQ prices fail there until the next redeploy (`packages/contracts/CHANGELOG.md`).
+- **On chain since 2026-09-21.** `[1.3.0-testnet]` was deployed under the old names, and its EIP-712 domains (`OrionisOptionsEngine`, `OrionisRFQ`) differed from the ones the SDK signs with. `[1.4.0-testnet]` redeployed the same code under the new names; `OptionsEngine.eip712Domain()` reports `AlphaMarketsOptionsEngine` (`packages/contracts/CHANGELOG.md`).
 - **Outside the repo.** GitHub repository, Railway project, and the local project folder are renamed separately; see the rebrand pull request.
 
 ---
