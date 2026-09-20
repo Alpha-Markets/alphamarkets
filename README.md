@@ -17,7 +17,8 @@ services/
     indexer/            Contract event indexer (PostgreSQL)
     pricing/            Offchain options analytics (display-only, never settlement truth)
     risk-monitor/       Margin health read path
-    keeper/             Keeps testnet price feeds fresh and fills limit orders
+    keeper/             Keeps testnet price feeds fresh, fills limit orders and fires stop-loss and take-profit orders
+    hedger/             Keeps an options book delta neutral with perps (dry run unless told to trade)
 packages/
     contracts/          Solidity contracts (Foundry + OpenZeppelin)
     sdk/                @orionis/sdk — the sanctioned client for contracts/API
