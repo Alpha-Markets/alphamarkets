@@ -61,6 +61,22 @@ body {
     outline: 2px solid var(--color-text);
     outline-offset: 2px;
   }
+
+  /* Tailwind's preflight resets buttons to the default cursor. Every enabled clickable element
+     shows the pointer; disabled controls keep `cursor-not-allowed` from their own utilities. A
+     non-semantic element with an `onClick` (a table row, say) needs `cursor-pointer` itself. */
+  button:not(:disabled),
+  a[href],
+  summary,
+  select:not(:disabled),
+  label[for],
+  input:where([type="checkbox"], [type="radio"], [type="submit"], [type="button"]):not(:disabled),
+  [role="button"]:not([aria-disabled="true"]),
+  [role="tab"],
+  [role="menuitem"],
+  [role="radio"]:not(:disabled) {
+    cursor: pointer;
+  }
 }
 
 ::selection {
