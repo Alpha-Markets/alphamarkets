@@ -30,6 +30,7 @@ contract FundingManager is AccessControl {
     mapping(bytes32 => int256) public cumulativeFundingIndex;
 
     event FundingIntervalUpdated(bytes32 indexed marketId, uint256 interval);
+    event MaxFundingRateUpdated(bytes32 indexed marketId, uint256 maxRateBps);
     event FundingRateUpdated(bytes32 indexed marketId, int256 rateBps, int256 cumulativeIndex);
     event FundingPaid(uint256 indexed positionId, bytes32 indexed marketId, int256 amount, int256 fundingIndex);
 
@@ -55,6 +56,7 @@ contract FundingManager is AccessControl {
 
     function setMaxFundingRateBps(bytes32 marketId, uint256 value) external onlyRole(RISK_ADMIN_ROLE) {
         maxFundingRateBps[marketId] = value;
+        emit MaxFundingRateUpdated(marketId, value);
     }
 
     function nextFundingTimestamp(bytes32 marketId) external view returns (uint256) {

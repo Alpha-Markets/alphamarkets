@@ -89,6 +89,19 @@ export const allEventsAbi = [
     { name: "marketId", type: "bytes32", indexed: true },
     { name: "interval", type: "uint256", indexed: false },
   ] },
+  { type: "event", name: "MaxFundingRateUpdated", inputs: [
+    { name: "marketId", type: "bytes32", indexed: true },
+    { name: "maxRateBps", type: "uint256", indexed: false },
+  ] },
+  { type: "event", name: "MaxPriceAgeUpdated", inputs: [
+    { name: "marketId", type: "bytes32", indexed: true },
+    { name: "value", type: "uint256", indexed: false },
+  ] },
+  { type: "event", name: "MaxDeviationUpdated", inputs: [
+    { name: "marketId", type: "bytes32", indexed: true },
+    { name: "valueBps", type: "uint256", indexed: false },
+  ] },
+  { type: "event", name: "RfqManagerSet", inputs: [{ name: "manager", type: "address", indexed: true }] },
   { type: "event", name: "FundingRateUpdated", inputs: [
     { name: "marketId", type: "bytes32", indexed: true },
     { name: "rateBps", type: "int256", indexed: false },

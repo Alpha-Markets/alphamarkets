@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import { applyBps, feeFromBps, initialMargin, liquidationPrice, maintenanceMargin, marginRatioBps, unrealizedPnl } from "./math.js";
 
@@ -39,4 +40,33 @@ test("margin, fee and slippage helpers round down like the contracts", () => {
   assert.equal(feeFromBps(999n, 1n), 0n);
   assert.equal(applyBps(10_000n, 50n), 10_050n);
   assert.equal(applyBps(10_000n, -50n), 9_950n);
+});
+
+/// The same vectors run against `MarginEngine` in `packages/contracts/test/risk/MarginParity.t.sol`.
+/// The contract decides liquidation and settlement; these helpers only preview, so they must agree.
+const vectors = JSON.parse(readFileSync(new URL("../../contracts/test/vectors/margin.json", import.meta.url), "utf8")) as {
+  liquidationPrice: Array<{ name: string; isLong: boolean; entry: string; collateral: string; size: string; maintenanceBps: string; expected: string }>;
+  unrealizedPnl: Array<{ name: string; isLong: boolean; entry: string; mark: string; size: string; expected: string }>;
+  marginRatioBps: Array<{ name: string; collateral: string; pnl: string; notional: string; expected: string }>;
+};
+
+test("liquidation price matches the vectors shared with the contract", () => {
+  assert.ok(vectors.liquidationPrice.length > 0);
+  for (const v of vectors.liquidationPrice) {
+    assert.equal(liquidationPrice(v.isLong, BigInt(v.entry), BigInt(v.collateral), BigInt(v.size), BigInt(v.maintenanceBps)), BigInt(v.expected), v.name);
+  }
+});
+
+test("unrealized pnl matches the vectors shared with the contract", () => {
+  assert.ok(vectors.unrealizedPnl.length > 0);
+  for (const v of vectors.unrealizedPnl) {
+    assert.equal(unrealizedPnl(v.isLong, BigInt(v.entry), BigInt(v.mark), BigInt(v.size)), BigInt(v.expected), v.name);
+  }
+});
+
+test("margin ratio matches the vectors shared with the contract", () => {
+  assert.ok(vectors.marginRatioBps.length > 0);
+  for (const v of vectors.marginRatioBps) {
+    assert.equal(marginRatioBps(BigInt(v.collateral), BigInt(v.pnl), BigInt(v.notional)), BigInt(v.expected), v.name);
+  }
 });

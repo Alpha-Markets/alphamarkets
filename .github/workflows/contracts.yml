@@ -31,6 +31,9 @@ jobs:
       - name: Check formatting
         run: forge fmt --check
 
+      - name: Admin roles are covered by the handover script
+        run: ./script/check-admin-roles.sh
+
       - name: Build
         run: forge build --sizes
 

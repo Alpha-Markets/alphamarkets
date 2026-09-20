@@ -1,0 +1,18 @@
+{
+  "liquidationPrice": [
+    { "name": "long, 5x, 5% maintenance", "isLong": true, "entry": "184480000000000000000", "collateral": "1000000000000000000000", "size": "5000000000000000000000", "maintenanceBps": "500", "expected": "156808000000000000000" },
+    { "name": "short mirrors the long", "isLong": false, "entry": "184480000000000000000", "collateral": "1000000000000000000000", "size": "5000000000000000000000", "maintenanceBps": "500", "expected": "212152000000000000000" },
+    { "name": "floors at zero when collateral covers the whole notional", "isLong": true, "entry": "100000000000000000000", "collateral": "10000000000000000000000", "size": "100000000000000000000", "maintenanceBps": "500", "expected": "0" },
+    { "name": "zero size", "isLong": true, "entry": "100000000000000000000", "collateral": "1", "size": "0", "maintenanceBps": "500", "expected": "0" }
+  ],
+  "unrealizedPnl": [
+    { "name": "long profit", "isLong": true, "entry": "100000000000000000000", "mark": "110000000000000000000", "size": "1000000000000000000000", "expected": "100000000000000000000" },
+    { "name": "short loss", "isLong": false, "entry": "100000000000000000000", "mark": "110000000000000000000", "size": "1000000000000000000000", "expected": "-100000000000000000000" },
+    { "name": "zero entry", "isLong": true, "entry": "0", "mark": "110000000000000000000", "size": "1000000000000000000000", "expected": "0" }
+  ],
+  "marginRatioBps": [
+    { "name": "no pnl", "collateral": "1000000000000000000000", "pnl": "0", "notional": "5000000000000000000000", "expected": "2000" },
+    { "name": "equity exhausted", "collateral": "1000000000000000000000", "pnl": "-1000000000000000000000", "notional": "5000000000000000000000", "expected": "0" },
+    { "name": "zero notional", "collateral": "1", "pnl": "1", "notional": "0", "expected": "0" }
+  ]
+}

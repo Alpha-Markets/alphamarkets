@@ -18,6 +18,9 @@ contract PriceValidator is AccessControl {
     /// @notice Per-market override; 0 means "use the default".
     mapping(bytes32 => uint256) public maxDeviationBps;
 
+    event MaxPriceAgeUpdated(bytes32 indexed marketId, uint256 value);
+    event MaxDeviationUpdated(bytes32 indexed marketId, uint256 valueBps);
+
     error StaleOraclePrice();
     error InvalidOraclePrice();
 
@@ -28,10 +31,12 @@ contract PriceValidator is AccessControl {
 
     function setMaxPriceAge(bytes32 marketId, uint256 value) external onlyRole(ORACLE_ADMIN_ROLE) {
         maxPriceAge[marketId] = value;
+        emit MaxPriceAgeUpdated(marketId, value);
     }
 
     function setMaxDeviationBps(bytes32 marketId, uint256 value) external onlyRole(ORACLE_ADMIN_ROLE) {
         maxDeviationBps[marketId] = value;
+        emit MaxDeviationUpdated(marketId, value);
     }
 
     /// @notice Reverts with `StaleOraclePrice` if `timestamp` is older than the market's
