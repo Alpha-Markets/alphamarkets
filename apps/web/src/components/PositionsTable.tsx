@@ -1,11 +1,11 @@
 "use client";
 
-import { Button, Num } from "@orionis/ui";
-import { margin } from "@orionis/sdk";
-import type { PerpPosition } from "@orionis/types";
+import { Button, Num } from "@alphamarkets/ui";
+import { margin } from "@alphamarkets/sdk";
+import type { PerpPosition } from "@alphamarkets/types";
 import { useState } from "react";
 import { useCrossPositions, usePerpMarket, useTriggerSupport } from "@/hooks/queries";
-import { useWalletOrionis } from "@/hooks/useOrionis";
+import { useWalletAlphaMarkets } from "@/hooks/useAlphaMarkets";
 import { useTx } from "@/hooks/useTx";
 import { fmt, fmtBps, fmtPrice, fmtSigned, fmtUsd, signTone } from "@/lib/format";
 import { perpLabel, symbolOf } from "@/lib/market";
@@ -18,7 +18,7 @@ const cell = "px-3 py-2 text-right tabular-nums first:text-left";
 function PositionRow({ position, decimals }: { position: PerpPosition; decimals: number }) {
   const symbol = symbolOf(position.marketId);
   const { data: market } = usePerpMarket(symbol);
-  const wallet = useWalletOrionis();
+  const wallet = useWalletAlphaMarkets();
   const run = useTx();
 
   const mark = market?.markPrice;

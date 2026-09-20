@@ -1,11 +1,11 @@
 "use client";
 
-import { Panel, Skeleton, cn } from "@orionis/ui";
+import { Panel, Skeleton, cn } from "@alphamarkets/ui";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState, type ReactNode } from "react";
-import type { MarketStats } from "@orionis/sdk";
-import type { MarketConfig } from "@orionis/types";
+import type { MarketStats } from "@alphamarkets/sdk";
+import type { MarketConfig } from "@alphamarkets/types";
 import { useAllMarkets, useMarketOverviews, useMarketStats, useSettlementDecimals } from "@/hooks/queries";
 import { env } from "@/lib/env";
 import { fmt, fmtBps, fmtPrice } from "@/lib/format";

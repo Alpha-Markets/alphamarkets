@@ -1,12 +1,12 @@
 /// Runs the analytics SQL against a real PostgreSQL that already has the indexer's schema
-/// (`pnpm --filter @orionis/indexer db:migrate`). Skipped unless TEST_DATABASE_URL is set, so the
+/// (`pnpm --filter @alphamarkets/indexer db:migrate`). Skipped unless TEST_DATABASE_URL is set, so the
 /// suite passes on a machine without a database. The tables are emptied first: point it at a
 /// scratch database, never a real one.
 ///
-///   TEST_DATABASE_URL=postgres://postgres@127.0.0.1:5432/orionis_test pnpm --filter @orionis/api test
+///   TEST_DATABASE_URL=postgres://postgres@127.0.0.1:5432/alphamarkets_test pnpm --filter @alphamarkets/api test
 import assert from "node:assert/strict";
 import { after, before, describe, test } from "node:test";
-import { resolveMarketId, type Orionis } from "@orionis/sdk";
+import { resolveMarketId, type AlphaMarkets } from "@alphamarkets/sdk";
 import Fastify from "fastify";
 import postgres from "postgres";
 
@@ -176,7 +176,7 @@ describe("analytics routes against PostgreSQL", { skip: url ? undefined : "TEST_
   test("funding analytics summarise the rates and split the payments by side", async () => {
     // The route checks the market against the registry, which is a chain read; stand in for the one
     // registry entry so that the SQL is the only thing under test.
-    const registry = { markets: { list: async () => [{ marketId: NVDA }] } } as unknown as Orionis;
+    const registry = { markets: { list: async () => [{ marketId: NVDA }] } } as unknown as AlphaMarkets;
     const analytics = Fastify();
     const { registerAdvancedRoutes } = await import("./routes/advanced.js");
     registerAdvancedRoutes(analytics, registry);

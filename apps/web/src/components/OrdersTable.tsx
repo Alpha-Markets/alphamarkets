@@ -1,10 +1,10 @@
 "use client";
 
-import { Button } from "@orionis/ui";
-import type { OpenOrder } from "@orionis/sdk";
+import { Button } from "@alphamarkets/ui";
+import type { OpenOrder } from "@alphamarkets/sdk";
 import { useOrders, useSettlementDecimals } from "@/hooks/queries";
 import { useNow } from "@/hooks/useNow";
-import { useWalletOrionis } from "@/hooks/useOrionis";
+import { useWalletAlphaMarkets } from "@/hooks/useAlphaMarkets";
 import { useTx } from "@/hooks/useTx";
 import { env } from "@/lib/env";
 import { fmtPrice, fmtUsd } from "@/lib/format";
@@ -26,7 +26,7 @@ function fmtExpiry(expiry: bigint, nowMs: number): string {
 }
 
 function OrderRow({ order, decimals, nowMs }: { order: OpenOrder; decimals: number; nowMs: number }) {
-  const wallet = useWalletOrionis();
+  const wallet = useWalletAlphaMarkets();
   const run = useTx();
   const state = orderState(order, BigInt(Math.floor(nowMs / 1000)));
 

@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { BaseError, encodeErrorResult } from "viem";
 import { allErrorsAbi } from "./abis.js";
-import type { OrionisClient } from "./client.js";
+import type { AlphaMarketsClient } from "./client.js";
 import { InsufficientCollateralError } from "./errors.js";
 import { executeTx, type TxEvent } from "./transactions.js";
 
@@ -13,7 +13,7 @@ function fakeClient(overrides: Record<string, unknown> = {}) {
     writeContract: async () => HASH,
     waitForTransactionReceipt: async () => ({ status: "success" }),
     ...overrides,
-  } as unknown as OrionisClient;
+  } as unknown as AlphaMarketsClient;
 }
 
 const simulate = async () => ({ request: {}, result: 7n });

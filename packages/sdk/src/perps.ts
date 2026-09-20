@@ -1,5 +1,5 @@
-import type { ContractAddresses } from "@orionis/config";
-import type { Address, Hex, MarketConfig } from "@orionis/types";
+import type { ContractAddresses } from "@alphamarkets/config";
+import type { Address, Hex, MarketConfig } from "@alphamarkets/types";
 import { perpOrderManagerAbi, perpPositionManagerAbi, perpsEngineAbi, vaultAbi } from "./abis.js";
 import {
   readOrder,
@@ -15,8 +15,8 @@ import {
   type TriggerOrder,
 } from "./orders.js";
 import { PRICE_DECIMALS, toBaseUnits, type Amount } from "./amounts.js";
-import type { OrionisClient } from "./client.js";
-import { NotImplementedError, OrionisError, type OrionisContractError } from "./errors.js";
+import type { AlphaMarketsClient } from "./client.js";
+import { NotImplementedError, AlphaMarketsError, type AlphaMarketsContractError } from "./errors.js";
 import type { FeesNamespace } from "./fees.js";
 import type { FundingInfo, FundingNamespace } from "./funding.js";
 import { applyBps, feeFromBps, liquidationPrice } from "./math.js";
@@ -130,7 +130,7 @@ export interface PerpOpenPreview {
   /// Onchain rules this order would currently break (leverage tier, position cap, open-interest
   /// cap, paused market), decoded from RiskManager's own view functions. Empty means the order
   /// would pass those checks now.
-  violations: OrionisContractError[];
+  violations: AlphaMarketsContractError[];
 }
 
 export interface PerpMarketInfo {
@@ -191,7 +191,7 @@ export interface PerpsNamespace {
 }
 
 export interface PerpsDeps {
-  client: OrionisClient;
+  client: AlphaMarketsClient;
   addresses: ContractAddresses;
   decimals: (token: Address) => Promise<number>;
   markets: MarketsNamespace;
@@ -208,7 +208,7 @@ export function createPerps(deps: PerpsDeps): PerpsNamespace {
   /// different result (an order id, not a position id).
   function assertMarketOrder(orderType: OrderType | undefined, method: string) {
     if (orderType === "LIMIT") {
-      throw new OrionisError(`${method}: a LIMIT order rests until its trigger, so use perps.placeLimitOrder`);
+      throw new AlphaMarketsError(`${method}: a LIMIT order rests until its trigger, so use perps.placeLimitOrder`);
     }
   }
 
@@ -259,7 +259,7 @@ export function createPerps(deps: PerpsDeps): PerpsNamespace {
   async function previewOpen(params: OpenPerpPositionParams & { user?: Address }): Promise<PerpOpenPreview> {
     const isLimit = params.orderType === "LIMIT";
     if (isLimit && params.limitPrice === undefined) {
-      throw new OrionisError("perps.previewOpen: a LIMIT order needs a limitPrice");
+      throw new AlphaMarketsError("perps.previewOpen: a LIMIT order needs a limitPrice");
     }
 
     const marketId = resolveMarketId(params.market);
@@ -404,7 +404,7 @@ export function createPerps(deps: PerpsDeps): PerpsNamespace {
       throw new NotImplementedError("perps.placeTriggerOrder", "this deployment has no trigger orders (they need a deployment made after [1.3.0])");
     }
     const kind = TRIGGER_KINDS.indexOf(params.kind);
-    if (kind < 0) throw new OrionisError(`perps.placeTriggerOrder: unknown kind ${String(params.kind)}`);
+    if (kind < 0) throw new AlphaMarketsError(`perps.placeTriggerOrder: unknown kind ${String(params.kind)}`);
     const triggerPrice = toBaseUnits(params.triggerPrice, PRICE_DECIMALS);
     const expiry = params.expiry === undefined ? BigInt(Math.floor(Date.now() / 1000) + 30 * 86_400) : toUnixSeconds(params.expiry);
 

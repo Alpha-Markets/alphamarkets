@@ -2,7 +2,7 @@
 pragma solidity 0.8.26;
 
 import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
-import {OrionisVault} from "../core/OrionisVault.sol";
+import {AlphaMarketsVault} from "../core/AlphaMarketsVault.sol";
 import {Subaccount} from "./Subaccount.sol";
 
 /// @notice Creates subaccounts (PROJECT_BRIEF.md Section 40) at deterministic addresses and keeps
@@ -12,7 +12,7 @@ import {Subaccount} from "./Subaccount.sol";
 contract SubaccountFactory is AccessControl {
     bytes32 public constant TARGET_ADMIN_ROLE = keccak256("TARGET_ADMIN_ROLE");
 
-    OrionisVault public immutable vault;
+    AlphaMarketsVault public immutable vault;
 
     mapping(address => bool) public allowedTargets;
     mapping(address => address[]) private _subaccounts;
@@ -25,7 +25,7 @@ contract SubaccountFactory is AccessControl {
 
     constructor(address admin, address vault_) {
         if (admin == address(0) || vault_ == address(0)) revert ZeroAddress();
-        vault = OrionisVault(vault_);
+        vault = AlphaMarketsVault(vault_);
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
         _grantRole(TARGET_ADMIN_ROLE, admin);
     }

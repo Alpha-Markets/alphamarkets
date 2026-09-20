@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { afterEach, test } from "node:test";
-import { OptionType } from "@orionis/types";
+import { OptionType } from "@alphamarkets/types";
 import { NotImplementedError } from "./errors.js";
 import { createOptions, premiumForOrder, type SignedQuote } from "./options.js";
 import { activeMarket, addresses, fakeClient, NVDA, USER, WAD } from "./testing.js";

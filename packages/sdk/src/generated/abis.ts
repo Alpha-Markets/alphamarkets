@@ -2874,7 +2874,7 @@ export const feeManagerAbi = [
       {
         "name": "",
         "type": "address",
-        "internalType": "contract IOrionisVault"
+        "internalType": "contract IAlphaMarketsVault"
       }
     ],
     "stateMutability": "view"
@@ -4326,7 +4326,7 @@ export const optionsEngineAbi = [
       {
         "name": "",
         "type": "address",
-        "internalType": "contract IOrionisVault"
+        "internalType": "contract IAlphaMarketsVault"
       }
     ],
     "stateMutability": "view"
@@ -6343,7 +6343,7 @@ export const perpsEngineAbi = [
       {
         "name": "",
         "type": "address",
-        "internalType": "contract IOrionisVault"
+        "internalType": "contract IAlphaMarketsVault"
       }
     ],
     "stateMutability": "view"
@@ -8447,7 +8447,7 @@ export const fundingManagerAbi = [
       {
         "name": "",
         "type": "address",
-        "internalType": "contract IOrionisVault"
+        "internalType": "contract IAlphaMarketsVault"
       }
     ],
     "stateMutability": "view"
@@ -8866,7 +8866,7 @@ export const liquidationEngineAbi = [
       {
         "name": "",
         "type": "address",
-        "internalType": "contract IOrionisVault"
+        "internalType": "contract IAlphaMarketsVault"
       }
     ],
     "stateMutability": "view"
@@ -9220,7 +9220,7 @@ export const insuranceFundAbi = [
       {
         "name": "",
         "type": "address",
-        "internalType": "contract OrionisVault"
+        "internalType": "contract AlphaMarketsVault"
       }
     ],
     "stateMutability": "view"
@@ -10179,7 +10179,7 @@ export const crossMarginAbi = [
       {
         "name": "",
         "type": "address",
-        "internalType": "contract OrionisVault"
+        "internalType": "contract AlphaMarketsVault"
       }
     ],
     "stateMutability": "view"
@@ -10766,7 +10766,7 @@ export const subaccountFactoryAbi = [
       {
         "name": "",
         "type": "address",
-        "internalType": "contract OrionisVault"
+        "internalType": "contract AlphaMarketsVault"
       }
     ],
     "stateMutability": "view"

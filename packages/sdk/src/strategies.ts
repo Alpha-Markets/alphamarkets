@@ -10,7 +10,7 @@
 /// can be analysed here but not opened onchain. `analyzeStrategy(...).executable` says which.
 /// A long underlying leg is a 1x long perp position.
 
-import { OrionisError } from "./errors.js";
+import { AlphaMarketsError } from "./errors.js";
 
 export type StrategyKind =
   | "COVERED_CALL"
@@ -106,7 +106,7 @@ const sign = (side: LegSide) => (side === "LONG" ? 1 : -1);
 const optionPrice = (quote: OptionQuote, side: LegSide) => (side === "LONG" ? (quote.ask ?? quote.mark) : (quote.bid ?? quote.mark));
 
 function optionLeg(params: StrategyParams, kind: "CALL" | "PUT", side: LegSide, strike: number): Leg {
-  if (!Number.isFinite(strike) || strike <= 0) throw new OrionisError(`strategies: a ${kind} strike must be above zero`);
+  if (!Number.isFinite(strike) || strike <= 0) throw new AlphaMarketsError(`strategies: a ${kind} strike must be above zero`);
   const quote = params.quote(kind, strike);
   return { kind, side, strike, quantity: params.quantity ?? 1, price: optionPrice(quote, side), greeks: quote.greeks };
 }
@@ -116,12 +116,12 @@ function underlyingLeg(params: StrategyParams, side: LegSide): Leg {
 }
 
 function need<T>(value: T | undefined, kind: StrategyKind, name: string): T {
-  if (value === undefined) throw new OrionisError(`strategies: ${kind} needs ${name}`);
+  if (value === undefined) throw new AlphaMarketsError(`strategies: ${kind} needs ${name}`);
   return value;
 }
 
 function ascending(kind: StrategyKind, low: number, high: number, what: string) {
-  if (!(low < high)) throw new OrionisError(`strategies: ${kind} needs ${what} to be below the higher strike`);
+  if (!(low < high)) throw new AlphaMarketsError(`strategies: ${kind} needs ${what} to be below the higher strike`);
 }
 
 /// The legs of a named strategy at the given strikes.
@@ -193,10 +193,10 @@ const EPS = 1e-9;
 /// is piecewise linear with kinks at the strikes, so its extremes and zero crossings are found
 /// exactly from the strikes, the zero price, and the slope at the far end.
 export function analyzeStrategy(legs: Leg[]): StrategyAnalysis {
-  if (legs.length === 0) throw new OrionisError("strategies: a strategy needs at least one leg");
+  if (legs.length === 0) throw new AlphaMarketsError("strategies: a strategy needs at least one leg");
   for (const leg of legs) {
-    if (!(leg.quantity > 0)) throw new OrionisError("strategies: every leg needs a quantity above zero");
-    if (leg.kind !== "UNDERLYING" && (leg.strike === undefined || !(leg.strike > 0))) throw new OrionisError("strategies: an option leg needs a strike");
+    if (!(leg.quantity > 0)) throw new AlphaMarketsError("strategies: every leg needs a quantity above zero");
+    if (leg.kind !== "UNDERLYING" && (leg.strike === undefined || !(leg.strike > 0))) throw new AlphaMarketsError("strategies: an option leg needs a strike");
   }
 
   const strikes = [...new Set(legs.flatMap((leg) => (leg.strike === undefined ? [] : [leg.strike])))].sort((a, b) => a - b);
@@ -261,7 +261,7 @@ export function buildStrategy(kind: StrategyKind, strikes: StrategyStrikes, para
 
 /// Evenly spaced `[price, payoff]` points for a chart, from `low` to `high` inclusive.
 export function payoffCurve(legs: Leg[], low: number, high: number, points = 61): Array<[number, number]> {
-  if (!(high > low) || points < 2) throw new OrionisError("strategies: payoffCurve needs high above low and at least 2 points");
+  if (!(high > low) || points < 2) throw new AlphaMarketsError("strategies: payoffCurve needs high above low and at least 2 points");
   return Array.from({ length: points }, (_, i) => {
     const price = low + ((high - low) * i) / (points - 1);
     return [price, payoffAt(legs, price)] as [number, number];

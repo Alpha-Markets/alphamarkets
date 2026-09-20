@@ -1,4 +1,4 @@
-import type { Address } from "@orionis/types";
+import type { Address } from "@alphamarkets/types";
 import { ROBINHOOD_TESTNET_CHAIN_ID, type ChainId } from "./chains.js";
 
 export interface ContractAddresses {
@@ -33,7 +33,7 @@ export interface ContractAddresses {
 }
 
 /// Contracts a deployment may not have, because they were added after it was made. They are absent
-/// from the recorded literal below until a deployment includes them, but `ORIONIS_ADDRESSES` may
+/// from the recorded literal below until a deployment includes them, but `ALPHAMARKETS_ADDRESSES` may
 /// still supply them (a local or fresh deployment).
 export const OPTIONAL_CONTRACTS = ["perpOrderManager", "insuranceFund", "crossMargin", "subaccountFactory", "rfqManager"] as const satisfies ReadonlyArray<keyof ContractAddresses>;
 
@@ -72,12 +72,12 @@ export const deployments: Record<ChainId, ContractAddresses> = {
 export function addressesForChain(chainId: ChainId): ContractAddresses {
   const addresses = deployments[chainId];
   if (!addresses) {
-    throw new Error(`@orionis/config: no deployment recorded for chain ${chainId}`);
+    throw new Error(`@alphamarkets/config: no deployment recorded for chain ${chainId}`);
   }
   return addresses;
 }
 
-/// The recorded deployment for `chainId`, with any addresses in the `ORIONIS_ADDRESSES`
+/// The recorded deployment for `chainId`, with any addresses in the `ALPHAMARKETS_ADDRESSES`
 /// environment variable (a JSON object of `ContractAddresses` keys) replacing the recorded ones
 /// for those contracts only. This lets backend services and staging point at a fresh deployment
 /// (a redeploy, a local Anvil node) without editing checked-in code. Unknown keys and malformed
@@ -88,22 +88,22 @@ export function resolveAddresses(
   env: Record<string, string | undefined> = typeof process === "undefined" ? {} : process.env,
 ): ContractAddresses {
   const recorded = addressesForChain(chainId);
-  const raw = env.ORIONIS_ADDRESSES;
+  const raw = env.ALPHAMARKETS_ADDRESSES;
   if (!raw) return recorded;
 
   let overrides: Record<string, unknown>;
   try {
     overrides = JSON.parse(raw) as Record<string, unknown>;
   } catch {
-    throw new Error("@orionis/config: ORIONIS_ADDRESSES is not valid JSON");
+    throw new Error("@alphamarkets/config: ALPHAMARKETS_ADDRESSES is not valid JSON");
   }
 
   const resolved = { ...recorded };
   for (const [key, value] of Object.entries(overrides)) {
     const known = key in recorded || (OPTIONAL_CONTRACTS as readonly string[]).includes(key);
-    if (!known) throw new Error(`@orionis/config: ORIONIS_ADDRESSES has unknown contract "${key}"`);
+    if (!known) throw new Error(`@alphamarkets/config: ALPHAMARKETS_ADDRESSES has unknown contract "${key}"`);
     if (typeof value !== "string" || !/^0x[0-9a-fA-F]{40}$/.test(value)) {
-      throw new Error(`@orionis/config: ORIONIS_ADDRESSES.${key} is not an address`);
+      throw new Error(`@alphamarkets/config: ALPHAMARKETS_ADDRESSES.${key} is not an address`);
     }
     resolved[key as keyof ContractAddresses] = value as Address;
   }

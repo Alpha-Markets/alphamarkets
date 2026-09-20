@@ -5,12 +5,12 @@ import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {IFeeManager} from "../interfaces/IFeeManager.sol";
-import {IOrionisVault} from "../interfaces/IOrionisVault.sol";
+import {IAlphaMarketsVault} from "../interfaces/IAlphaMarketsVault.sol";
 import {FeeConfig} from "../interfaces/DataTypes.sol";
 import {BuybackModule} from "./BuybackModule.sol";
 
 /// @notice Per-market fee schedule and fee collection routing (PROJECT_BRIEF.md Section
-/// 20). Pulls fees from OrionisVault, then routes a configurable share on to the
+/// 20). Pulls fees from AlphaMarketsVault, then routes a configurable share on to the
 /// BuybackModule (Section 21) — the rest stays here as protocol revenue.
 contract FeeManager is IFeeManager, AccessControl {
     using SafeERC20 for IERC20;
@@ -21,7 +21,7 @@ contract FeeManager is IFeeManager, AccessControl {
 
     uint256 public constant BPS_DENOMINATOR = 10_000;
 
-    IOrionisVault public immutable vault;
+    IAlphaMarketsVault public immutable vault;
 
     mapping(bytes32 => FeeConfig) private _feeConfigs;
     uint256 public buybackShareBps;
@@ -41,7 +41,7 @@ contract FeeManager is IFeeManager, AccessControl {
         if (admin == address(0) || vault_ == address(0)) revert ZeroAddress();
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
         _grantRole(FEE_ADMIN_ROLE, admin);
-        vault = IOrionisVault(vault_);
+        vault = IAlphaMarketsVault(vault_);
     }
 
     function setFeeConfig(bytes32 marketId, FeeConfig calldata config) external onlyRole(FEE_ADMIN_ROLE) {

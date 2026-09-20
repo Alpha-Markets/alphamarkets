@@ -2,9 +2,9 @@
 
 import { useQueries, useQuery } from "@tanstack/react-query";
 import { useAccount } from "wagmi";
-import type { CandleInterval, OpenInterestRange } from "@orionis/sdk";
-import type { Address } from "@orionis/types";
-import { orionisRead } from "@/lib/orionis";
+import type { CandleInterval, OpenInterestRange } from "@alphamarkets/sdk";
+import type { Address } from "@alphamarkets/types";
+import { alphaMarketsRead } from "@/lib/alphamarkets";
 import { env } from "@/lib/env";
 import { seriesKey } from "@/lib/options";
 
@@ -12,7 +12,7 @@ const TICK_MS = 4_000;
 
 // Query definitions are exported next to their hooks so `Prefetch` can warm the same cache entries
 // (same key, same function) before a page asks for them.
-export const perpMarketsQuery = () => ({ queryKey: ["perp-markets"], queryFn: () => orionisRead.perps.list(), refetchInterval: 30_000 });
+export const perpMarketsQuery = () => ({ queryKey: ["perp-markets"], queryFn: () => alphaMarketsRead.perps.list(), refetchInterval: 30_000 });
 
 export function usePerpMarkets() {
   return useQuery(perpMarketsQuery());
@@ -21,7 +21,7 @@ export function usePerpMarkets() {
 /// Config, risk parameters, funding and the three live prices for one market.
 export const perpMarketQuery = (symbol: string) => ({
   queryKey: ["perp-market", symbol],
-  queryFn: () => orionisRead.perps.get(symbol),
+  queryFn: () => alphaMarketsRead.perps.get(symbol),
   enabled: Boolean(symbol),
   refetchInterval: TICK_MS,
 });
@@ -33,7 +33,7 @@ export function usePerpMarket(symbol: string) {
 export function useSettlementDecimals() {
   return useQuery({
     queryKey: ["settlement-decimals"],
-    queryFn: () => orionisRead.erc20.decimals(env.addresses.settlementToken),
+    queryFn: () => alphaMarketsRead.erc20.decimals(env.addresses.settlementToken),
     staleTime: Infinity,
   });
 }
@@ -42,7 +42,7 @@ export function useVaultBalances() {
   const { address } = useAccount();
   return useQuery({
     queryKey: ["vault-balances", address],
-    queryFn: () => orionisRead.vault.balances(address as Address, env.addresses.settlementToken),
+    queryFn: () => alphaMarketsRead.vault.balances(address as Address, env.addresses.settlementToken),
     enabled: Boolean(address),
     refetchInterval: 8_000,
   });
@@ -52,7 +52,7 @@ export function useWalletTokenBalance() {
   const { address } = useAccount();
   return useQuery({
     queryKey: ["wallet-token-balance", address],
-    queryFn: () => orionisRead.erc20.balanceOf(env.addresses.settlementToken, address as Address),
+    queryFn: () => alphaMarketsRead.erc20.balanceOf(env.addresses.settlementToken, address as Address),
     enabled: Boolean(address),
     refetchInterval: 8_000,
   });
@@ -62,14 +62,14 @@ export function usePositions() {
   const { address } = useAccount();
   return useQuery({
     queryKey: ["positions", address],
-    queryFn: () => orionisRead.portfolio.positions(address as Address),
+    queryFn: () => alphaMarketsRead.portfolio.positions(address as Address),
     enabled: Boolean(address),
     refetchInterval: 6_000,
   });
 }
 
 /// Every market on the registry, perps and options alike.
-export const allMarketsQuery = () => ({ queryKey: ["all-markets"], queryFn: () => orionisRead.markets.list(), refetchInterval: 30_000 });
+export const allMarketsQuery = () => ({ queryKey: ["all-markets"], queryFn: () => alphaMarketsRead.markets.list(), refetchInterval: 30_000 });
 
 export function useAllMarkets() {
   return useQuery(allMarketsQuery());
@@ -78,7 +78,7 @@ export function useAllMarkets() {
 /// Statistics need `services/api`; without it the query is off and pages show "–".
 export const marketStatsQuery = () => ({
   queryKey: ["market-stats"],
-  queryFn: () => orionisRead.markets.stats(),
+  queryFn: () => alphaMarketsRead.markets.stats(),
   enabled: Boolean(env.apiUrl),
   refetchInterval: 60_000,
   retry: false,
@@ -92,9 +92,9 @@ export function useMarketStats() {
 /// market with, say, no funding configured still shows its price.
 async function fetchMarketOverview(symbol: string) {
   const [prices, funding, openInterest] = await Promise.allSettled([
-    orionisRead.prices.get(symbol),
-    orionisRead.funding.get(symbol),
-    orionisRead.risk.openInterest(symbol),
+    alphaMarketsRead.prices.get(symbol),
+    alphaMarketsRead.funding.get(symbol),
+    alphaMarketsRead.risk.openInterest(symbol),
   ]);
   const value = <T,>(result: PromiseSettledResult<T>) => (result.status === "fulfilled" ? result.value : undefined);
   return { prices: value(prices), funding: value(funding), openInterest: value(openInterest) };
@@ -120,7 +120,7 @@ export function usePortfolioSummary() {
   const { address } = useAccount();
   return useQuery({
     queryKey: ["portfolio-summary", address],
-    queryFn: () => orionisRead.portfolio.summary(address as Address),
+    queryFn: () => alphaMarketsRead.portfolio.summary(address as Address),
     enabled: Boolean(address),
     refetchInterval: 6_000,
   });
@@ -130,7 +130,7 @@ export function useFunding() {
   const { address } = useAccount();
   return useQuery({
     queryKey: ["funding", address],
-    queryFn: () => orionisRead.portfolio.funding(address as Address, { limit: 200 }),
+    queryFn: () => alphaMarketsRead.portfolio.funding(address as Address, { limit: 200 }),
     enabled: Boolean(address && env.apiUrl),
     refetchInterval: 30_000,
     retry: false,
@@ -141,7 +141,7 @@ export function useHistory() {
   const { address } = useAccount();
   return useQuery({
     queryKey: ["history", address],
-    queryFn: () => orionisRead.portfolio.history(address as Address, { limit: 200 }),
+    queryFn: () => alphaMarketsRead.portfolio.history(address as Address, { limit: 200 }),
     enabled: Boolean(address && env.apiUrl),
     refetchInterval: 30_000,
     retry: false,
@@ -150,7 +150,7 @@ export function useHistory() {
 
 export const priceHistoryQuery = (symbol: string, range: "1h" | "6h" | "24h" | "7d") => ({
   queryKey: ["price-history", symbol, range],
-  queryFn: () => orionisRead.prices.history(symbol, range),
+  queryFn: () => alphaMarketsRead.prices.history(symbol, range),
   enabled: Boolean(symbol && env.apiUrl),
   refetchInterval: 60_000,
   retry: false,
@@ -164,7 +164,7 @@ export function usePriceHistory(symbol: string, range: "1h" | "6h" | "24h" | "7d
 export function useOptionUnderlyings() {
   return useQuery({
     queryKey: ["option-underlyings"],
-    queryFn: async () => (await orionisRead.markets.list()).filter((market) => market.optionsEnabled && market.active),
+    queryFn: async () => (await alphaMarketsRead.markets.list()).filter((market) => market.optionsEnabled && market.active),
     refetchInterval: 30_000,
   });
 }
@@ -173,7 +173,7 @@ export function useOptionUnderlyings() {
 export function useIndexPrice(symbol: string) {
   return useQuery({
     queryKey: ["index-price", symbol],
-    queryFn: async () => (await orionisRead.prices.get(symbol)).index.price,
+    queryFn: async () => (await alphaMarketsRead.prices.get(symbol)).index.price,
     enabled: Boolean(symbol),
     refetchInterval: TICK_MS,
   });
@@ -183,7 +183,7 @@ export function useIndexPrice(symbol: string) {
 export function useListedExpiries(symbol: string) {
   return useQuery({
     queryKey: ["option-expiries", symbol],
-    queryFn: () => orionisRead.options.expiries(symbol),
+    queryFn: () => alphaMarketsRead.options.expiries(symbol),
     enabled: Boolean(symbol && env.apiUrl),
     refetchInterval: 60_000,
     retry: false,
@@ -199,7 +199,7 @@ export function useOptionChain(symbol: string, expiry: bigint | undefined, strik
     queries: strikes.flatMap((strike) =>
       sides.map((type) => ({
         queryKey: ["option-chain-quote", symbol, String(expiry), strike.toString(), type],
-        queryFn: () => orionisRead.options.quote({ underlying: symbol, type, strike, expiry: expiry!, contracts: 1 }),
+        queryFn: () => alphaMarketsRead.options.quote({ underlying: symbol, type, strike, expiry: expiry!, contracts: 1 }),
         enabled: Boolean(env.apiUrl && symbol && expiry),
         refetchInterval: 15_000,
         retry: false,
@@ -215,7 +215,7 @@ export function useOptionStats(symbol: string, expiry: bigint | undefined) {
   return useQuery({
     queryKey: ["option-stats", symbol, String(expiry)],
     queryFn: async () => {
-      const rows = await orionisRead.options.stats(symbol, expiry);
+      const rows = await alphaMarketsRead.options.stats(symbol, expiry);
       return new Map(rows.map((row) => [seriesKey(row.strike, row.type), row]));
     },
     enabled: Boolean(env.apiUrl && symbol && expiry),
@@ -227,7 +227,7 @@ export function useOptionStats(symbol: string, expiry: bigint | undefined) {
 export function useCandles(symbol: string, interval: CandleInterval) {
   return useQuery({
     queryKey: ["candles", symbol, interval],
-    queryFn: () => orionisRead.prices.candles(symbol, interval, 120),
+    queryFn: () => alphaMarketsRead.prices.candles(symbol, interval, 120),
     enabled: Boolean(symbol && env.apiUrl),
     refetchInterval: 30_000,
     retry: false,
@@ -237,7 +237,7 @@ export function useCandles(symbol: string, interval: CandleInterval) {
 export function useMarketFundingHistory(symbol: string) {
   return useQuery({
     queryKey: ["market-funding-history", symbol],
-    queryFn: () => orionisRead.funding.history(symbol, 100),
+    queryFn: () => alphaMarketsRead.funding.history(symbol, 100),
     enabled: Boolean(symbol && env.apiUrl),
     refetchInterval: 60_000,
     retry: false,
@@ -247,7 +247,7 @@ export function useMarketFundingHistory(symbol: string) {
 export function useOpenInterestHistory(symbol: string, range: OpenInterestRange) {
   return useQuery({
     queryKey: ["open-interest-history", symbol, range],
-    queryFn: () => orionisRead.risk.openInterestHistory(symbol, range),
+    queryFn: () => alphaMarketsRead.risk.openInterestHistory(symbol, range),
     enabled: Boolean(symbol && env.apiUrl),
     refetchInterval: 60_000,
     retry: false,
@@ -259,7 +259,7 @@ export function useOpenInterestNow(symbol: string) {
   return useQuery({
     queryKey: ["open-interest-now", symbol],
     queryFn: async () => {
-      const [openInterest, risk] = await Promise.all([orionisRead.risk.openInterest(symbol), orionisRead.risk.get(symbol)]);
+      const [openInterest, risk] = await Promise.all([alphaMarketsRead.risk.openInterest(symbol), alphaMarketsRead.risk.get(symbol)]);
       return { ...openInterest, cap: risk.openInterestCap };
     },
     enabled: Boolean(symbol),
@@ -273,7 +273,7 @@ export function useOrders() {
   const { address } = useAccount();
   return useQuery({
     queryKey: ["orders", address],
-    queryFn: () => orionisRead.portfolio.orders(address as Address),
+    queryFn: () => alphaMarketsRead.portfolio.orders(address as Address),
     enabled: Boolean(address && env.limitOrders),
     refetchInterval: 8_000,
   });
@@ -284,7 +284,7 @@ export function useOrders() {
 export function useTriggerSupport() {
   return useQuery({
     queryKey: ["trigger-support"],
-    queryFn: () => orionisRead.perps.supportsTriggerOrders(),
+    queryFn: () => alphaMarketsRead.perps.supportsTriggerOrders(),
     enabled: env.limitOrders,
     staleTime: Number.POSITIVE_INFINITY,
   });
@@ -297,7 +297,7 @@ export function useTriggerOrders() {
   const { data: supported } = useTriggerSupport();
   return useQuery({
     queryKey: ["trigger-orders", address],
-    queryFn: () => orionisRead.portfolio.triggerOrders(address as Address),
+    queryFn: () => alphaMarketsRead.portfolio.triggerOrders(address as Address),
     enabled: Boolean(address && supported),
     refetchInterval: 8_000,
   });
@@ -310,7 +310,7 @@ export function useCrossPositions() {
   const { address } = useAccount();
   return useQuery({
     queryKey: ["cross-positions", address],
-    queryFn: async () => new Set((await orionisRead.crossMargin.positions(address as Address)).map((id) => id.toString())),
+    queryFn: async () => new Set((await alphaMarketsRead.crossMargin.positions(address as Address)).map((id) => id.toString())),
     enabled: Boolean(address && env.crossMargin),
     refetchInterval: 15_000,
   });

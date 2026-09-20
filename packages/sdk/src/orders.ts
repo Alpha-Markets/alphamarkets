@@ -1,7 +1,7 @@
-import type { ContractAddresses } from "@orionis/config";
-import type { Address, Hex } from "@orionis/types";
+import type { ContractAddresses } from "@alphamarkets/config";
+import type { Address, Hex } from "@alphamarkets/types";
 import { perpOrderManagerAbi } from "./abis.js";
-import type { OrionisClient } from "./client.js";
+import type { AlphaMarketsClient } from "./client.js";
 import { NotImplementedError } from "./errors.js";
 
 export type OrderStatus = "OPEN" | "EXECUTED" | "CANCELLED";
@@ -63,7 +63,7 @@ function toOrder(id: bigint, raw: {
   };
 }
 
-export async function readOrder(client: OrionisClient, addresses: ContractAddresses, orderId: bigint): Promise<OpenOrder> {
+export async function readOrder(client: AlphaMarketsClient, addresses: ContractAddresses, orderId: bigint): Promise<OpenOrder> {
   const raw = await client.readContract({
     address: requireOrderManager(addresses, "perps.getOrder"),
     abi: perpOrderManagerAbi,
@@ -76,7 +76,7 @@ export async function readOrder(client: OrionisClient, addresses: ContractAddres
 /// Every order a user ever placed, oldest first, read from the chain. Filter on `status` for the
 /// resting ones. A deployment without an order manager has none, so this returns an empty list
 /// rather than throwing (a portfolio view should still render).
-export async function readUserOrders(client: OrionisClient, addresses: ContractAddresses, user: Address): Promise<OpenOrder[]> {
+export async function readUserOrders(client: AlphaMarketsClient, addresses: ContractAddresses, user: Address): Promise<OpenOrder[]> {
   const manager = addresses.perpOrderManager;
   if (!manager) return [];
   const ids = await client.readContract({ address: manager, abi: perpOrderManagerAbi, functionName: "getUserOrders", args: [user] });
@@ -86,7 +86,7 @@ export async function readUserOrders(client: OrionisClient, addresses: ContractA
 /// Ids of every order ever placed, `from` (inclusive) up to the newest, for a keeper scanning the
 /// whole book.
 export async function readOrderRange(
-  client: OrionisClient,
+  client: AlphaMarketsClient,
   addresses: ContractAddresses,
   from: bigint,
 ): Promise<OpenOrder[]> {
@@ -143,7 +143,7 @@ function toTriggerOrder(id: bigint, raw: {
   };
 }
 
-export async function readTriggerOrder(client: OrionisClient, addresses: ContractAddresses, orderId: bigint): Promise<TriggerOrder> {
+export async function readTriggerOrder(client: AlphaMarketsClient, addresses: ContractAddresses, orderId: bigint): Promise<TriggerOrder> {
   const raw = await client.readContract({
     address: requireOrderManager(addresses, "perps.getTriggerOrder"),
     abi: perpOrderManagerAbi,
@@ -155,7 +155,7 @@ export async function readTriggerOrder(client: OrionisClient, addresses: Contrac
 
 /// Every trigger order a user ever placed, oldest first, read from the chain. Filter on `status`
 /// for the resting ones. Empty on a deployment without an order manager.
-export async function readUserTriggerOrders(client: OrionisClient, addresses: ContractAddresses, user: Address): Promise<TriggerOrder[]> {
+export async function readUserTriggerOrders(client: AlphaMarketsClient, addresses: ContractAddresses, user: Address): Promise<TriggerOrder[]> {
   const manager = addresses.perpOrderManager;
   if (!manager) return [];
   const ids = await client.readContract({ address: manager, abi: perpOrderManagerAbi, functionName: "getUserTriggerOrders", args: [user] });
@@ -164,7 +164,7 @@ export async function readUserTriggerOrders(client: OrionisClient, addresses: Co
 
 /// Trigger orders with ids from `from` (inclusive) up to the newest, for a keeper scanning the book.
 export async function readTriggerOrderRange(
-  client: OrionisClient,
+  client: AlphaMarketsClient,
   addresses: ContractAddresses,
   from: bigint,
 ): Promise<TriggerOrder[]> {

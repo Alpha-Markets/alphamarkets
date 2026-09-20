@@ -2,8 +2,8 @@
 pragma solidity 0.8.26;
 
 /// @notice Collateral/settlement surface consumed by the options and perps engines,
-/// the funding manager, and the liquidation engine. OrionisVault is the sole implementer.
-interface IOrionisVault {
+/// the funding manager, and the liquidation engine. AlphaMarketsVault is the sole implementer.
+interface IAlphaMarketsVault {
     function lockMargin(address user, address token, uint256 amount) external;
 
     function releaseMargin(address user, address token, uint256 amount) external;

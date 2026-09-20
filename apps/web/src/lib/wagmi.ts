@@ -1,4 +1,4 @@
-import { chains as sdkChains } from "@orionis/config";
+import { chains as sdkChains } from "@alphamarkets/config";
 // `injected` comes from the package root: the `wagmi/connectors` barrel pulls in every wallet SDK
 // (Coinbase, Base, ...) and their optional dependencies, none of which the terminal uses.
 import { createConfig, http, injected } from "wagmi";

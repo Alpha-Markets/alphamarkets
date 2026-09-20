@@ -1,4 +1,4 @@
-import { requireEnv } from "@orionis/config";
+import { requireEnv } from "@alphamarkets/config";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import * as schema from "./schema.js";

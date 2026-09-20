@@ -10,7 +10,7 @@ loadEnvConfig(resolve(import.meta.dirname, "../.."), process.env.NODE_ENV !== "p
 
 const config: NextConfig = {
   // Workspace packages ship TypeScript source; Next compiles them.
-  transpilePackages: ["@orionis/sdk", "@orionis/config", "@orionis/types", "@orionis/ui"],
+  transpilePackages: ["@alphamarkets/sdk", "@alphamarkets/config", "@alphamarkets/types", "@alphamarkets/ui"],
   reactStrictMode: true,
   // Workspace packages import their own files as "./x.js" while the source is x.ts / x.tsx.
   webpack(webpackConfig) {

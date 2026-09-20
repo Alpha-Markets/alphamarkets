@@ -2,7 +2,7 @@
   "$schema": "https://railway.com/railway.schema.json",
   "build": {
     "builder": "RAILPACK",
-    "buildCommand": "pnpm --filter @orionis/web build",
+    "buildCommand": "pnpm --filter @alphamarkets/web build",
     "watchPatterns": [
       "/apps/web/**",
       "/packages/**",
@@ -11,7 +11,7 @@
     ]
   },
   "deploy": {
-    "startCommand": "pnpm --filter @orionis/web start",
+    "startCommand": "pnpm --filter @alphamarkets/web start",
     "restartPolicyType": "ON_FAILURE",
     "restartPolicyMaxRetries": 10,
     "healthcheckPath": "/",

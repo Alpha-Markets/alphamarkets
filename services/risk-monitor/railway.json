@@ -11,7 +11,7 @@
     ]
   },
   "deploy": {
-    "startCommand": "pnpm --filter @orionis/risk-monitor start",
+    "startCommand": "pnpm --filter @alphamarkets/risk-monitor start",
     "restartPolicyType": "ON_FAILURE",
     "restartPolicyMaxRetries": 10
   }

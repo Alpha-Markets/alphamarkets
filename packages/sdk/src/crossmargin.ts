@@ -1,7 +1,7 @@
-import type { ContractAddresses } from "@orionis/config";
-import type { Address, Hex } from "@orionis/types";
+import type { ContractAddresses } from "@alphamarkets/config";
+import type { Address, Hex } from "@alphamarkets/types";
 import { crossMarginAbi, insuranceFundAbi } from "./abis.js";
-import type { OrionisClient } from "./client.js";
+import type { AlphaMarketsClient } from "./client.js";
 import { NotImplementedError } from "./errors.js";
 import { executeTx, type TxOptions } from "./transactions.js";
 
@@ -50,7 +50,7 @@ export interface CrossMarginNamespace {
   insuranceFundBalance(token?: Address): Promise<bigint>;
 }
 
-export function createCrossMargin(client: OrionisClient, addresses: ContractAddresses): CrossMarginNamespace {
+export function createCrossMargin(client: AlphaMarketsClient, addresses: ContractAddresses): CrossMarginNamespace {
   function manager(method: string): Address {
     if (!addresses.crossMargin) throw new NotImplementedError(method, "this deployment has no CrossMarginManager (it needs a deployment made after [1.3.0])");
     return addresses.crossMargin;

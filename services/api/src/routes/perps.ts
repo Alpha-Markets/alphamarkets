@@ -1,8 +1,8 @@
-import { resolveMarketId, type Orionis } from "@orionis/sdk";
+import { resolveMarketId, type AlphaMarkets } from "@alphamarkets/sdk";
 import type { FastifyInstance } from "fastify";
 import { getSql } from "../db.js";
 
-export function registerPerpRoutes(app: FastifyInstance, orionis: Orionis) {
+export function registerPerpRoutes(app: FastifyInstance, alphaMarkets: AlphaMarkets) {
   const sql = getSql();
 
   app.get("/v1/perps", async () => {
@@ -17,7 +17,7 @@ export function registerPerpRoutes(app: FastifyInstance, orionis: Orionis) {
   });
 
   app.get<{ Params: { symbol: string } }>("/v1/perps/:symbol/funding", async (request) => {
-    const funding = await orionis.funding.get(request.params.symbol);
+    const funding = await alphaMarkets.funding.get(request.params.symbol);
     return {
       currentFundingRateBps: funding.currentFundingRateBps.toString(),
       fundingIntervalSeconds: funding.fundingIntervalSeconds.toString(),

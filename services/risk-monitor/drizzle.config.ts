@@ -1,6 +1,6 @@
 import { defineConfig } from "drizzle-kit";
 
-// Inlined rather than imported from `@orionis/config` — see services/indexer/drizzle.config.ts
+// Inlined rather than imported from `@alphamarkets/config` — see services/indexer/drizzle.config.ts
 // for why drizzle-kit's own bundler can't resolve that package's `.js` -> `.ts` specifiers.
 try {
   process.loadEnvFile("../../.env");

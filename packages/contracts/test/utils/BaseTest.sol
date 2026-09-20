@@ -5,7 +5,7 @@ import {Test} from "forge-std/Test.sol";
 
 import {MarketRegistry} from "../../src/core/MarketRegistry.sol";
 import {CollateralManager} from "../../src/core/CollateralManager.sol";
-import {OrionisVault} from "../../src/core/OrionisVault.sol";
+import {AlphaMarketsVault} from "../../src/core/AlphaMarketsVault.sol";
 import {FeeManager} from "../../src/core/FeeManager.sol";
 import {BuybackModule} from "../../src/core/BuybackModule.sol";
 import {PriceValidator} from "../../src/oracle/PriceValidator.sol";
@@ -27,7 +27,7 @@ import {LiquidationEngine} from "../../src/perps/LiquidationEngine.sol";
 import {MarketConfig} from "../../src/interfaces/DataTypes.sol";
 import {MockERC20} from "../mocks/MockERC20.sol";
 
-/// @notice Deploys the full Orionis Markets Phase 1 contract stack, wires every
+/// @notice Deploys the full AlphaMarkets Phase 1 contract stack, wires every
 /// AccessControl role, seeds one market ("NVDA"), and funds two test users with deposited
 /// collateral — shared setup for unit, fuzz, and integration tests.
 contract BaseTest is Test {
@@ -36,7 +36,7 @@ contract BaseTest is Test {
     address internal bob = makeAddr("bob");
     address internal keeper = makeAddr("keeper");
     /// Signs option premium quotes, standing in for services/pricing.
-    uint256 internal quoterKey = uint256(keccak256("orionis.test.quoter"));
+    uint256 internal quoterKey = uint256(keccak256("alphamarkets.test.quoter"));
     address internal quoter = vm.addr(quoterKey);
     uint256 internal nextQuoteNonce = 1;
 
@@ -48,7 +48,7 @@ contract BaseTest is Test {
 
     MarketRegistry internal marketRegistry;
     CollateralManager internal collateralManager;
-    OrionisVault internal vault;
+    AlphaMarketsVault internal vault;
     FeeManager internal feeManager;
     BuybackModule internal buybackModule;
     PriceValidator internal priceValidator;
@@ -80,7 +80,7 @@ contract BaseTest is Test {
 
         marketRegistry = new MarketRegistry(admin);
         collateralManager = new CollateralManager(admin);
-        vault = new OrionisVault(admin, address(collateralManager));
+        vault = new AlphaMarketsVault(admin, address(collateralManager));
         feeManager = new FeeManager(admin, address(vault));
         buybackModule = new BuybackModule(admin);
         priceValidator = new PriceValidator(admin);

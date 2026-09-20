@@ -4,7 +4,7 @@ pragma solidity 0.8.26;
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
-import {OrionisVault} from "../core/OrionisVault.sol";
+import {AlphaMarketsVault} from "../core/AlphaMarketsVault.sol";
 import {SubaccountFactory} from "./SubaccountFactory.sol";
 
 /// @notice A separate trading account owned by one address (PROJECT_BRIEF.md Section 40,
@@ -74,7 +74,7 @@ contract Subaccount is ReentrancyGuard {
     /// @notice Moves `amount` of `token` from the owner's wallet into this subaccount's Vault
     /// balance. The owner must have approved this subaccount for the token.
     function deposit(address token, uint256 amount) external onlyOwner nonReentrant {
-        OrionisVault vault = factory.vault();
+        AlphaMarketsVault vault = factory.vault();
         IERC20(token).safeTransferFrom(owner, address(this), amount);
         IERC20(token).forceApprove(address(vault), amount);
         vault.deposit(token, amount);

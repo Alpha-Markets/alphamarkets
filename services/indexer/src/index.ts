@@ -1,8 +1,8 @@
-import { loadDotEnv } from "@orionis/config";
+import { loadDotEnv } from "@alphamarkets/config";
 loadDotEnv();
 
-import { requireEnv, resolveAddresses, resolveChainId } from "@orionis/config";
-import { Orionis } from "@orionis/sdk";
+import { requireEnv, resolveAddresses, resolveChainId } from "@alphamarkets/config";
+import { AlphaMarkets } from "@alphamarkets/sdk";
 import { createPublicClient, http, parseEventLogs } from "viem";
 import { and, eq, lt, sql as sqlOp } from "drizzle-orm";
 import { getDb, getSql } from "./db/client.js";
@@ -30,7 +30,7 @@ const contractNames = contractNamesByAddress(addresses);
 const addressList = watchedAddresses(addresses);
 
 const publicClient = createPublicClient({ transport: http(requireEnv("RPC_URL")) });
-const orionis = new Orionis({ chainId, transport: http(requireEnv("RPC_URL")) });
+const alphaMarkets = new AlphaMarkets({ chainId, transport: http(requireEnv("RPC_URL")) });
 const db = getDb();
 
 async function lastIndexedBlock(): Promise<bigint> {
@@ -45,7 +45,7 @@ async function lastIndexedBlock(): Promise<bigint> {
 }
 
 async function upsertMarket(marketId: `0x${string}`, blockNumber: bigint) {
-  const config = await orionis.markets.get(marketId);
+  const config = await alphaMarkets.markets.get(marketId);
   await db
     .insert(markets)
     .values({
@@ -80,7 +80,7 @@ async function upsertMarket(marketId: `0x${string}`, blockNumber: bigint) {
 /// deployment's `MarketAdded` events, and would serve an empty market list.
 async function syncMarkets() {
   const head = await publicClient.getBlockNumber();
-  const listed = await orionis.markets.list();
+  const listed = await alphaMarkets.markets.list();
   for (const market of listed) await upsertMarket(market.marketId, head);
   console.log(`indexer: ${listed.length} market(s) synced from the registry`);
 }
@@ -142,7 +142,7 @@ async function sampleIndexPrices() {
   const active = await db.select({ marketId: markets.marketId }).from(markets).where(eq(markets.active, true));
   for (const { marketId } of active) {
     try {
-      const { price } = await orionis.oracle.getIndexPrice(marketId);
+      const { price } = await alphaMarkets.oracle.getIndexPrice(marketId);
       await db.insert(priceTicks).values({ marketId, price: price.toString() });
     } catch (error) {
       console.warn(`indexer: could not sample index price for ${marketId}`, error);

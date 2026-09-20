@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.26;
 
-/// @notice Price abstraction distinguishing the 4 price types Orionis relies on:
+/// @notice Price abstraction distinguishing the 4 price types AlphaMarkets relies on:
 /// Index (reference underlying price), Mark (used for PnL/margin/liquidation/risk),
 /// Last (most recent executed derivatives price), Settlement (validated expiry price).
 interface IOracle {

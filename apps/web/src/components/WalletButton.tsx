@@ -1,12 +1,12 @@
 "use client";
 
-import { Button } from "@orionis/ui";
+import { Button } from "@alphamarkets/ui";
 import Link from "next/link";
 import { useCallback, useRef, useState } from "react";
 import { useAccount, useDisconnect, useSwitchChain } from "wagmi";
 import { useDismiss } from "@/hooks/useDismiss";
 import { shortHash } from "@/lib/format";
-import { orionisRead } from "@/lib/orionis";
+import { alphaMarketsRead } from "@/lib/alphamarkets";
 import { chain } from "@/lib/wagmi";
 import { ConnectButton } from "./ConnectButton";
 
@@ -14,7 +14,7 @@ const item = "flex h-9 w-full items-center px-3 text-left text-sm hover:bg-line"
 
 function explorerAddressUrl(address: `0x${string}`): string | undefined {
   try {
-    return orionisRead.explorer.addressUrl(address);
+    return alphaMarketsRead.explorer.addressUrl(address);
   } catch {
     return undefined; // NEXT_PUBLIC_EXPLORER_URL is not set
   }

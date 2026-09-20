@@ -1,8 +1,8 @@
-import { loadDotEnv } from "@orionis/config";
+import { loadDotEnv } from "@alphamarkets/config";
 loadDotEnv();
 
-import { requireEnv, resolveChainId } from "@orionis/config";
-import { Orionis } from "@orionis/sdk";
+import { requireEnv, resolveChainId } from "@alphamarkets/config";
+import { AlphaMarkets } from "@alphamarkets/sdk";
 import { createPublicClient, http } from "viem";
 import { getDb, getSql } from "./db/client.js";
 import { riskSnapshots } from "./db/schema.js";
@@ -20,7 +20,7 @@ const POLL_INTERVAL_MS = Number(process.env.RISK_MONITOR_POLL_INTERVAL_MS ?? 10_
 const CANDIDATE_BUFFER_BPS = BigInt(process.env.RISK_CANDIDATE_BUFFER_BPS ?? 200);
 
 const chainId = resolveChainId(process.env.CHAIN_ID);
-const orionis = new Orionis({ chainId, transport: http(requireEnv("RPC_URL")) });
+const alphaMarkets = new AlphaMarkets({ chainId, transport: http(requireEnv("RPC_URL")) });
 const publicClient = createPublicClient({ transport: http(requireEnv("RPC_URL")) });
 const db = getDb();
 const sql = getSql();
@@ -44,12 +44,12 @@ async function openPerpPositionIds(): Promise<bigint[]> {
 }
 
 async function checkPosition(positionId: bigint) {
-  const position = await orionis.portfolio.getPerpPosition(positionId);
+  const position = await alphaMarkets.portfolio.getPerpPosition(positionId);
   if (!position.open) return;
 
   const [{ price: markPrice }, risk, blockNumber] = await Promise.all([
-    orionis.oracle.getMarkPrice(position.marketId),
-    orionis.risk.get(position.marketId),
+    alphaMarkets.oracle.getMarkPrice(position.marketId),
+    alphaMarkets.risk.get(position.marketId),
     publicClient.getBlockNumber(),
   ]);
 

@@ -1,4 +1,4 @@
-import { resolveMarketId } from "@orionis/sdk";
+import { resolveMarketId } from "@alphamarkets/sdk";
 import type { FastifyInstance } from "fastify";
 import { getSql } from "../db.js";
 import {

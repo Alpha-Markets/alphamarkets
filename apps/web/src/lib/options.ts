@@ -1,6 +1,6 @@
 import { formatUnits } from "viem";
-import type { Hex, OptionPosition } from "@orionis/types";
-import { OptionType } from "@orionis/types";
+import type { Hex, OptionPosition } from "@alphamarkets/types";
+import { OptionType } from "@alphamarkets/types";
 import { symbolOf } from "./market";
 
 const MONTHS = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];

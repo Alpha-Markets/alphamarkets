@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { afterEach, test } from "node:test";
-import { NotImplementedError, OrionisError } from "./errors.js";
+import { NotImplementedError, AlphaMarketsError } from "./errors.js";
 import { createInstitutional } from "./institutional.js";
 import { USER } from "./testing.js";
 
@@ -69,7 +69,7 @@ test("risk restores every amount, passes shocks, and rejects fractional ones bef
   assert.equal(risk.distances[0]!.distanceBps, null);
   assert.deepEqual(risk.scenarios[0]!.liquidated, [1n]);
   assert.equal(risk.scenarios[0]!.perps[0]!.liquidated, true);
-  await assert.rejects(createInstitutional("http://api.test").risk(USER, [1.5]), OrionisError);
+  await assert.rejects(createInstitutional("http://api.test").risk(USER, [1.5]), AlphaMarketsError);
   assert.equal(urls.length, 1, "no call for the bad shock");
 });
 

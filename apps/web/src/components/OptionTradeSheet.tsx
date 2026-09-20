@@ -1,6 +1,6 @@
 "use client";
 
-import { Button } from "@orionis/ui";
+import { Button } from "@alphamarkets/ui";
 import { expiryCode, strikeText } from "@/lib/options";
 import { useOptionOrder } from "@/stores/optionOrder";
 import { OptionTicket } from "./OptionTicket";

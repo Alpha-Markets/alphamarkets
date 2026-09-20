@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import type { OpenOrder } from "@orionis/sdk";
+import type { OpenOrder } from "@alphamarkets/sdk";
 import { openOrderCount, orderState, sortOrders } from "./orders.js";
 
 const order = (id: bigint, overrides: Partial<OpenOrder> = {}): OpenOrder => ({

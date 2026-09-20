@@ -2,7 +2,7 @@
 pragma solidity 0.8.26;
 
 import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
-import {IOrionisVault} from "../interfaces/IOrionisVault.sol";
+import {IAlphaMarketsVault} from "../interfaces/IAlphaMarketsVault.sol";
 import {OracleRouter} from "../oracle/OracleRouter.sol";
 import {PerpPositionManager} from "./PerpPositionManager.sol";
 
@@ -20,7 +20,7 @@ contract FundingManager is AccessControl {
 
     OracleRouter public immutable oracleRouter;
     PerpPositionManager public immutable positionManager;
-    IOrionisVault public immutable vault;
+    IAlphaMarketsVault public immutable vault;
     address public immutable settlementToken;
 
     mapping(bytes32 => uint256) public fundingInterval;
@@ -45,7 +45,7 @@ contract FundingManager is AccessControl {
         _grantRole(RISK_ADMIN_ROLE, admin);
         oracleRouter = OracleRouter(oracleRouter_);
         positionManager = PerpPositionManager(positionManager_);
-        vault = IOrionisVault(vault_);
+        vault = IAlphaMarketsVault(vault_);
         settlementToken = settlementToken_;
     }
 

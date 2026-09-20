@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import type { Side } from "@orionis/sdk";
+import type { Side } from "@alphamarkets/sdk";
 
 /// Terminal selection that several panels share. Server data lives in TanStack Query, not here.
 interface TerminalState {

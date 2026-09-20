@@ -1,19 +1,21 @@
 #!/usr/bin/env bash
-# Fails when a tracked file contains the retired brand name (PROJECT_BRIEF.md Section 46).
-# PROJECT_BRIEF.md and DEVELOPMENT_STEPS.md are excluded: they state the rebrand rule itself.
+# Fails when a tracked file contains the retired brand names (Citadelle, then Orionis; PROJECT_BRIEF.md Section 46).
+# PROJECT_BRIEF.md, DEVELOPMENT_STEPS.md and the contracts CHANGELOG are excluded: they state the rebrand
+# rule or record contract names that are deployed on chain under a retired name.
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
 
-hits=$(git grep -n -I -i -E 'citadel|ctdl' -- . \
-  ':!PROJECT_BRIEF.md' ':!DEVELOPMENT_STEPS.md' ':!pnpm-lock.yaml' ':!scripts/check-brand.sh' || true)
-names=$(git ls-files | grep -i -E 'citadel|ctdl' || true)
+hits=$(git grep -n -I -i -E 'citadel|ctdl|orionis' -- . \
+  ':!PROJECT_BRIEF.md' ':!DEVELOPMENT_STEPS.md' ':!pnpm-lock.yaml' ':!scripts/check-brand.sh' \
+  ':!packages/contracts/CHANGELOG.md' || true)
+names=$(git ls-files | grep -i -E 'citadel|ctdl|orionis' || true)
 
 if [ -n "$hits$names" ]; then
-  echo "Retired brand name found (Citadelle / CTDL):"
+  echo "Retired brand name found (Citadelle / CTDL / Orionis):"
   [ -n "$hits" ] && echo "$hits"
   [ -n "$names" ] && echo "$names"
   exit 1
 fi
 
-echo "Brand check passed: no Citadelle or CTDL references."
+echo "Brand check passed: no Citadelle, CTDL or Orionis references."

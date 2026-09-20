@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { OrionisContractError, type Orionis, type PreparedTx } from "@orionis/sdk";
+import { AlphaMarketsContractError, type AlphaMarkets, type PreparedTx } from "@alphamarkets/sdk";
 import Fastify from "fastify";
 import { registerTradeRoutes } from "./routes/trade.js";
 
@@ -17,13 +17,13 @@ function fakeTrading(over: Record<string, unknown> = {}) {
   trading.prepareDeposit = record("prepareDeposit", [prepared("approve"), prepared("deposit")]);
   trading.simulate = record("simulate", undefined);
   Object.assign(trading, over);
-  return { orionis: { trading } as unknown as Orionis, calls };
+  return { alphaMarkets: { trading } as unknown as AlphaMarkets, calls };
 }
 
 function build(over: Record<string, unknown> = {}) {
-  const { orionis, calls } = fakeTrading(over);
+  const { alphaMarkets, calls } = fakeTrading(over);
   const app = Fastify();
-  registerTradeRoutes(app, orionis);
+  registerTradeRoutes(app, alphaMarkets);
   return { app, calls };
 }
 
@@ -108,7 +108,7 @@ test("simulate needs a sender, runs the first transaction, and turns a revert in
   assert.equal(calls.at(-1)!.name, "simulate");
   assert.equal(calls.at(-1)!.args[1], FROM);
 
-  const failing = build({ simulate: async () => { throw new OrionisContractError("InsufficientMargin", [], undefined); } });
+  const failing = build({ simulate: async () => { throw new AlphaMarketsContractError("InsufficientMargin", [], undefined); } });
   const response = await post(failing.app, "/v1/trade/perps/limit-order/cancel", { orderId: "1", simulate: true, from: FROM });
   assert.equal(response.statusCode, 422);
   assert.equal(response.json().error, "InsufficientMargin");

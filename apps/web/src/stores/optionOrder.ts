@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import type { OptionSide } from "@orionis/sdk";
+import type { OptionSide } from "@alphamarkets/sdk";
 
 /// The series picked in the option chain, which the order ticket then prices. It carries its own
 /// underlying and expiry so the ticket stays correct while the chain is showing something else.

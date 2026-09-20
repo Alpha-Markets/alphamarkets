@@ -1,5 +1,5 @@
 /// ABIs are generated from `packages/contracts/out` by `scripts/generate-abis.mjs` — never
-/// hand-copied (DEVELOPMENT_STEPS.md Phase 3). Re-run `pnpm --filter @orionis/sdk generate:abis`
+/// hand-copied (DEVELOPMENT_STEPS.md Phase 3). Re-run `pnpm --filter @alphamarkets/sdk generate:abis`
 /// after any contract signature change.
 export * from "./generated/abis.js";
 export { erc20Abi } from "viem";

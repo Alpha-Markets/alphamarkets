@@ -5,7 +5,7 @@ import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
 import {IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import {IWithdrawGuard} from "../interfaces/IWithdrawGuard.sol";
 import {OptionType} from "../interfaces/DataTypes.sol";
-import {OrionisVault} from "../core/OrionisVault.sol";
+import {AlphaMarketsVault} from "../core/AlphaMarketsVault.sol";
 import {OracleRouter} from "../oracle/OracleRouter.sol";
 import {OptionMarket} from "../options/OptionMarket.sol";
 import {OptionPositionManager} from "../options/OptionPositionManager.sol";
@@ -66,7 +66,7 @@ contract CrossMarginManager is AccessControl, IWithdrawGuard {
 
     OracleRouter public immutable oracleRouter;
     RiskManager public immutable riskManager;
-    OrionisVault public immutable vault;
+    AlphaMarketsVault public immutable vault;
     PerpPositionManager public immutable perpPositionManager;
     OptionPositionManager public immutable optionPositionManager;
     OptionMarket public immutable optionMarket;
@@ -124,7 +124,7 @@ contract CrossMarginManager is AccessControl, IWithdrawGuard {
         ) revert ZeroAddress();
         oracleRouter = OracleRouter(oracleRouter_);
         riskManager = RiskManager(riskManager_);
-        vault = OrionisVault(vault_);
+        vault = AlphaMarketsVault(vault_);
         perpPositionManager = PerpPositionManager(perpPositionManager_);
         optionPositionManager = OptionPositionManager(optionPositionManager_);
         optionMarket = OptionMarket(optionMarket_);

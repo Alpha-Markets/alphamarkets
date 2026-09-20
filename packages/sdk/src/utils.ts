@@ -1,6 +1,6 @@
 import { isHex, stringToHex } from "viem";
-import type { Hex } from "@orionis/types";
-import { OrionisError } from "./errors.js";
+import type { Hex } from "@alphamarkets/types";
+import { AlphaMarketsError } from "./errors.js";
 
 /// Market ids are `bytes32` — contracts encode them as a raw ASCII string right-padded with
 /// zero bytes (see `packages/contracts/script/ConfigureMarkets.s.sol`, `bytes32("NVDA")`),
@@ -28,7 +28,7 @@ export function defaultDeadline(now: number = Date.now()): bigint {
 export function toInteger(value: bigint | number, label: string): bigint {
   if (typeof value === "bigint") return value;
   if (!Number.isInteger(value) || value < 0) {
-    throw new OrionisError(`${label} must be a non-negative integer, received ${value}`);
+    throw new AlphaMarketsError(`${label} must be a non-negative integer, received ${value}`);
   }
   return BigInt(value);
 }
@@ -38,7 +38,7 @@ export function toUnixSeconds(value: bigint | Date | string): bigint {
   if (typeof value === "bigint") return value;
   const date = value instanceof Date ? value : new Date(value);
   if (Number.isNaN(date.getTime())) {
-    throw new OrionisError(`Invalid expiry: ${String(value)}`);
+    throw new AlphaMarketsError(`Invalid expiry: ${String(value)}`);
   }
   return BigInt(Math.floor(date.getTime() / 1000));
 }

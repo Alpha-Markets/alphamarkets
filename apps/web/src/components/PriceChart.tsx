@@ -1,7 +1,7 @@
 "use client";
 
-import { Panel, Segmented } from "@orionis/ui";
-import type { CandleInterval } from "@orionis/sdk";
+import { Panel, Segmented } from "@alphamarkets/ui";
+import type { CandleInterval } from "@alphamarkets/sdk";
 import { formatUnits } from "viem";
 import { useEffect, useMemo, useState } from "react";
 import { useCandles, usePerpMarket, usePositions, usePriceHistory, useSettlementDecimals } from "@/hooks/queries";
@@ -10,7 +10,7 @@ import { env } from "@/lib/env";
 import { PRICE_DECIMALS } from "@/lib/format";
 import { symbolOf } from "@/lib/market";
 import { useTerminal } from "@/stores/terminal";
-import { margin } from "@orionis/sdk";
+import { margin } from "@alphamarkets/sdk";
 
 const MAX_POINTS = 300;
 const W = 1000;

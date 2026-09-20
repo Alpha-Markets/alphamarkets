@@ -1,7 +1,7 @@
 name: release-sdk
 
 # Manual only: publishing to npm cannot be undone, so a person starts it on purpose.
-# Needs an NPM_TOKEN repository secret with publish rights to the @orionis scope.
+# Needs an NPM_TOKEN repository secret with publish rights to the @alphamarkets scope.
 on:
   workflow_dispatch:
     inputs:
@@ -32,19 +32,19 @@ jobs:
       - run: pnpm install --frozen-lockfile
 
       - name: Test
-        run: pnpm --filter @orionis/sdk test
+        run: pnpm --filter @alphamarkets/sdk test
         env:
           SKIP_ANVIL_TESTS: "1"
 
       - name: Build
-        run: pnpm --filter @orionis/sdk build
+        run: pnpm --filter @alphamarkets/sdk build
 
       - name: Publish (dry run)
         if: ${{ inputs.dry_run }}
-        run: pnpm --filter @orionis/sdk publish --access public --dry-run --no-git-checks
+        run: pnpm --filter @alphamarkets/sdk publish --access public --dry-run --no-git-checks
 
       - name: Publish
         if: ${{ !inputs.dry_run }}
-        run: pnpm --filter @orionis/sdk publish --access public --provenance --no-git-checks
+        run: pnpm --filter @alphamarkets/sdk publish --access public --provenance --no-git-checks
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

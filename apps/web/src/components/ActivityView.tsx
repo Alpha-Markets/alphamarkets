@@ -1,6 +1,6 @@
 "use client";
 
-import { Panel, Tabs } from "@orionis/ui";
+import { Panel, Tabs } from "@alphamarkets/ui";
 import { useState } from "react";
 import { useAccount } from "wagmi";
 import { ConnectButton } from "./ConnectButton";

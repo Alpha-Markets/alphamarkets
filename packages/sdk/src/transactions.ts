@@ -1,6 +1,6 @@
 import type { Hex, TransactionReceipt } from "viem";
-import { sendTransaction, type OrionisClient } from "./client.js";
-import { mapError, OrionisError } from "./errors.js";
+import { sendTransaction, type AlphaMarketsClient } from "./client.js";
+import { mapError, AlphaMarketsError } from "./errors.js";
 
 /// PROJECT_BRIEF.md Section 30 transaction states.
 export type TxStatus = "preparing" | "awaiting_wallet" | "submitted" | "confirming" | "confirmed" | "failed";
@@ -32,7 +32,7 @@ type Simulation<T> = { request: object; result: T };
 /// Shared write path for every state-changing SDK method: simulate (revert decoding happens
 /// here, before the wallet is ever asked to sign), sign + send, optionally wait for the receipt.
 export async function executeTx<T>(
-  client: OrionisClient,
+  client: AlphaMarketsClient,
   simulate: () => Promise<Simulation<T>>,
   options: TxOptions = {},
 ): Promise<TxResult<T>> {
@@ -76,7 +76,7 @@ export async function executeTx<T>(
     return fail(error);
   }
   if (receipt.status === "reverted") {
-    return fail(new OrionisError(`Transaction ${hash} reverted onchain`));
+    return fail(new AlphaMarketsError(`Transaction ${hash} reverted onchain`));
   }
   emit({ status: "confirmed", hash, receipt });
   return { hash, result: simulation.result, receipt };

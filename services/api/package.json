@@ -1,9 +1,9 @@
 {
-  "name": "@orionis/api",
+  "name": "@alphamarkets/api",
   "private": true,
   "version": "0.0.0",
   "type": "module",
-  "description": "Orionis Markets REST + WebSocket API service.",
+  "description": "AlphaMarkets REST + WebSocket API service.",
   "scripts": {
     "build": "echo \"scaffold: services/api build \u2014 Phase 2\" && exit 0",
     "dev": "tsx watch src/index.ts",
@@ -15,8 +15,8 @@
   "dependencies": {
     "@fastify/cors": "^10",
     "@fastify/websocket": "^11.0.0",
-    "@orionis/config": "workspace:*",
-    "@orionis/sdk": "workspace:*",
+    "@alphamarkets/config": "workspace:*",
+    "@alphamarkets/sdk": "workspace:*",
     "fastify": "^5.1.0",
     "postgres": "^3.4.0",
     "viem": "^2.21.0"

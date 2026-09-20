@@ -24,16 +24,16 @@ importers:
 
   apps/web:
     dependencies:
-      '@orionis/config':
+      '@alphamarkets/config':
         specifier: workspace:*
         version: link:../../packages/config
-      '@orionis/sdk':
+      '@alphamarkets/sdk':
         specifier: workspace:*
         version: link:../../packages/sdk
-      '@orionis/types':
+      '@alphamarkets/types':
         specifier: workspace:*
         version: link:../../packages/types
-      '@orionis/ui':
+      '@alphamarkets/ui':
         specifier: workspace:*
         version: link:../../packages/ui
       '@tanstack/react-query':
@@ -79,7 +79,7 @@ importers:
 
   packages/config:
     dependencies:
-      '@orionis/types':
+      '@alphamarkets/types':
         specifier: workspace:*
         version: link:../types
       viem:
@@ -92,10 +92,10 @@ importers:
         specifier: ^2.21.0
         version: 2.56.8(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@5.0.10)(zod@4.6.5)
     devDependencies:
-      '@orionis/config':
+      '@alphamarkets/config':
         specifier: workspace:*
         version: link:../config
-      '@orionis/types':
+      '@alphamarkets/types':
         specifier: workspace:*
         version: link:../types
       tsup:
@@ -121,10 +121,10 @@ importers:
       '@fastify/websocket':
         specifier: ^11.0.0
         version: 11.3.1(bufferutil@4.1.0)(utf-8-validate@5.0.10)
-      '@orionis/config':
+      '@alphamarkets/config':
         specifier: workspace:*
         version: link:../../packages/config
-      '@orionis/sdk':
+      '@alphamarkets/sdk':
         specifier: workspace:*
         version: link:../../packages/sdk
       fastify:
@@ -139,10 +139,10 @@ importers:
 
   services/hedger:
     dependencies:
-      '@orionis/config':
+      '@alphamarkets/config':
         specifier: workspace:*
         version: link:../../packages/config
-      '@orionis/sdk':
+      '@alphamarkets/sdk':
         specifier: workspace:*
         version: link:../../packages/sdk
       viem:
@@ -151,13 +151,13 @@ importers:
 
   services/indexer:
     dependencies:
-      '@orionis/config':
+      '@alphamarkets/config':
         specifier: workspace:*
         version: link:../../packages/config
-      '@orionis/sdk':
+      '@alphamarkets/sdk':
         specifier: workspace:*
         version: link:../../packages/sdk
-      '@orionis/types':
+      '@alphamarkets/types':
         specifier: workspace:*
         version: link:../../packages/types
       drizzle-orm:
@@ -176,10 +176,10 @@ importers:
 
   services/keeper:
     dependencies:
-      '@orionis/config':
+      '@alphamarkets/config':
         specifier: workspace:*
         version: link:../../packages/config
-      '@orionis/sdk':
+      '@alphamarkets/sdk':
         specifier: workspace:*
         version: link:../../packages/sdk
       viem:
@@ -188,10 +188,10 @@ importers:
 
   services/pricing:
     dependencies:
-      '@orionis/config':
+      '@alphamarkets/config':
         specifier: workspace:*
         version: link:../../packages/config
-      '@orionis/sdk':
+      '@alphamarkets/sdk':
         specifier: workspace:*
         version: link:../../packages/sdk
       fastify:
@@ -203,10 +203,10 @@ importers:
 
   services/risk-monitor:
     dependencies:
-      '@orionis/config':
+      '@alphamarkets/config':
         specifier: workspace:*
         version: link:../../packages/config
-      '@orionis/sdk':
+      '@alphamarkets/sdk':
         specifier: workspace:*
         version: link:../../packages/sdk
       drizzle-orm:

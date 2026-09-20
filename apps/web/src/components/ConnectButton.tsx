@@ -1,6 +1,6 @@
 "use client";
 
-import { Button, type ButtonProps } from "@orionis/ui";
+import { Button, type ButtonProps } from "@alphamarkets/ui";
 import { useCallback, useRef, useState } from "react";
 import { useConnect } from "wagmi";
 import { useDismiss } from "@/hooks/useDismiss";

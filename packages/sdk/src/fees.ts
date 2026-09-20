@@ -1,6 +1,6 @@
-import type { ContractAddresses } from "@orionis/config";
+import type { ContractAddresses } from "@alphamarkets/config";
 import { feeManagerAbi } from "./abis.js";
-import type { OrionisClient } from "./client.js";
+import type { AlphaMarketsClient } from "./client.js";
 import { resolveMarketId } from "./utils.js";
 
 /// Mirrors `FeeConfig` in DataTypes.sol (PROJECT_BRIEF.md Section 20). All values are basis
@@ -18,7 +18,7 @@ export interface FeesNamespace {
   get(marketIdOrSymbol: string): Promise<FeeInfo>;
 }
 
-export function createFees(client: OrionisClient, addresses: ContractAddresses): FeesNamespace {
+export function createFees(client: AlphaMarketsClient, addresses: ContractAddresses): FeesNamespace {
   async function get(marketIdOrSymbol: string): Promise<FeeInfo> {
     const config = await client.readContract({
       address: addresses.feeManager,

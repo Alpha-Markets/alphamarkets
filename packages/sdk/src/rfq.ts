@@ -1,8 +1,8 @@
-import type { ContractAddresses } from "@orionis/config";
-import type { Address, Hex } from "@orionis/types";
+import type { ContractAddresses } from "@alphamarkets/config";
+import type { Address, Hex } from "@alphamarkets/types";
 import { rfqManagerAbi } from "./abis.js";
 import { PRICE_DECIMALS, toBaseUnits, type Amount } from "./amounts.js";
-import type { OrionisClient } from "./client.js";
+import type { AlphaMarketsClient } from "./client.js";
 import { NotImplementedError } from "./errors.js";
 import { executeTx, type TxOptions } from "./transactions.js";
 import { resolveMarketId, toInteger } from "./utils.js";
@@ -10,7 +10,7 @@ import { resolveMarketId, toInteger } from "./utils.js";
 /// The EIP-712 shape `RFQManager` verifies (`packages/contracts/src/perps/RFQManager.sol`): the single
 /// TypeScript definition, used by market makers to sign and by tests, so a drift from the contract
 /// fails the Anvil integration test. Field order, type string and domain must match the contract.
-export const RFQ_DOMAIN_NAME = "OrionisRFQ";
+export const RFQ_DOMAIN_NAME = "AlphaMarketsRFQ";
 export const RFQ_DOMAIN_VERSION = "1";
 
 const rfqTypes = {
@@ -97,7 +97,7 @@ export interface RfqNamespace {
   amounts(collateral: Amount, price: Amount, settlementDecimals: number): { collateral: bigint; price: bigint };
 }
 
-export function createRfq(client: OrionisClient, addresses: ContractAddresses, chainId: number): RfqNamespace {
+export function createRfq(client: AlphaMarketsClient, addresses: ContractAddresses, chainId: number): RfqNamespace {
   function manager(method: string): Address {
     if (!addresses.rfqManager) throw new NotImplementedError(method, "this deployment has no RFQManager (it needs a deployment made after [1.3.0])");
     return addresses.rfqManager;

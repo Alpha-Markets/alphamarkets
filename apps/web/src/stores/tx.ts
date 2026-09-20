@@ -15,7 +15,7 @@ import {
   UserRejectedError,
   type TxEvent,
   type TxStatus,
-} from "@orionis/sdk";
+} from "@alphamarkets/sdk";
 
 /// One row per user action (approve, deposit, open position, close position). The store holds
 /// what the Section 30 confirmation panel needs: the current state, the hash once there is one,

@@ -3,7 +3,7 @@ import { test } from "node:test";
 import { BaseError } from "viem";
 import { decodeFunctionData } from "viem";
 import { erc20Abi, optionsEngineAbi, perpsEngineAbi, rfqManagerAbi, vaultAbi } from "./abis.js";
-import { InsufficientMarginError, OrionisError } from "./errors.js";
+import { InsufficientMarginError, AlphaMarketsError } from "./errors.js";
 import { createTrading } from "./trading.js";
 import { addresses, fakeClient, NVDA, USER, WAD } from "./testing.js";
 
@@ -83,7 +83,7 @@ test("limit and trigger orders, and their cancel and execute calls", async () =>
 
   const trigger = trading.preparePlaceTriggerOrder({ positionId: 4n, kind: "TAKE_PROFIT", triggerPrice: "210", expiry: 2_000_000_000n });
   assert.deepEqual(decodeFunctionData({ abi: perpsEngineAbi, data: trigger.data }).args, [4n, 1, 210n * WAD, 2_000_000_000n]);
-  assert.throws(() => trading.preparePlaceTriggerOrder({ positionId: 4n, kind: "TRAILING" as never, triggerPrice: "1" }), OrionisError);
+  assert.throws(() => trading.preparePlaceTriggerOrder({ positionId: 4n, kind: "TRAILING" as never, triggerPrice: "1" }), AlphaMarketsError);
 
   for (const [prepared, name] of [
     [trading.prepareCancelLimitOrder(5n), "cancelLimitOrder"],

@@ -13,17 +13,17 @@ const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
-  title: "Orionis Markets",
+  title: "AlphaMarkets",
   description: "Derivatives for tokenized equities.",
   openGraph: {
-    title: "Orionis Markets",
+    title: "AlphaMarkets",
     description: "Derivatives for tokenized equities.",
-    siteName: "Orionis Markets",
+    siteName: "AlphaMarkets",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Orionis Markets",
+    title: "AlphaMarkets",
     description: "Derivatives for tokenized equities.",
   },
 };

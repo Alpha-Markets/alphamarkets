@@ -1,6 +1,6 @@
 "use client";
 
-import { Num, Panel, Skeleton, cn } from "@orionis/ui";
+import { Num, Panel, Skeleton, cn } from "@alphamarkets/ui";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { usePerpMarket, usePerpMarkets } from "@/hooks/queries";

@@ -1,11 +1,11 @@
-import { loadDotEnv } from "@orionis/config";
+import { loadDotEnv } from "@alphamarkets/config";
 loadDotEnv();
 
-import { requireEnv, resolveAddresses, resolveChainId } from "@orionis/config";
-import { Orionis } from "@orionis/sdk";
+import { requireEnv, resolveAddresses, resolveChainId } from "@alphamarkets/config";
+import { AlphaMarkets } from "@alphamarkets/sdk";
 import { createPublicClient, createWalletClient, http, type Hex } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
-import { chains } from "@orionis/config";
+import { chains } from "@alphamarkets/config";
 import { createKeeper } from "./keeper.js";
 
 const chainId = resolveChainId(process.env.CHAIN_ID);
@@ -17,9 +17,9 @@ const intervalMs = Number(process.env.KEEPER_INTERVAL_MS ?? 15_000);
 const refreshSeconds = BigInt(process.env.KEEPER_FEED_REFRESH_SECONDS ?? 1_800);
 const refreshFeeds = (process.env.KEEPER_REFRESH_FEEDS ?? "true") !== "false";
 
-const orionis = new Orionis({ chainId, transport, account, addresses: resolveAddresses(chainId) });
+const alphaMarkets = new AlphaMarkets({ chainId, transport, account, addresses: resolveAddresses(chainId) });
 const keeper = createKeeper({
-  orionis,
+  alphaMarkets,
   publicClient: createPublicClient({ chain: chains[chainId], transport }),
   walletClient: createWalletClient({ account, chain: chains[chainId], transport }),
   refreshSeconds,

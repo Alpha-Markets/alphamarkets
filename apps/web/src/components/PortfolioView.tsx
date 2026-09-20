@@ -1,7 +1,7 @@
 "use client";
 
-import { Num, Panel, Skeleton, Stat, Tabs } from "@orionis/ui";
-import { OptionPositionStatus } from "@orionis/sdk";
+import { Num, Panel, Skeleton, Stat, Tabs } from "@alphamarkets/ui";
+import { OptionPositionStatus } from "@alphamarkets/sdk";
 import { useState } from "react";
 import Link from "next/link";
 import { useAccount } from "wagmi";

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /// Generates `src/generated/abis.ts` from Foundry build output in `packages/contracts/out`.
-/// Run `forge build` in packages/contracts first, then `pnpm --filter @orionis/sdk generate:abis`.
+/// Run `forge build` in packages/contracts first, then `pnpm --filter @alphamarkets/sdk generate:abis`.
 /// The generated file is checked in (Foundry's `out/` is gitignored), so CI and consumers do not
 /// need a Foundry toolchain — only whoever changes a contract signature re-runs this script.
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
@@ -15,7 +15,7 @@ const target = resolve(here, "../src/generated/abis.ts");
 const contracts = {
   MarketRegistry: "marketRegistryAbi",
   OracleRouter: "oracleRouterAbi",
-  OrionisVault: "vaultAbi",
+  AlphaMarketsVault: "vaultAbi",
   CollateralManager: "collateralManagerAbi",
   FeeManager: "feeManagerAbi",
   RiskManager: "riskManagerAbi",

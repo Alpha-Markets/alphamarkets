@@ -1,7 +1,7 @@
 "use client";
 
-import { Num, Panel, Segmented, Stat, TextField } from "@orionis/ui";
-import { analyzeStrategy, payoffCurve, strategyLegs, STRATEGY_KINDS, type Leg, type OptionQuote, type StrategyKind } from "@orionis/sdk";
+import { Num, Panel, Segmented, Stat, TextField } from "@alphamarkets/ui";
+import { analyzeStrategy, payoffCurve, strategyLegs, STRATEGY_KINDS, type Leg, type OptionQuote, type StrategyKind } from "@alphamarkets/sdk";
 import { useEffect, useMemo, useState } from "react";
 import { formatUnits } from "viem";
 import { useIndexPrice, useListedExpiries, useOptionChain, useOptionUnderlyings } from "@/hooks/queries";

@@ -1,4 +1,4 @@
-import { loadDotEnv } from "@orionis/config";
+import { loadDotEnv } from "@alphamarkets/config";
 loadDotEnv();
 
 const { migrate } = await import("drizzle-orm/postgres-js/migrator");

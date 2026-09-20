@@ -40,7 +40,7 @@ addr() { jq -er ".$1" "$file"; }
 
 verify "$(addr marketRegistry)" src/core/MarketRegistry.sol:MarketRegistry
 verify "$(addr collateralManager)" src/core/CollateralManager.sol:CollateralManager
-verify "$(addr vault)" src/core/OrionisVault.sol:OrionisVault
+verify "$(addr vault)" src/core/AlphaMarketsVault.sol:AlphaMarketsVault
 verify "$(addr feeManager)" src/core/FeeManager.sol:FeeManager
 verify "$(addr buybackModule)" src/core/BuybackModule.sol:BuybackModule
 verify "$(addr priceValidator)" src/oracle/PriceValidator.sol:PriceValidator

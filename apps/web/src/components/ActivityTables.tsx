@@ -1,20 +1,20 @@
 "use client";
 
-import { Num } from "@orionis/ui";
-import type { FundingPayment, HistoryEvent } from "@orionis/sdk";
+import { Num } from "@alphamarkets/ui";
+import type { FundingPayment, HistoryEvent } from "@alphamarkets/sdk";
 import { useFunding, useHistory, useSettlementDecimals } from "@/hooks/queries";
 import { env } from "@/lib/env";
 import { fmt, fmtSigned, shortHash, signTone } from "@/lib/format";
 import { perpLabel } from "@/lib/market";
 import { fmtDateTime } from "@/lib/options";
-import { orionisRead } from "@/lib/orionis";
+import { alphaMarketsRead } from "@/lib/alphamarkets";
 
 const head = "px-3 py-2 text-right text-xs font-normal text-muted first:text-left";
 const cell = "px-3 py-2 text-right tabular-nums first:text-left";
 
 function txLink(hash: string) {
   try {
-    return orionisRead.explorer.txUrl(hash as `0x${string}`);
+    return alphaMarketsRead.explorer.txUrl(hash as `0x${string}`);
   } catch {
     return undefined; // NEXT_PUBLIC_EXPLORER_URL is not set
   }
