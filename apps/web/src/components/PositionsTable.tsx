@@ -1,11 +1,10 @@
 "use client";
 
-import { Button, Num, Panel } from "@orionis/ui";
+import { Button, Num } from "@orionis/ui";
 import { margin } from "@orionis/sdk";
 import type { PerpPosition } from "@orionis/types";
 import { useState } from "react";
-import { useAccount } from "wagmi";
-import { usePerpMarket, usePositions, useSettlementDecimals } from "@/hooks/queries";
+import { usePerpMarket } from "@/hooks/queries";
 import { useWalletOrionis } from "@/hooks/useOrionis";
 import { useTx } from "@/hooks/useTx";
 import { fmt, fmtBps, fmtPrice, fmtSigned, fmtUsd, signTone } from "@/lib/format";
@@ -102,28 +101,5 @@ export function PerpPositionsTable({ positions, decimals }: { positions: PerpPos
         ))}
       </tbody>
     </table>
-  );
-}
-
-export function PositionsTable() {
-  const { isConnected } = useAccount();
-  const { data, isPending } = usePositions();
-  const { data: decimals = 6 } = useSettlementDecimals();
-  const open = data?.perps.filter((position) => position.open) ?? [];
-
-  return (
-    <Panel title={`Positions${open.length ? ` (${open.length})` : ""}`} className="h-64 shrink-0">
-      <div className="min-h-0 flex-1 overflow-auto">
-        {!isConnected ? (
-          <p className="p-3 text-muted">Connect a wallet to see your positions.</p>
-        ) : isPending ? (
-          <p className="p-3 text-muted">Loading positions…</p>
-        ) : open.length === 0 ? (
-          <p className="p-3 text-muted">No open positions. Deposit collateral and open one from the order panel.</p>
-        ) : (
-          <PerpPositionsTable positions={open} decimals={decimals} />
-        )}
-      </div>
-    </Panel>
   );
 }

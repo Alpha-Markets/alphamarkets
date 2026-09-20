@@ -1,15 +1,15 @@
 import { Suspense } from "react";
 import { Header } from "@/components/Header";
 import { MarketHeader } from "@/components/MarketHeader";
+import { MarketAnalytics } from "@/components/MarketAnalytics";
 import { MarketList } from "@/components/MarketList";
 import { OrderPanel } from "@/components/OrderPanel";
-import { PositionsTable } from "@/components/PositionsTable";
 import { PriceChart } from "@/components/PriceChart";
 import { env } from "@/lib/env";
 import { TxToasts } from "@/components/TxToasts";
 
 /// PROJECT_BRIEF.md Section 24, desktop-first: market list on the left, chart and positions in
-/// the middle, order panel on the right.
+/// the middle, order panel on the right. Under the chart: positions, funding and open interest.
 export default function PerpetualsTerminal() {
   return (
     <div className="flex h-screen flex-col">
@@ -26,7 +26,7 @@ export default function PerpetualsTerminal() {
         <div className="flex min-h-0 flex-col gap-px">
           <MarketHeader />
           <PriceChart />
-          <PositionsTable />
+          <MarketAnalytics />
         </div>
         <OrderPanel />
       </main>

@@ -83,4 +83,23 @@ export const strikeText = (strike: bigint) => String(Number(formatUnits(strike, 
 /// Quote figures from the pricing service are floats for display only. Premium per underlying unit.
 export const fmtQuotePremium = (premium: number) => `$${premium.toFixed(2)}`;
 export const fmtQuoteIv = (iv: number) => `${(iv * 100).toFixed(1)}%`;
-export const fmtQuoteDelta = (delta: number) => delta.toFixed(2);
+/// `toFixed` keeps the sign of a tiny negative ("-0.00"); a figure that rounds to zero has no sign.
+const fixed = (value: number, digits: number) => value.toFixed(digits).replace(/^-(0\.?0*)$/, "$1");
+export const fmtQuoteDelta = (delta: number) => fixed(delta, 2);
+
+/// The pricing service returns Greeks in the model's own units: theta per year and vega per 1.00 of
+/// volatility. Traders read them per day and per volatility point, so convert for display only.
+export const fmtQuoteGamma = (gamma: number) => fixed(gamma, 4);
+export const fmtQuoteTheta = (thetaPerYear: number) => fixed(thetaPerYear / 365, 3);
+export const fmtQuoteVega = (vegaPerUnit: number) => fixed(vegaPerUnit / 100, 3);
+
+/// Where the volatility behind a quote came from, in words a trader can act on.
+export function ivSourceLabel(source: "realized" | "default" | undefined): string {
+  return source === "realized" ? "realized" : source === "default" ? "assumed" : "reference";
+}
+
+/// Key for one side of one strike, used to join quotes to indexer stats.
+export const seriesKey = (strike: bigint, type: "CALL" | "PUT") => `${strike.toString()}-${type}`;
+
+/// Whole contracts as shown in the chain: no decimals, thousands separated.
+export const fmtContracts = (value: bigint | undefined) => (value === undefined ? "–" : value.toLocaleString("en-US"));

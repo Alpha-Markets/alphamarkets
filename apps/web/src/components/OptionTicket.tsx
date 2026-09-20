@@ -10,7 +10,17 @@ import { useWalletOrionis } from "@/hooks/useOrionis";
 import { useTx } from "@/hooks/useTx";
 import { env } from "@/lib/env";
 import { fmtBps, fmtPrice, fmtUsd } from "@/lib/format";
-import { expiryCode, fmtQuoteDelta, fmtQuoteIv, strikeText } from "@/lib/options";
+import {
+  expiryCode,
+  fmtQuoteDelta,
+  fmtQuoteGamma,
+  fmtQuoteIv,
+  fmtQuotePremium,
+  fmtQuoteTheta,
+  fmtQuoteVega,
+  ivSourceLabel,
+  strikeText,
+} from "@/lib/options";
 import { orionisRead } from "@/lib/orionis";
 import { chain } from "@/lib/wagmi";
 import { useOptionOrder, type OptionSelection } from "@/stores/optionOrder";
@@ -179,8 +189,18 @@ export function OptionTicket() {
             <Row label="Break-even at expiry">{fmtPrice(p.breakEven)}</Row>
             <Row label="Max loss">{fmtUsd(p.maxLoss, decimals)}</Row>
             <Row label="Max profit">{p.maxProfit === null ? "Unlimited" : fmtUsd(p.maxProfit, decimals)}</Row>
-            <Row label="IV (reference)">{fmtQuoteIv(p.quote.iv)}</Row>
-            <Row label="Delta (reference)">{fmtQuoteDelta(p.quote.delta)}</Row>
+          </dl>
+        ) : null}
+
+        {p ? (
+          <dl className="border-t border-line pt-2">
+            <Row label="Price per unit">{fmtQuotePremium(p.quote.ask)}</Row>
+            <Row label="Bid per unit">{fmtQuotePremium(p.quote.bid)}</Row>
+            <Row label={`IV (${ivSourceLabel(p.quote.ivSource)})`}>{fmtQuoteIv(p.quote.iv)}</Row>
+            <Row label="Delta">{fmtQuoteDelta(p.quote.delta)}</Row>
+            <Row label="Gamma">{fmtQuoteGamma(p.quote.gamma)}</Row>
+            <Row label="Theta per day">{fmtQuoteTheta(p.quote.theta)}</Row>
+            <Row label="Vega per vol point">{fmtQuoteVega(p.quote.vega)}</Row>
           </dl>
         ) : null}
 

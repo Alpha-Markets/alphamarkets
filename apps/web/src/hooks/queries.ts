@@ -2,9 +2,11 @@
 
 import { useQueries, useQuery } from "@tanstack/react-query";
 import { useAccount } from "wagmi";
+import type { CandleInterval, OpenInterestRange } from "@orionis/sdk";
 import type { Address } from "@orionis/types";
 import { orionisRead } from "@/lib/orionis";
 import { env } from "@/lib/env";
+import { seriesKey } from "@/lib/options";
 
 const TICK_MS = 4_000;
 
@@ -183,4 +185,74 @@ export function useOptionChain(symbol: string, expiry: bigint | undefined, strik
     ),
   });
   return strikes.map((strike, index) => ({ strike, call: results[index * 2]!, put: results[index * 2 + 1]! }));
+}
+
+/// Open interest and 24h volume per option series for one expiry, keyed by `seriesKey`. A series
+/// nobody has traded is absent, which the chain shows as zero.
+export function useOptionStats(symbol: string, expiry: bigint | undefined) {
+  return useQuery({
+    queryKey: ["option-stats", symbol, String(expiry)],
+    queryFn: async () => {
+      const rows = await orionisRead.options.stats(symbol, expiry);
+      return new Map(rows.map((row) => [seriesKey(row.strike, row.type), row]));
+    },
+    enabled: Boolean(env.apiUrl && symbol && expiry),
+    refetchInterval: 30_000,
+    retry: false,
+  });
+}
+
+export function useCandles(symbol: string, interval: CandleInterval) {
+  return useQuery({
+    queryKey: ["candles", symbol, interval],
+    queryFn: () => orionisRead.prices.candles(symbol, interval, 120),
+    enabled: Boolean(symbol && env.apiUrl),
+    refetchInterval: 30_000,
+    retry: false,
+  });
+}
+
+export function useMarketFundingHistory(symbol: string) {
+  return useQuery({
+    queryKey: ["market-funding-history", symbol],
+    queryFn: () => orionisRead.funding.history(symbol, 100),
+    enabled: Boolean(symbol && env.apiUrl),
+    refetchInterval: 60_000,
+    retry: false,
+  });
+}
+
+export function useOpenInterestHistory(symbol: string, range: OpenInterestRange) {
+  return useQuery({
+    queryKey: ["open-interest-history", symbol, range],
+    queryFn: () => orionisRead.risk.openInterestHistory(symbol, range),
+    enabled: Boolean(symbol && env.apiUrl),
+    refetchInterval: 60_000,
+    retry: false,
+  });
+}
+
+/// Open interest now and the cap RiskManager enforces, both read from the chain.
+export function useOpenInterestNow(symbol: string) {
+  return useQuery({
+    queryKey: ["open-interest-now", symbol],
+    queryFn: async () => {
+      const [openInterest, risk] = await Promise.all([orionisRead.risk.openInterest(symbol), orionisRead.risk.get(symbol)]);
+      return { ...openInterest, cap: risk.openInterestCap };
+    },
+    enabled: Boolean(symbol),
+    refetchInterval: 15_000,
+  });
+}
+
+/// The connected wallet's limit orders, oldest first, read from the chain. Off on a deployment
+/// without limit orders.
+export function useOrders() {
+  const { address } = useAccount();
+  return useQuery({
+    queryKey: ["orders", address],
+    queryFn: () => orionisRead.portfolio.orders(address as Address),
+    enabled: Boolean(address && env.limitOrders),
+    refetchInterval: 8_000,
+  });
 }

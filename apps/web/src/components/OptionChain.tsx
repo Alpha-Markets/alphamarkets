@@ -1,10 +1,10 @@
 "use client";
 
 import { Num, Panel, Segmented, cn } from "@orionis/ui";
-import type { OptionSide, OptionsQuoteResult } from "@orionis/sdk";
+import type { OptionSeriesStats, OptionSide, OptionsQuoteResult } from "@orionis/sdk";
 import type { UseQueryResult } from "@tanstack/react-query";
-import { useEffect, useMemo, useState } from "react";
-import { useIndexPrice, useListedExpiries, useOptionChain, useOptionUnderlyings } from "@/hooks/queries";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useIndexPrice, useListedExpiries, useOptionChain, useOptionStats, useOptionUnderlyings } from "@/hooks/queries";
 import { useNow } from "@/hooks/useNow";
 import { env } from "@/lib/env";
 import { fmtPrice } from "@/lib/format";
@@ -12,10 +12,15 @@ import { symbolOf } from "@/lib/market";
 import {
   expiryCode,
   expiryDates,
+  fmtContracts,
   fmtQuoteDelta,
+  fmtQuoteGamma,
   fmtQuoteIv,
   fmtQuotePremium,
+  fmtQuoteTheta,
+  fmtQuoteVega,
   nearestStrikeIndex,
+  seriesKey,
   strikeLadder,
   strikeText,
 } from "@/lib/options";
@@ -23,54 +28,97 @@ import { useOptionOrder } from "@/stores/optionOrder";
 import { useTerminal } from "@/stores/terminal";
 
 const head = "px-3 py-2 text-right text-xs font-normal text-muted";
+/// A header cell that spans a group of columns and centres over them.
+const groupHead = "px-3 py-2 text-center text-xs font-normal text-muted";
 const cell = "px-3 py-1.5 text-right tabular-nums";
 
 type Quote = UseQueryResult<OptionsQuoteResult, Error>;
+type Stats = UseQueryResult<Map<string, OptionSeriesStats>, Error>;
+type View = "market" | "greeks";
 
-/// Three columns for one side of the chain. Only the premium is a button; picking it fills the
-/// order ticket. Premium, IV and delta are the pricing service's display analytics, not a price
-/// anyone is charged: the ticket asks for a signed quote before an order.
-function SideCells({
-  side,
-  quote,
-  selected,
-  onSelect,
-}: {
+interface CellContext {
   side: OptionSide;
   quote: Quote;
+  stats: Stats;
+  strike: bigint;
   selected: boolean;
   onSelect: () => void;
-}) {
-  const data = quote.data;
-  // "…" while the first quote loads, "–" when the pricing service could not answer.
-  const text = (value: string | undefined) => value ?? (quote.isError ? "–" : "…");
-  const mark = (
-    <td className={cn(cell, selected && "bg-raised")}>
-      <button
-        type="button"
-        disabled={!data}
-        onClick={onSelect}
-        aria-pressed={selected}
-        aria-label={side === "CALL" ? "Buy call" : "Buy put"}
-        className="font-medium underline-offset-2 hover:underline disabled:cursor-not-allowed disabled:no-underline"
-      >
-        {text(data && fmtQuotePremium(data.premium))}
-      </button>
-    </td>
-  );
-  const iv = <td className={cn(cell, "text-muted", selected && "bg-raised")}>{text(data && fmtQuoteIv(data.iv))}</td>;
-  const delta = <td className={cn(cell, "text-muted", selected && "bg-raised")}>{text(data && fmtQuoteDelta(data.delta))}</td>;
-  return side === "CALL" ? (
+}
+
+interface Column {
+  id: string;
+  header: string;
+  /// The cell's contents. Numbers here are the pricing service's display analytics or the
+  /// indexer's counts, never the price an order is charged: the ticket signs that.
+  render: (context: CellContext) => ReactNode;
+  muted?: boolean;
+}
+
+/// "…" while the first answer loads, "–" when the service could not give one.
+function quoted(quote: Quote, format: (data: OptionsQuoteResult) => string): string {
+  return quote.data ? format(quote.data) : quote.isError ? "–" : "…";
+}
+
+/// Open interest and volume come from the indexer. A series nobody has traded is not in its answer,
+/// which means zero, not "unknown".
+function counted(stats: Stats, context: CellContext, pick: (row: OptionSeriesStats) => bigint): string {
+  if (!env.apiUrl || stats.isError) return "–";
+  if (!stats.data) return "…";
+  const row = stats.data.get(seriesKey(context.strike, context.side));
+  return fmtContracts(row ? pick(row) : 0n);
+}
+
+/// The ask is the only selectable cell: it is the price opening pays, and picking it fills the
+/// order ticket. Everything else in the chain is reference.
+const askColumn: Column = {
+  id: "ask",
+  header: "Ask",
+  render: ({ quote, side, selected, onSelect }) => (
+    <button
+      type="button"
+      disabled={!quote.data}
+      onClick={onSelect}
+      aria-pressed={selected}
+      aria-label={side === "CALL" ? "Buy call" : "Buy put"}
+      className="font-medium underline-offset-2 hover:underline disabled:cursor-not-allowed disabled:no-underline"
+    >
+      {quoted(quote, (data) => fmtQuotePremium(data.ask))}
+    </button>
+  ),
+};
+
+/// Columns for one side, listed from the strike outwards; the calls side is mirrored so both sides
+/// read away from the strike the same way.
+const columnsByView: Record<View, Column[]> = {
+  market: [
+    askColumn,
+    { id: "bid", header: "Bid", render: ({ quote }) => quoted(quote, (data) => fmtQuotePremium(data.bid)) },
+    { id: "iv", header: "IV", muted: true, render: ({ quote }) => quoted(quote, (data) => fmtQuoteIv(data.iv)) },
+    { id: "oi", header: "Open int.", muted: true, render: (context) => counted(context.stats, context, (row) => row.openInterest) },
+    { id: "vol", header: "Vol 24h", muted: true, render: (context) => counted(context.stats, context, (row) => row.volume24h) },
+  ],
+  greeks: [
+    askColumn,
+    { id: "delta", header: "Delta", muted: true, render: ({ quote }) => quoted(quote, (data) => fmtQuoteDelta(data.delta)) },
+    { id: "gamma", header: "Gamma", muted: true, render: ({ quote }) => quoted(quote, (data) => fmtQuoteGamma(data.gamma)) },
+    { id: "theta", header: "Theta/day", muted: true, render: ({ quote }) => quoted(quote, (data) => fmtQuoteTheta(data.theta)) },
+    { id: "vega", header: "Vega/pt", muted: true, render: ({ quote }) => quoted(quote, (data) => fmtQuoteVega(data.vega)) },
+  ],
+};
+
+function orderedColumns(view: View, side: OptionSide): Column[] {
+  const columns = columnsByView[view];
+  return side === "CALL" ? [...columns].reverse() : columns;
+}
+
+function SideCells({ view, ...context }: CellContext & { view: View }) {
+  return (
     <>
-      {delta}
-      {iv}
-      {mark}
-    </>
-  ) : (
-    <>
-      {mark}
-      {iv}
-      {delta}
+      {orderedColumns(view, context.side).map((column) => (
+        <td key={column.id} className={cn(cell, column.muted && "text-muted", context.selected && "bg-raised")}>
+          {column.render(context)}
+        </td>
+      ))}
     </>
   );
 }
@@ -117,6 +165,8 @@ export function OptionChain() {
     [spot],
   );
   const rows = useOptionChain(symbol, expiry, strikes);
+  const stats = useOptionStats(symbol, expiry);
+  const [view, setView] = useState<View>("market");
   const atTheMoney = spot ? nearestStrikeIndex(strikes, spot) : -1;
 
   return (
@@ -156,6 +206,18 @@ export function OptionChain() {
             />
           )}
         </div>
+        <div>
+          <p className="mb-1 text-xs text-muted">Columns</p>
+          <Segmented
+            label="Columns"
+            value={view}
+            onChange={setView}
+            options={[
+              { value: "market", label: "Market" },
+              { value: "greeks", label: "Greeks" },
+            ]}
+          />
+        </div>
       </div>
 
       <div className="min-h-0 flex-1 overflow-auto">
@@ -168,25 +230,29 @@ export function OptionChain() {
         ) : rows.length === 0 ? (
           <p className="p-3 text-muted">Waiting for the index price…</p>
         ) : (
-          <table className="w-full min-w-[720px] text-sm">
+          <table className="w-full min-w-[860px] text-sm">
             <thead>
               <tr>
-                <th className={cn(head, "text-center")} colSpan={3}>
+                <th className={groupHead} colSpan={5}>
                   Calls
                 </th>
-                <th className={cn(head, "text-center")}>Strike</th>
-                <th className={cn(head, "text-center")} colSpan={3}>
+                <th className={groupHead}>Strike</th>
+                <th className={groupHead} colSpan={5}>
                   Puts
                 </th>
               </tr>
               <tr>
-                <th className={head}>Delta</th>
-                <th className={head}>IV</th>
-                <th className={head}>Mark</th>
-                <th className={cn(head, "text-center")}>Price</th>
-                <th className={head}>Mark</th>
-                <th className={head}>IV</th>
-                <th className={head}>Delta</th>
+                {orderedColumns(view, "CALL").map((column) => (
+                  <th key={`c-${column.id}`} className={head}>
+                    {column.header}
+                  </th>
+                ))}
+                <th className={groupHead}>Price</th>
+                {orderedColumns(view, "PUT").map((column) => (
+                  <th key={`p-${column.id}`} className={head}>
+                    {column.header}
+                  </th>
+                ))}
               </tr>
             </thead>
             <tbody>
@@ -199,8 +265,11 @@ export function OptionChain() {
                 return (
                   <tr key={row.strike.toString()} className={cn("border-t border-line", index === atTheMoney && "bg-surface")}>
                     <SideCells
+                      view={view}
                       side="CALL"
                       quote={row.call}
+                      stats={stats}
+                      strike={row.strike}
                       selected={isPick("CALL")}
                       onSelect={() => expiry && select({ symbol, expiry, strike: row.strike, type: "CALL" })}
                     />
@@ -208,8 +277,11 @@ export function OptionChain() {
                       <Num>{strikeText(row.strike)}</Num>
                     </td>
                     <SideCells
+                      view={view}
                       side="PUT"
                       quote={row.put}
+                      stats={stats}
+                      strike={row.strike}
                       selected={isPick("PUT")}
                       onSelect={() => expiry && select({ symbol, expiry, strike: row.strike, type: "PUT" })}
                     />
@@ -221,8 +293,9 @@ export function OptionChain() {
         )}
       </div>
       <p className="border-t border-line px-3 py-2 text-xs text-muted">
-        Premiums are per underlying unit and shown for reference; the order ticket signs the price you pay. Strikes are a
-        suggested ladder around the index price. Bid/ask, open interest and volume are not available yet.
+        Prices are per underlying unit. Ask is what opening pays and bid is what closing receives; the order ticket signs the
+        price you pay. Open interest and volume count contracts. IV is the volatility the model prices with, not one implied by
+        trading. Strikes are a suggested ladder around the index price.
       </p>
     </Panel>
   );

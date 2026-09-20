@@ -21,6 +21,7 @@ const raw = {
   optionMarket: process.env.NEXT_PUBLIC_OPTION_MARKET,
   optionPositionManager: process.env.NEXT_PUBLIC_OPTION_POSITION_MANAGER,
   perpPositionManager: process.env.NEXT_PUBLIC_PERP_POSITION_MANAGER,
+  perpOrderManager: process.env.NEXT_PUBLIC_PERP_ORDER_MANAGER,
   liquidationEngine: process.env.NEXT_PUBLIC_LIQUIDATION_ENGINE,
   fundingManager: process.env.NEXT_PUBLIC_FUNDING_MANAGER,
   priceValidator: process.env.NEXT_PUBLIC_PRICE_VALIDATOR,
@@ -74,6 +75,7 @@ function resolveAddresses(): ContractAddresses {
     optionMarket: raw.optionMarket,
     optionPositionManager: raw.optionPositionManager,
     perpPositionManager: raw.perpPositionManager,
+    perpOrderManager: raw.perpOrderManager,
     liquidationEngine: raw.liquidationEngine,
     fundingManager: raw.fundingManager,
     priceValidator: raw.priceValidator,
@@ -96,6 +98,8 @@ export const env = {
   explorerUrl: raw.explorerUrl,
   apiUrl: raw.apiUrl ? raw.apiUrl.replace(/\/+$/, "") : undefined,
   addresses: resolveAddresses(),
+  /// Limit orders need a deployment that includes `PerpOrderManager`; the terminal hides them without one.
+  limitOrders: Boolean(resolveAddresses().perpOrderManager),
   /// Option chain layout. The contract lists no strikes (a series is created on first use), so the
   /// terminal proposes a ladder around spot and a few upcoming expiries; these set its shape.
   options: {

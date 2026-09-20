@@ -4,10 +4,13 @@ import { Num, Panel, Stat, cn } from "@orionis/ui";
 import { OptionPositionStatus } from "@orionis/sdk";
 import { useState } from "react";
 import { useAccount } from "wagmi";
-import { usePortfolioSummary, useSettlementDecimals } from "@/hooks/queries";
+import { useOrders, usePortfolioSummary, useSettlementDecimals } from "@/hooks/queries";
+import { useNow } from "@/hooks/useNow";
+import { openOrderCount } from "@/lib/orders";
 import { fmtSigned, fmtUsd, signTone } from "@/lib/format";
 import { FundingTable, HistoryTable } from "./ActivityTables";
 import { OptionPositionsTable } from "./OptionPositionsTable";
+import { OrdersTable } from "./OrdersTable";
 import { PerpPositionsTable } from "./PositionsTable";
 
 type Tab = "all" | "options" | "perps" | "orders" | "funding" | "history";
@@ -31,6 +34,9 @@ export function PortfolioView() {
   const { data: summary, isPending, error } = usePortfolioSummary();
   const { data: decimals = 6 } = useSettlementDecimals();
   const [tab, setTab] = useState<Tab>("all");
+  const { data: orders } = useOrders();
+  const now = useNow();
+  const waiting = orders ? openOrderCount(orders, BigInt(Math.floor(now / 1000))) : 0;
 
   if (!isConnected) {
     return (
@@ -89,6 +95,7 @@ export function PortfolioView() {
                 )}
               >
                 {item.label}
+                {item.id === "orders" && waiting > 0 ? ` (${waiting})` : ""}
               </button>
             ))}
           </div>
@@ -111,9 +118,7 @@ export function PortfolioView() {
               )}
             </section>
           ) : null}
-          {tab === "orders" ? (
-            <Empty>No open orders. Market orders fill immediately, so nothing waits on the book. Limit orders arrive in a later release.</Empty>
-          ) : null}
+          {tab === "orders" ? <OrdersTable /> : null}
           {tab === "funding" ? <FundingTable /> : null}
           {tab === "history" ? <HistoryTable /> : null}
         </div>

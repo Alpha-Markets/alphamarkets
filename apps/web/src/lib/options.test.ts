@@ -2,7 +2,23 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { stringToHex } from "viem";
 import { OptionType } from "@orionis/types";
-import { expiryCode, expiryDates, fmtQuoteIv, fmtQuotePremium, nearestStrikeIndex, optionCode, strikeLadder, strikeText } from "./options.js";
+import {
+  expiryCode,
+  expiryDates,
+  fmtContracts,
+  fmtQuoteDelta,
+  fmtQuoteGamma,
+  fmtQuoteIv,
+  fmtQuotePremium,
+  fmtQuoteTheta,
+  fmtQuoteVega,
+  ivSourceLabel,
+  nearestStrikeIndex,
+  optionCode,
+  seriesKey,
+  strikeLadder,
+  strikeText,
+} from "./options.js";
 
 test("expiry codes match the brief's format", () => {
   assert.equal(expiryCode(BigInt(Date.UTC(2026, 8, 25) / 1000)), "25SEP26");
@@ -59,4 +75,30 @@ test("strike text and quote formatting", () => {
   assert.equal(strikeText(187_500_000_000_000_000_000n), "187.5");
   assert.equal(fmtQuoteIv(0.5), "50.0%");
   assert.equal(fmtQuotePremium(4.2), "$4.20");
+});
+
+test("theta is shown per day and vega per volatility point", () => {
+  assert.equal(fmtQuoteTheta(-36.5), "-0.100");
+  assert.equal(fmtQuoteVega(22), "0.220");
+  assert.equal(fmtQuoteGamma(0.03149), "0.0315");
+});
+
+test("the volatility source is named in plain words", () => {
+  assert.equal(ivSourceLabel("realized"), "realized");
+  assert.equal(ivSourceLabel("default"), "assumed");
+  assert.equal(ivSourceLabel(undefined), "reference");
+});
+
+test("series keys and contract counts", () => {
+  assert.equal(seriesKey(190n * 10n ** 18n, "PUT"), "190000000000000000000-PUT");
+  assert.equal(fmtContracts(12_345n), "12,345");
+  assert.equal(fmtContracts(undefined), "–");
+});
+
+test("a Greek that rounds to zero has no minus sign", () => {
+  assert.equal(fmtQuoteDelta(-0.001), "0.00");
+  assert.equal(fmtQuoteDelta(-0.004), "0.00");
+  assert.equal(fmtQuoteDelta(-0.006), "-0.01");
+  assert.equal(fmtQuoteTheta(-0.01), "0.000");
+  assert.equal(fmtQuoteDelta(-0.48), "-0.48");
 });
