@@ -4,9 +4,9 @@ import { cn } from "./cn.js";
 export type ButtonVariant = "primary" | "secondary" | "ghost" | "up" | "down";
 
 const variants: Record<ButtonVariant, string> = {
-  // The primary action inverts the page: off-white on black. No accent colour.
-  primary: "bg-text text-ground hover:bg-text/85 disabled:bg-line disabled:text-faint",
-  secondary: "border border-line text-text hover:border-faint hover:bg-raised disabled:text-faint disabled:hover:border-line disabled:hover:bg-transparent",
+  // The primary action is the logo's teal with its dark ink.
+  primary: "bg-accent text-accent-ink hover:bg-accent-hover disabled:bg-line disabled:text-faint",
+  secondary: "border border-line text-text hover:border-accent-line hover:bg-raised disabled:text-faint disabled:hover:border-line disabled:hover:bg-transparent",
   ghost: "text-muted hover:text-text disabled:text-faint",
   up: "bg-up text-ground hover:bg-up/85 disabled:bg-line disabled:text-faint",
   down: "bg-down text-ground hover:bg-down/85 disabled:bg-line disabled:text-faint",

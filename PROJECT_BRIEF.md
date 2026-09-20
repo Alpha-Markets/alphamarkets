@@ -72,6 +72,8 @@ Visual direction:
 - No neon crypto visuals
 - No unnecessary 3D or AI-style iconography
 
+**Update (2026-09-21, owner):** the palette now follows the logo. Dark teal-tinted neutrals replace the warm charcoal, and one teal accent (the mark's bright teal) marks primary actions, the selected item, focus and the price line. Green and red are unchanged in meaning: market direction only. See `apps/web/src/app/globals.css`.
+
 ---
 
 ## 3. Core Product

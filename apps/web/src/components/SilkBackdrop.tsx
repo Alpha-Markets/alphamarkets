@@ -1,6 +1,6 @@
-/// A field of abstract, grayscale ribbons that fills the landing hero: the one piece of imagery on
-/// the page. Drawn in SVG from the page's own off-white at low opacity, so it adds texture without
-/// adding a colour or an icon. It is decorative. Each ribbon sways on its own phase of a slow loop
+/// A field of abstract ribbons that fills the landing hero: the one piece of imagery on
+/// the page. Drawn in SVG from the accent teal at low opacity, so the strands echo the logo's ribbon
+/// without adding an icon. It is decorative. Each ribbon sways on its own phase of a slow loop
 /// (`silk-sway` in globals.css) and the soft glows drift behind them; reduced motion stops both.
 /// The band crosses the upper half of the view and a ground-coloured shade darkens the lower left,
 /// where the headline sits, so the type stays readable over the strands.
@@ -15,9 +15,9 @@ export function SilkBackdrop({ className }: { className?: string }) {
       <svg viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid slice" className="absolute inset-0 h-full w-full">
         <defs>
           <linearGradient id="silk-fade" x1="0" x2="1" y1="0" y2="0">
-            <stop offset="0" stopColor="var(--color-text)" stopOpacity="0" />
-            <stop offset="0.45" stopColor="var(--color-text)" stopOpacity="0.55" />
-            <stop offset="1" stopColor="var(--color-text)" stopOpacity="0" />
+            <stop offset="0" stopColor="var(--color-accent)" stopOpacity="0" />
+            <stop offset="0.45" stopColor="var(--color-accent)" stopOpacity="0.5" />
+            <stop offset="1" stopColor="var(--color-accent)" stopOpacity="0" />
           </linearGradient>
           <filter id="silk-soft" x="-20%" y="-60%" width="140%" height="220%">
             <feGaussianBlur stdDeviation="40" />
@@ -32,13 +32,13 @@ export function SilkBackdrop({ className }: { className?: string }) {
             <stop offset="1" stopColor="var(--color-ground)" stopOpacity="0" />
           </radialGradient>
         </defs>
-        <path className="silk-drift" d={ribbons[6]} fill="none" stroke="var(--color-text)" strokeOpacity="0.2" strokeWidth="110" filter="url(#silk-soft)" />
+        <path className="silk-drift" d={ribbons[6]} fill="none" stroke="var(--color-accent)" strokeOpacity="0.16" strokeWidth="110" filter="url(#silk-soft)" />
         <path
           className="silk-drift"
           d={ribbons[12]}
           fill="none"
-          stroke="var(--color-muted)"
-          strokeOpacity="0.18"
+          stroke="var(--color-accent)"
+          strokeOpacity="0.1"
           strokeWidth="72"
           filter="url(#silk-soft)"
           style={{ animationDelay: "-11s", animationDirection: "alternate-reverse" }}

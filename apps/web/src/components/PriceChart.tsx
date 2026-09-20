@@ -74,7 +74,7 @@ function LineView({ points, levels }: { points: number[]; levels: Level[] }) {
           stroke="currentColor"
           strokeWidth={1.5}
           vectorEffect="non-scaling-stroke"
-          className="text-text"
+          className="text-accent"
           points={points.map((price, index) => `${x(index)},${y(price)}`).join(" ")}
         />
       </svg>

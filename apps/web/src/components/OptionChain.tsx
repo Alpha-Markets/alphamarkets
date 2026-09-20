@@ -115,7 +115,7 @@ function SideCells({ view, ...context }: CellContext & { view: View }) {
   return (
     <>
       {orderedColumns(view, context.side).map((column) => (
-        <td key={column.id} className={cn(cell, column.muted && "text-muted", context.selected && "bg-raised shadow-[inset_0_1px_0_var(--color-text),inset_0_-1px_0_var(--color-text)]")}>
+        <td key={column.id} className={cn(cell, column.muted && "text-muted", context.selected && "bg-raised shadow-[inset_0_1px_0_var(--color-accent),inset_0_-1px_0_var(--color-accent)]")}>
           {column.render(context)}
         </td>
       ))}

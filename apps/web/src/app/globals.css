@@ -4,22 +4,30 @@
 /* Type: Geist, a light-leaning grotesk. Large text is set light with tight tracking; small text stays
    regular and muted. Panels are softly rounded fills separated by gaps rather than hard seams.
 
-   AlphaMarkets terminal tokens (PROJECT_BRIEF.md Section 2): a charcoal dark theme with off-white text,
-   neutral grays, and green/red used only to say which way a market or position is moving. No accent
-   colour. The ramp is warm-neutral to match the off-white text; muted and faint are set so text in
-   them stays at or above 4.5:1 on ground, surface and raised. */
+   AlphaMarkets terminal tokens, taken from the logo (PROJECT_BRIEF.md Section 2, updated by the owner):
+   the dark neutrals lean to the mark's deep teal-black, the text is its off-white, and one teal accent
+   (the mark's bright teal) marks what you can act on: the primary button, the selected item, focus, the
+   price line. Green and red still only say which way a market or position is moving; the green sits
+   at a yellower hue than the accent so the two never read as the same signal. Muted and faint are set
+   so text in them stays at or above 4.5:1 on ground, surface and raised; the accent and its ink pass
+   too (accent on ground 11:1, ink on accent 10:1). */
 @theme {
-  --color-ground: #1a1a19;
-  --color-surface: #222221;
-  --color-raised: #2c2c2a;
-  --color-line: #3b3b38;
-  --color-text: #f0ede6;
-  --color-muted: #aaa9a2;
-  --color-faint: #96958e;
-  --color-up: #52c48f;
+  --color-ground: #0b1211;
+  --color-surface: #121b1a;
+  --color-raised: #1a2624;
+  --color-line: #293937;
+  --color-text: #eef4f2;
+  --color-muted: #a4b5b1;
+  --color-faint: #93a4a0;
+  --color-up: #72d977;
   --color-down: #ee7069;
-  --color-up-soft: rgb(82 196 143 / 0.14);
+  --color-up-soft: rgb(114 217 119 / 0.14);
   --color-down-soft: rgb(238 112 105 / 0.14);
+  --color-accent: #3adbd0;
+  --color-accent-hover: #66e8df;
+  --color-accent-ink: #031a18;
+  --color-accent-soft: #17403c;
+  --color-accent-line: rgb(58 219 208 / 0.4);
   --font-sans: var(--font-geist), ui-sans-serif, system-ui, sans-serif;
 
   /* The root font size is 16px, so rem-based text sizes are the usual ones (xs 12, sm 14, base 16).
@@ -64,7 +72,7 @@ body {
    the focus border instead) can override it. */
 @layer base {
   :focus-visible {
-    outline: 2px solid var(--color-text);
+    outline: 2px solid var(--color-accent);
     outline-offset: 2px;
   }
 
@@ -86,8 +94,8 @@ body {
 }
 
 ::selection {
-  background: var(--color-text);
-  color: var(--color-ground);
+  background: var(--color-accent);
+  color: var(--color-accent-ink);
 }
 
 /* Landing ribbons: each one sways a little in y and rotation on its own phase, so the stack reads as

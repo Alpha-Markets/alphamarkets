@@ -96,7 +96,7 @@ export function PortfolioView() {
             aria-label={`Available collateral ${fmtUsd(summary.balances.available, decimals)}, locked margin ${fmtUsd(summary.balances.lockedMargin, decimals)}`}
             className="mt-4 flex h-1.5 max-w-md overflow-hidden rounded-[2px] bg-line"
           >
-            <div className="bg-text" style={{ width: `${lockedShare(summary.balances.available, summary.balances.lockedMargin).available}%` }} />
+            <div className="bg-accent" style={{ width: `${lockedShare(summary.balances.available, summary.balances.lockedMargin).available}%` }} />
             <div className="bg-faint" style={{ width: `${lockedShare(summary.balances.available, summary.balances.lockedMargin).locked}%` }} />
           </div>
         ) : null}

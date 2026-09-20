@@ -31,7 +31,7 @@ export function Tabs<T extends string>({
           onClick={() => onChange(tab.id)}
           className={cn(
             "h-9 shrink-0 border-b-2 px-0.5 text-sm font-medium",
-            value === tab.id ? "border-text text-text" : "border-transparent text-muted hover:text-text",
+            value === tab.id ? "border-accent text-text" : "border-transparent text-muted hover:text-text",
           )}
         >
           {tab.label}
