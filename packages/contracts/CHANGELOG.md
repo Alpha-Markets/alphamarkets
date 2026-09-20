@@ -5,6 +5,19 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added — four more testnet markets on `[1.4.0-testnet]` (2026-09-21)
+
+`script/AddMarket.s.sol` adds a market from environment variables (`SYMBOL`, `NAME`, `PRICE`, `MAX_LEVERAGE`, `MAINTENANCE_MARGIN_BPS`, `MAX_POSITION`, `OPEN_INTEREST_CAP`, optional `PRICE_FEED_OWNER`), so a new equity is configuration and not a redeploy (PROJECT_BRIEF.md Section 5). Like `ConfigureMarkets.s.sol` it deploys a mock token and a mock price feed owned by the keeper. Initial margin is 1 / max leverage; the leverage tiers are 1x, 2x, 3x, 5x, 10x up to the maximum; fees are the same placeholders as NVDA. It was run against a local Anvil chain first, then on testnet. No contract changed, and no frontend or service code changed: the API, keeper and web app picked the markets up from the registry.
+
+| Market | Mock price | Max leverage | Maintenance margin | Max position | Open interest cap | Token | Feed |
+|---|---|---|---|---|---|---|---|
+| TSLA | $350 | 5x | 7.5% | $250K | $3M | `0x330261481B759cB4830DEAE477B9b9736B047AfA` | `0x0447fD668F0730D8BcA06480708cD0c27119aC9A` |
+| AAPL | $230 | 10x | 5% | $500K | $5M | `0x85aab762351152012e0801BfD06394D8aBEA2F03` | `0xf777c3fc5f33076214Ae9D390117630B278ED6d5` |
+| META | $700 | 5x | 7.5% | $250K | $3M | `0x329615223B5b861625C45233D28dbc3e76fc07d8` | `0x1008a58a5C47be70C77239686A4D53c067D1082c` |
+| HOOD | $100 | 5x | 7.5% | $250K | $3M | `0x9d8cbc5726d2b196B856A0426c471dE6f77Ec130` | `0x51B44454E3140021A7C152b920819eFD39461B40` |
+
+TSLA follows the brief's Section 19 example exactly. The brief gives no numbers for AAPL, META or HOOD: AAPL copies the NVDA numbers, META and HOOD copy TSLA's, and the mock prices are placeholders, not market data. The product owner still has to set real risk limits, fees and prices. The new tokens and feeds are not verified on the explorer yet.
+
 ## [1.4.0-testnet] - 2026-09-21
 
 Full redeploy to Robinhood Chain testnet (chain ID 46630) via `script/DeployAll.s.sol` then `script/ConfigureMarkets.s.sol`, from the deployer `0xC804c6c50CE6F5B5dFB035378A3F84145914697F`, first block `122118624` (use it as `INDEXER_START_BLOCK`). It replaces `[1.3.0-testnet]`, which is abandoned. Same code as `[1.3.0-testnet]` plus the rebrand and the audit changes below.
