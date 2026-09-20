@@ -20,14 +20,14 @@ export default async function OpengraphImage() {
           flexDirection: "column",
           justifyContent: "center",
           padding: "0 96px",
-          background: "#1a1a19",
-          color: "#ece9e2",
+          background: "#0b1211",
+          color: "#eef4f2",
         }}
       >
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={markSrc} width={168} height={117} alt="" style={{ marginBottom: 44 }} />
         <div style={{ fontSize: 72, letterSpacing: 18, fontWeight: 500 }}>ALPHAMARKETS</div>
-        <div style={{ fontSize: 34, color: "#aaa9a2", marginTop: 28 }}>Derivatives for tokenized equities.</div>
+        <div style={{ fontSize: 34, color: "#a4b5b1", marginTop: 28 }}>Derivatives for tokenized equities.</div>
       </div>
     ),
     size,

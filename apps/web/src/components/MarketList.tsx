@@ -26,7 +26,7 @@ function MarketRow({ symbol }: { symbol: string }) {
         aria-pressed={selected}
         className={cn(
           "grid w-full grid-cols-[1fr_auto] items-baseline gap-x-3 border-l-2 px-3 py-2 text-left",
-          selected ? "border-text bg-raised" : "border-transparent hover:bg-raised/60",
+          selected ? "border-accent bg-raised" : "border-transparent hover:bg-raised/60",
         )}
       >
         <span className="font-medium">{symbol}</span>
@@ -93,7 +93,7 @@ export function MarketList() {
             placeholder="Filter markets"
             value={filter}
             onChange={(event) => setFilter(event.target.value)}
-            className="h-9 w-full rounded-md border border-line bg-ground px-2 text-sm outline-none placeholder:text-faint focus:border-text"
+            className="h-9 w-full rounded-md border border-line bg-ground px-2 text-sm outline-none placeholder:text-faint focus:border-accent"
           />
         </div>
       ) : null}

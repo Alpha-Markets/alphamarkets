@@ -28,7 +28,7 @@ export const metadata: Metadata = {
   },
 };
 
-export const viewport: Viewport = { themeColor: "#1a1a19" };
+export const viewport: Viewport = { themeColor: "#0b1211" };
 
 /// Open the connections to the chain RPC and the API while the page is still loading, so the first
 /// read does not also pay for DNS and TLS (about two seconds cold, against about 0.3 s warm).

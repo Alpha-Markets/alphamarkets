@@ -18,7 +18,7 @@ export interface SegmentedProps<T extends string | number> {
   size?: "md" | "lg";
 }
 
-const active = { up: "bg-up text-ground", down: "bg-down text-ground", neutral: "bg-text text-ground" };
+const active = { up: "bg-up text-ground", down: "bg-down text-ground", neutral: "bg-accent-soft text-accent" };
 
 export function Segmented<T extends string | number>({ options, value, onChange, label, activeTone, className, size = "md" }: SegmentedProps<T>) {
   return (

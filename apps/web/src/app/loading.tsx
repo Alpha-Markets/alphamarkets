@@ -4,7 +4,7 @@
 export default function Loading() {
   return (
     <div role="status" aria-label="Loading" className="nav-progress pointer-events-none fixed inset-x-0 top-0 z-50 h-0.5 overflow-hidden">
-      <span className="nav-progress-bar block h-full w-1/3 bg-text" />
+      <span className="nav-progress-bar block h-full w-1/3 bg-accent" />
     </div>
   );
 }

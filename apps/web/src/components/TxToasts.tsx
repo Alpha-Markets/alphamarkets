@@ -59,7 +59,7 @@ function Toast({ record }: { record: TxRecord }) {
             <li
               key={step.status}
               title={step.label}
-              className={cn("h-0.5 flex-1", index <= activeIndex ? (done ? "bg-up" : "bg-text") : "bg-line")}
+              className={cn("h-0.5 flex-1", index <= activeIndex ? (done ? "bg-up" : "bg-accent") : "bg-line")}
             />
           ))}
         </ol>

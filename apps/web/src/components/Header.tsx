@@ -68,7 +68,7 @@ export function Header() {
                   aria-current={current ? "page" : undefined}
                   className={cn(
                     "flex items-center border-b-2 pt-0.5 text-sm",
-                    current ? "border-text text-text" : "border-transparent text-muted hover:text-text",
+                    current ? "border-accent text-text" : "border-transparent text-muted hover:text-text",
                   )}
                 >
                   {item.label}
@@ -101,7 +101,7 @@ export function Header() {
                 aria-current={current ? "page" : undefined}
                 className={cn(
                   "flex h-12 items-center border-l-2 px-4 text-base",
-                  current ? "border-text bg-raised text-text" : "border-transparent text-muted",
+                  current ? "border-accent bg-raised text-text" : "border-transparent text-muted",
                 )}
               >
                 {item.label}

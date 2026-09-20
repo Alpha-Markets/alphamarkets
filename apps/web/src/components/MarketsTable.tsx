@@ -189,7 +189,7 @@ export function MarketsTable() {
             placeholder="Filter markets"
             value={filter}
             onChange={(event) => setFilter(event.target.value)}
-            className="my-1 h-8 w-44 rounded-md border border-line bg-ground px-2 text-sm outline-none placeholder:text-faint focus:border-text"
+            className="my-1 h-8 w-44 rounded-md border border-line bg-ground px-2 text-sm outline-none placeholder:text-faint focus:border-accent"
           />
         ) : null
       }

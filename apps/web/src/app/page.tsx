@@ -28,13 +28,13 @@ export default function Landing() {
           <div className="mt-10 flex flex-wrap gap-3">
             <Link
               href="/perpetuals"
-              className="inline-flex h-11 items-center rounded-lg bg-text px-5 text-sm font-medium text-ground hover:bg-text/85"
+              className="inline-flex h-11 items-center rounded-lg bg-accent px-5 text-sm font-medium text-accent-ink hover:bg-accent-hover"
             >
               Launch terminal
             </Link>
             <Link
               href="/markets"
-              className="inline-flex h-11 items-center rounded-lg border border-line px-5 text-sm font-medium hover:border-faint hover:bg-raised"
+              className="inline-flex h-11 items-center rounded-lg border border-line px-5 text-sm font-medium hover:border-accent-line hover:bg-raised"
             >
               Explore markets
             </Link>
@@ -56,7 +56,7 @@ export default function Landing() {
               <dt className="text-title font-light">{block.title}</dt>
               <dd className="mt-2 leading-relaxed text-muted">{block.body}</dd>
               <dd className="mt-4">
-                <Link href={block.href} className="text-sm underline underline-offset-2 hover:text-muted">
+                <Link href={block.href} className="text-sm underline underline-offset-2 hover:text-accent">
                   {block.cta}
                 </Link>
               </dd>
