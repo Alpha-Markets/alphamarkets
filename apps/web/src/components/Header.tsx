@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useDismiss } from "@/hooks/useDismiss";
 import { PAGE_FRAME } from "@/lib/frame";
-import { cn } from "@alphamarkets/ui";
+import { chip, cn, menuItem, pill } from "@alphamarkets/ui";
 import { Logo } from "./Logo";
 import { WalletButton } from "./WalletButton";
 
@@ -19,46 +19,38 @@ const items = [
   { label: "Activity", href: "/activity" },
 ];
 
+/// Every header item is its own rounded bubble, as on the reference: small uppercase type in a
+/// 38px fill. The bubble supplies size and type; `pill` and `chip` supply the colour states.
+const bubble = "inline-flex h-11 items-center rounded-lg! text-[13px] font-medium uppercase tracking-[0.04em]";
+
 const isCurrent = (pathname: string, href: string) => pathname === href || pathname.startsWith(`${href}/`);
 
 export function Header() {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
-  // On the landing page the header floats over the full-screen hero with no rule under it; once the
-  // page scrolls it takes the page colour so the content beneath does not show through the links.
+  // On the landing page the header floats over the hero and stays transparent: no fill and no blur,
+  // whether or not the page has scrolled. Its bubbles carry their own fills.
   const landing = pathname === "/";
-  const [scrolled, setScrolled] = useState(false);
   const ref = useRef<HTMLElement>(null);
   const close = useCallback(() => setOpen(false), []);
   useDismiss(ref, open, close);
   // A tap on a link changes the page; the sheet has done its job.
   useEffect(() => setOpen(false), [pathname]);
-  useEffect(() => {
-    const main = document.getElementById("main");
-    if (!landing || !main) {
-      setScrolled(false);
-      return;
-    }
-    const onScroll = () => setScrolled(main.scrollTop > 24);
-    onScroll();
-    main.addEventListener("scroll", onScroll, { passive: true });
-    return () => main.removeEventListener("scroll", onScroll);
-  }, [landing]);
 
   return (
     <header
       ref={ref}
       className={cn(
         "z-40 shrink-0 transition-colors duration-200",
-        landing ? cn("absolute inset-x-0 top-0", scrolled ? "bg-ground/90 backdrop-blur" : "bg-transparent") : "relative border-b border-line bg-ground",
+        landing ? "absolute inset-x-0 top-0 bg-transparent" : "relative bg-ground",
       )}
     >
-      <div className={cn("flex h-12 items-center justify-between gap-3", landing ? PAGE_FRAME : "px-4")}>
-        <div className="flex h-full items-center gap-8">
-          <Link href="/" aria-label="AlphaMarkets home" className="pt-1">
+      <div className={cn("flex h-16 items-center justify-between gap-3", landing ? PAGE_FRAME : "px-4")}>
+        <div className="flex h-full items-center gap-1.5">
+          <Link href="/" aria-label="AlphaMarkets home" className={cn(bubble, "mr-1.5 bg-raised px-3 hover:bg-accent-soft active:bg-accent-soft/60")}>
             <Logo />
           </Link>
-          <nav aria-label="Primary" className="hidden h-full items-stretch gap-6 md:flex">
+          <nav aria-label="Primary" className="hidden h-full items-center gap-1.5 lg:flex">
             {items.map((item) => {
               const current = isCurrent(pathname, item.href);
               return (
@@ -66,10 +58,7 @@ export function Header() {
                   key={item.href}
                   href={item.href}
                   aria-current={current ? "page" : undefined}
-                  className={cn(
-                    "flex items-center border-b-2 pt-0.5 text-sm",
-                    current ? "border-accent text-text" : "border-transparent text-muted hover:text-text",
-                  )}
+                  className={cn(bubble, "self-center px-4", pill(current))}
                 >
                   {item.label}
                 </Link>
@@ -84,14 +73,14 @@ export function Header() {
             aria-expanded={open}
             aria-controls="mobile-nav"
             onClick={() => setOpen((value) => !value)}
-            className="inline-flex h-9 items-center rounded-md border border-line px-3 text-sm font-medium hover:border-faint hover:bg-raised md:hidden"
+            className={cn(chip, "h-10 rounded-lg! px-4 text-[13px] font-medium uppercase tracking-[0.04em] lg:hidden")}
           >
             {open ? "Close" : "Menu"}
           </button>
         </div>
       </div>
       {open ? (
-        <nav id="mobile-nav" aria-label="Primary mobile" className="absolute inset-x-0 top-full border-b border-line bg-ground md:hidden">
+        <nav id="mobile-nav" aria-label="Primary mobile" className="absolute inset-x-0 top-full bg-ground lg:hidden">
           {items.map((item) => {
             const current = isCurrent(pathname, item.href);
             return (
@@ -100,8 +89,8 @@ export function Header() {
                 href={item.href}
                 aria-current={current ? "page" : undefined}
                 className={cn(
-                  "flex h-12 items-center border-l-2 px-4 text-base",
-                  current ? "border-accent bg-raised text-text" : "border-transparent text-muted",
+                  "flex h-12 items-center px-4 text-base font-medium",
+                  current ? "bg-accent text-accent-ink" : cn("bg-raised text-muted", menuItem),
                 )}
               >
                 {item.label}

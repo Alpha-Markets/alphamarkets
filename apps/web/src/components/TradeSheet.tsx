@@ -51,14 +51,14 @@ export function TradeSheet({
       <div
         className={cn(
           "min-h-0 lg:block",
-          "max-lg:fixed max-lg:inset-x-0 max-lg:bottom-0 max-lg:top-12 max-lg:z-30 max-lg:flex max-lg:flex-col max-lg:bg-surface",
+          "max-lg:fixed max-lg:inset-x-0 max-lg:bottom-0 max-lg:top-16 max-lg:z-30 max-lg:flex max-lg:flex-col max-lg:bg-surface",
           open ? "" : "max-lg:hidden",
         )}
         role={open ? "dialog" : undefined}
         aria-label={title}
       >
         <div className="flex h-11 shrink-0 items-center justify-end border-b border-line px-1 lg:hidden">
-          <Button variant="ghost" aria-label={`Close ${title.toLowerCase()}`} onClick={() => setOpen(false)}>
+          <Button variant="secondary" size="sm" aria-label={`Close ${title.toLowerCase()}`} onClick={() => setOpen(false)}>
             Close
           </Button>
         </div>

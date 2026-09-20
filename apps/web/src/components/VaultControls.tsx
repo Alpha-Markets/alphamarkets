@@ -1,6 +1,6 @@
 "use client";
 
-import { Button, Row, Skeleton, TextField } from "@alphamarkets/ui";
+import { Button, Row, Skeleton, TextField, cn, menuItem } from "@alphamarkets/ui";
 import { toBaseUnits } from "@alphamarkets/sdk";
 import { useState } from "react";
 import { useAccount } from "wagmi";
@@ -60,7 +60,7 @@ export function VaultControls() {
         type="button"
         aria-expanded={expanded}
         onClick={() => setManual(!expanded)}
-        className="flex h-11 w-full items-center justify-between gap-3 px-3 text-left hover:bg-raised"
+        className={cn(menuItem, "flex h-11 w-full items-center justify-between gap-3 px-3 text-left")}
       >
         <span className="text-muted">Available collateral</span>
         <span className="flex items-center gap-2">

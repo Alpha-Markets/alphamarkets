@@ -56,12 +56,12 @@ function PositionRow({ position, decimals }: { position: PerpPosition; decimals:
         </td>
         <td className={cell}>{fmtSigned(position.fundingAccrued, decimals)}</td>
         <td className={cell}>
-          <Button size="sm" variant="ghost" aria-expanded={adjusting} onClick={() => setAdjusting((open) => !open)}>
+          <Button size="sm" variant="secondary" aria-expanded={adjusting} onClick={() => setAdjusting((open) => !open)}>
             Adjust
           </Button>{" "}
           {triggersSupported ? (
             <>
-              <Button size="sm" variant="ghost" aria-expanded={triggers} onClick={() => setTriggers((open) => !open)}>
+              <Button size="sm" variant="secondary" aria-expanded={triggers} onClick={() => setTriggers((open) => !open)}>
                 TP/SL
               </Button>{" "}
             </>

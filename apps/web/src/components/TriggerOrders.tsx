@@ -51,7 +51,7 @@ export function PositionTriggers({ position, mark }: { position: PerpPosition; m
               <span className="tabular-nums">{firesAt(position.isLong, order)}</span>
               <Button
                 size="sm"
-                variant="ghost"
+                variant="secondary"
                 disabled={!wallet}
                 onClick={() =>
                   run({ title: `Cancel ${TRIGGER_LABEL[order.kind].toLowerCase()}`, summary: `${label} · ${firesAt(position.isLong, order)}` }, (tx) =>

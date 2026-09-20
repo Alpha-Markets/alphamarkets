@@ -1,4 +1,5 @@
 export { cn } from "./cn.js";
+export { interactive, chip, pill, menuItem, rowLink, textLink, listLink, fieldBorder } from "./interaction.js";
 export { Button, type ButtonProps, type ButtonVariant } from "./Button.js";
 export { Num, toneOf, type Tone } from "./Num.js";
 export { Panel, type PanelProps } from "./Panel.js";

@@ -21,14 +21,28 @@
   --color-faint: #93a4a0;
   --color-up: #72d977;
   --color-down: #ee7069;
-  --color-up-soft: rgb(114 217 119 / 0.14);
-  --color-down-soft: rgb(238 112 105 / 0.14);
+  --color-up-soft: rgb(114 217 119 / 0.2);
+  --color-down-soft: rgb(238 112 105 / 0.2);
   --color-accent: #3adbd0;
   --color-accent-hover: #66e8df;
   --color-accent-ink: #031a18;
-  --color-accent-soft: #17403c;
+  --color-accent-soft: #1b4c47;
   --color-accent-line: rgb(58 219 208 / 0.4);
+  --color-accent-press: #24b3a9;
+  --color-up-hover: #8be890;
+  --color-up-press: #5cc262;
+  --color-down-hover: #f38c86;
+  --color-down-press: #d95d56;
   --font-sans: var(--font-geist), ui-sans-serif, system-ui, sans-serif;
+  --font-serif: var(--font-newsreader), ui-serif, Georgia, serif;
+
+  /* The landing page below the hero is set on paper: an off-white ground with the mark's deep teal as
+     ink. These are the paper's own colours (`.paper` below re-points the terminal tokens to them). */
+  --color-paper: #f7faf9;
+  --color-paper-line: #dfe8e5;
+  --color-ink: #0f3733;
+  --color-ink-soft: #4f6a65;
+  --color-pill: #eaefed;
 
   /* The root font size is 16px, so rem-based text sizes are the usual ones (xs 12, sm 14, base 16).
      The spacing unit stays 3.5px, which keeps every gap, height and padding the terminal was laid
@@ -98,6 +112,36 @@ body {
   color: var(--color-accent-ink);
 }
 
+/* A light region (the landing page below its hero). Re-pointing the terminal tokens here means Panel,
+   Num, Change, Sparkline, chip and the hover states render correctly on paper without edits. The accent
+   becomes the mark's deep teal, because the bright teal is unreadable as text on paper (1.7:1) and
+   every hover state here turns text accent. Deep teal on paper is 6.5:1, on the hover tint 5.4:1. */
+.paper {
+  color-scheme: light;
+  --color-ground: #f7faf9;
+  --color-surface: #ffffff;
+  --color-raised: #eaefed;
+  --color-line: #dfe8e5;
+  --color-text: #0f3733;
+  --color-muted: #4f6a65;
+  --color-faint: #5c7671;
+  --color-up: #1a7f37;
+  --color-down: #c0352d;
+  --color-accent: #0b6b63;
+  --color-accent-hover: #14867c;
+  --color-accent-press: #084e48;
+  --color-accent-ink: #f7faf9;
+  --color-accent-soft: #c9f3ee;
+  --color-accent-line: rgb(11 107 99 / 0.3);
+  background: #f7faf9;
+  color: #0f3733;
+}
+
+/* The teal ring is invisible on paper; ink is not. */
+.paper :focus-visible {
+  outline-color: #0f3733;
+}
+
 /* Landing ribbons: each one sways a little in y and rotation on its own phase, so the stack reads as
    cloth moving in a slow current. Lengths are in SVG user units (the backdrop's 1600-wide viewBox). */
 @keyframes silk-sway {
@@ -127,27 +171,6 @@ body {
 
 .silk-drift {
   animation: silk-drift 22s ease-in-out infinite alternate;
-}
-
-/* The line under the landing hero draws down, holds, then fades: a cue that the page continues. */
-@keyframes silk-cue {
-  0% {
-    transform: scaleY(0);
-    opacity: 1;
-  }
-  60% {
-    transform: scaleY(1);
-    opacity: 1;
-  }
-  100% {
-    transform: scaleY(1);
-    opacity: 0;
-  }
-}
-
-.silk-cue {
-  transform-origin: top;
-  animation: silk-cue 2.4s ease-in-out infinite;
 }
 
 /* Landing hero lockup (components/HeroMark.tsx). The animated parts start hidden and GSAP reveals them.
@@ -190,11 +213,61 @@ body {
   mask-repeat: no-repeat;
 }
 
-/* The headline block owns the lower left; on a short landscape phone there is no room above it. */
+/* On a short landscape phone the mark would push the headline off the first screen, so it steps aside. */
 @media (max-height: 640px) and (max-width: 1023px) {
   .hero-lockup {
     display: none;
   }
+}
+
+/* The hero preview's chart draws in from the left once, and again when the market changes. */
+@keyframes hero-chart-reveal {
+  from {
+    clip-path: inset(0 100% 0 0);
+  }
+  to {
+    clip-path: inset(0 0 0 0);
+  }
+}
+
+.hero-chart {
+  animation: hero-chart-reveal 1.4s cubic-bezier(0.22, 0.61, 0.36, 1) 0.4s both;
+}
+
+/* Markets ticker under the landing hero: two identical runs of items slide left by exactly one run, so
+   the loop has no seam. It stops while hovered or focused so a price can be read and a link clicked.
+   With reduced motion the animation collapses (see the reduced-motion block) and the first run shows. */
+@keyframes ticker-run {
+  from {
+    transform: translate3d(0, 0, 0);
+  }
+  to {
+    transform: translate3d(-50%, 0, 0);
+  }
+}
+
+.ticker-track {
+  animation: ticker-run 70s linear infinite;
+  will-change: transform;
+}
+
+.ticker:hover .ticker-track,
+.ticker:focus-within .ticker-track {
+  animation-play-state: paused;
+}
+
+/* The statement band: deep teal at the top easing to the mark's green, the way the reference does. */
+.statement-band {
+  background: linear-gradient(180deg, #06201d 0%, #0f3733 32%, #2f6b59 72%, #4b8b72 100%);
+}
+
+.statement-line {
+  opacity: 0.5;
+  transition: opacity 0.5s ease-out;
+}
+
+.statement-line[data-active="true"] {
+  opacity: 1;
 }
 
 /* Navigation bar (app/loading.tsx): waits 150ms before appearing so a quick page change shows nothing. */
@@ -235,6 +308,14 @@ body {
 
   .hero-anim {
     opacity: 1;
+    animation: none !important;
+  }
+
+  .statement-line {
+    opacity: 1;
+  }
+
+  .hero-chart {
     animation: none !important;
   }
 }

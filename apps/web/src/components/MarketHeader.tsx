@@ -1,6 +1,6 @@
 "use client";
 
-import { Num, Skeleton, Stat } from "@alphamarkets/ui";
+import { Num, Skeleton, Stat, cn, fieldBorder } from "@alphamarkets/ui";
 import { useNow } from "@/hooks/useNow";
 import { usePerpMarket, usePerpMarkets } from "@/hooks/queries";
 import { fmtBps, fmtCountdown, fmtPrice } from "@/lib/format";
@@ -28,7 +28,7 @@ export function MarketHeader() {
             <select
               value={symbol}
               onChange={(event) => setSymbol(event.target.value)}
-              className="h-9 rounded-md border border-line bg-ground px-2 text-sm"
+              className={cn(fieldBorder, "h-9 rounded-md border bg-raised px-2 text-sm hover:bg-accent-soft")}
             >
               {markets.map((market) => {
                 const value = symbolOf(market.marketId);
