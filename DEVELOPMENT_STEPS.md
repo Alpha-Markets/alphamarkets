@@ -17,8 +17,8 @@ Derived from PROJECT_BRIEF.md. Sequenced by MVP Priority 0 → 1 → 2, then pos
 | Phase | Status |
 |---|---|
 | 0 Scaffolding | Done |
-| 1 Contracts | Deployed as `[1.2.0-testnet]` (2026-09-20): `increasePosition` fix, limit orders, options decimals fix. Explorer verification pending. |
-| 2 Backend services | Done and running against `1.2.0-testnet`. Nothing is hosted yet: the Railway project has only the Postgres database, and the services run from a developer machine. The indexer database was reset on 2026-09-20 and replays from the new deploy block. New in Phase 5: `services/keeper`, analytics endpoints, bid/ask (spread `OPTION_SPREAD_BPS=200`) and realized volatility in `services/pricing`. |
+| 1 Contracts | Deployed as `[1.3.0-testnet]` (2026-09-20): the Phase 7 contracts on top of the `[1.2.0-testnet]` fixes (`increasePosition`, limit orders, options decimals). Explorer verification pending. |
+| 2 Backend services | Done and running against `1.3.0-testnet`. Nothing is hosted yet: the Railway project has only the Postgres database, and the services run from a developer machine. The indexer database was reset on 2026-09-20. A fresh database now fills `markets` from the registry when the indexer starts, and replays history when `INDEXER_START_BLOCK` (the deploy block, `122013174` for `1.3.0-testnet`) is set; see the readiness check under Testing & Pre-Deployment. New in Phase 5: `services/keeper`, analytics endpoints, bid/ask (spread `OPTION_SPREAD_BPS=200`) and realized volatility in `services/pricing`. |
 | 3 SDK | Done. Package and docs are ready to publish (`0.1.0`); not published. |
 | 4 Frontend | Done. Accepted with a real wallet on `1.1.0-testnet` (Phase 4) and again on `1.2.0-testnet` (Phase 5: option chain with bid/ask and Greeks, candles, funding and open interest views, limit order placed and cancelled). |
 | 5 Polish | **Done** (2026-09-20): built, tested, deployed as `1.2.0-testnet`, merged into `main` (PR #1) and accepted on testnet. Open follow-ups, none blocking Phase 6: run the keeper continuously (the mock NVDA feed goes stale after 1 hour without it), publish the SDK, explorer verification, and the items marked "not done" in Phase 5. |
@@ -116,7 +116,7 @@ Package: `packages/contracts/` (Foundry + Solidity + OpenZeppelin).
 14. Foundry test suite: unit tests per contract, fuzz tests on margin/liquidation math, integration tests for full open→settle/liquidate flows.
 15. Deploy to testnet. Verify contracts, record addresses into `.env`.
 
-**Status:** deployed as `[1.2.0-testnet]` on Robinhood Chain testnet on 2026-09-20 (it replaces `1.1.0-testnet`: signed-quote `OptionsEngine`, dedicated quoter, `increasePosition` fix, limit orders, options decimals fix, NVDA seeded). Addresses are in `deployments/robinhood_testnet.json` and synced into `packages/config` with `pnpm --filter @orionis/config sync:deployments`. Explorer verification is pending: Robinhood's explorer certificate fails validation, so re-run `script/verify.sh` later. The mock NVDA price feed goes stale after 1 hour; `services/keeper` refreshes it, so the keeper must be running (a real feed is needed before mainnet).
+**Status:** deployed as `[1.3.0-testnet]` on Robinhood Chain testnet on 2026-09-20, replacing `[1.2.0-testnet]` (which had replaced `1.1.0-testnet` with: signed-quote `OptionsEngine`, dedicated quoter, `increasePosition` fix, limit orders, options decimals fix, NVDA seeded). Addresses are in `deployments/robinhood_testnet.json` and synced into `packages/config` with `pnpm --filter @orionis/config sync:deployments`. Explorer verification is pending: Robinhood's explorer certificate fails validation, so re-run `script/verify.sh` later. The mock NVDA price feed goes stale after 1 hour; `services/keeper` refreshes it, so the keeper must be running (a real feed is needed before mainnet).
 
 ---
 
@@ -139,7 +139,7 @@ Package: `packages/contracts/` (Foundry + Solidity + OpenZeppelin).
 7. **CORS**: `services/api` allows only the origins in `CORS_ORIGINS` (no wildcard).
 8. **Signed option quotes** — `services/pricing` signs each open and close premium (EIP-712, `QUOTER_PRIVATE_KEY`); see Phase 1 step 7.
 
-**Status:** steps 1–8 implemented and running against `1.2.0-testnet`. Phase 5 added `services/keeper`, candles, funding history, open interest history, option series statistics and open limit orders to the API, and bid/ask plus realized volatility to the pricing service (see Phase 5).
+**Status:** steps 1–8 implemented and running against `1.3.0-testnet`. Phase 5 added `services/keeper`, candles, funding history, open interest history, option series statistics and open limit orders to the API, and bid/ask plus realized volatility to the pricing service (see Phase 5).
 
 ---
 
@@ -230,7 +230,7 @@ Run before any public deployment or handoff:
 
 Not built until MVP (Priority 0–2) is live and stable. (Work started before that: the MVP is not hosted yet, and the first slice was chosen because it extends the Phase 5 limit orders directly.)
 
-**Phase 7 progress** (2026-09-20). Contracts: 231 tests pass (216 before the cross-cutting audit), coverage 96.0% of lines and 66.7% of branches as of the last measure. SDK: 158 tests including the Anvil deployment test, which opens a stop-loss, a cross-margin position, an RFQ position and a subaccount trade on the real deployed contracts. All new contracts are wired by `DeployAll.s.sol`. **Nothing below is deployed, and nothing that holds or moves money is audited.**
+**Phase 7 progress** (2026-09-20). Contracts: 231 tests pass (216 before the cross-cutting audit), coverage 96.0% of lines and 66.7% of branches as of the last measure. SDK: 158 tests including the Anvil deployment test, which opens a stop-loss, a cross-margin position, an RFQ position and a subaccount trade on the real deployed contracts. All new contracts are wired by `DeployAll.s.sol` and deployed as `[1.3.0-testnet]`; the admin events and handover script from the cross-cutting audit reach a chain with the next redeploy. **Nothing that holds or moves money is audited.**
 
 Phase 2 list (Section 39):
 
@@ -257,9 +257,9 @@ Phase 3 list (Section 40):
 - **Clearing infrastructure.** `InsuranceFund` and bad-debt handling in `LiquidationEngine` (a shortfall is paid by the fund, and only what it cannot cover is bad debt), which also fixes a liquidation that reverted when a position had lost more than its owner held. Not built: automatic funding of the fund from fees, margin-call notifications, netting or end-of-day settlement statements.
 - **Automated hedging tools.** `hedgeBook` / `planHedge` in the SDK and `services/hedger`: keeps an options book delta neutral with perps. It only reports what it would do unless `HEDGER_EXECUTE=true`.
 
-**What is not verified.** The new API routes that query PostgreSQL (`/v1/perps/:symbol/funding/analytics`, `/v1/reports/:wallet`, `/v1/trigger-orders/:wallet`) are tested against a fake database client, not a real one (no database credentials here): run `TEST_DATABASE_URL=... pnpm --filter @orionis/api test` once. The new web pages and panels typecheck and build but were not clicked through in a browser. The keeper, hedger and market maker flows were tested with fakes and, for the contracts, on a local Anvil node, not on testnet.
+**What is not verified.** The new API routes that query PostgreSQL (`/v1/perps/:symbol/funding/analytics`, `/v1/reports/:wallet`, `/v1/trigger-orders/:wallet`) were first tested against a fake database client only. Since 2026-09-20 they also run against a real PostgreSQL (`services/api/src/analytics.integration.test.ts`, with `TEST_DATABASE_URL`). The new web pages and panels typecheck and build but were not clicked through in a browser. The keeper, hedger and market maker flows were tested with fakes and, for the contracts, on a local Anvil node, not on testnet.
 
-**Left to do:** redeploy as `[1.3.0-testnet]` (`script/DeployAll.s.sol`, then `ConfigureMarkets`, then `pnpm --filter @orionis/config sync:deployments`), run the keeper and try each feature with a wallet, fund the insurance fund, set the parameters product owns (surface skew, collateral assets and haircuts, RFQ band and block limits, portfolio-margin shocks), and commission the audit.
+**Left to do:** try RFQ with a real maker, subaccounts, the insurance fund, portfolio margin, other collateral and block trades with a wallet (the perp, cross-margin, stop-loss, option and strategy-builder flows are done); fund the insurance fund (it holds 0 today); set the parameters product owns (surface skew, collateral assets and haircuts, RFQ band and block limits, portfolio-margin shocks), and commission the audit.
 
 **Feature lists**
 
@@ -287,6 +287,31 @@ Phase 3 list (Section 40):
 ## Testing & Pre-Deployment
 
 Covers what Phase 1 step 14 and the CI gate don't: full-stack integration, staging environment, and mainnet go/no-go criteria.
+
+**Readiness check (2026-09-20, before this section starts).** Every check below was run, not assumed.
+
+*Passing.*
+
+- Contracts: 231 tests with 10,000 fuzz runs, `forge fmt`, build. Coverage 96.3% of lines and 67.9% of branches (gates 90% and 55%).
+- Monorepo: `pnpm lint`, `typecheck`, `build` (including `next build`), `test` and `check:brand` all pass. API: 70 tests, of which 10 run against a real PostgreSQL 18 and cover every analytics route added in Phase 5 and Phase 7.
+- Config: `packages/config` matches `deployments/robinhood_testnet.json`. All 21 addresses have code on chain 46630; `vault.withdrawGuard` is `crossMargin`; `perpsEngine.rfqManager` is set; the registry lists NVDA; the quoter holds `QUOTER_ROLE` and the deployer does not.
+- Boot: the indexer, risk monitor, keeper and hedger start with the new `CHAIN_ID` handling, and an unknown `CHAIN_ID` is refused. The API and pricing service were already running.
+- Forking works: `anvil --fork-url` against the testnet RPC serves the deployed contracts, so fork tests (below) need no new infrastructure.
+
+*Found and fixed.*
+
+- The live indexer database had `markets = 0`, so `GET /v1/markets` returned `[]` and the terminal had no market list, and price sampling had stopped (it samples the active markets in that table). Cause: a database that starts empty at the chain head never sees the deployment's `MarketAdded` events. The indexer now reads the registry at start (the registry stays the one market list), and `INDEXER_START_BLOCK` replays history from a chosen block (`services/indexer/src/startBlock.ts`, tested; checked on fresh databases against the real testnet).
+- This file said `1.2.0-testnet` in four places and that Phase 7 was not deployed. Corrected above.
+
+*Blocking or to do before testing starts.*
+
+- **Restart the indexer** so it runs the fix, then replay history (steps in the reply that accompanied this change). The running API, pricing, indexer and keeper were started before the fix.
+- **Open a pull request**: the three cross-cutting commits pushed to `feat/phase-7-trigger-orders` have no CI run, because the earlier pull request (#4) is closed and the workflows run on pull requests and on `main`. The `gh` login on this machine has an invalid token.
+- **Keep the keeper running** during any test: the mock NVDA feed goes stale after 1 hour and every price read then reverts. It runs from a developer machine today. The feed sits at $188, not the $190 recorded in the changelog.
+- **No hosting configuration exists** (no Dockerfile, Railway service file or process file). Every service starts with `pnpm start` (`tsx`, a root dev dependency), so a hosted install must include dev dependencies or `tsx` must move to `dependencies`. The staging item below needs this first.
+- The insurance fund holds 0 of the settlement token, so a liquidation shortfall test needs it funded first.
+- The handover to a multisig or timelock has not been run on testnet, and no timelock is chosen.
+- Explorer verification is still blocked by Robinhood's explorer certificate.
 
 **Testing pyramid**
 
