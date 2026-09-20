@@ -11,6 +11,7 @@
   "packageManager": "pnpm@9.15.0",
   "scripts": {
     "build": "turbo run build",
+    "check:brand": "bash scripts/check-brand.sh",
     "dev": "turbo run dev",
     "lint": "turbo run lint",
     "test": "turbo run test",
