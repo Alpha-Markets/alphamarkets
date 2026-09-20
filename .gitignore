@@ -36,3 +36,5 @@ pnpm-debug.log*
 # Project Requirements
 # DEVELOPMENT_STEPS.md
 # PROJECT_BRIEF.md
+
+__pycache__/
