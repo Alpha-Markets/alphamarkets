@@ -31,4 +31,21 @@ interface IPerpsEngine {
 
     /// @param limitPrice Worst acceptable exit price, direction as in {reducePosition}.
     function closePosition(uint256 positionId, uint256 limitPrice, uint256 deadline) external;
+
+    /// @notice Places a resting order that opens a position once the mark price reaches
+    /// `triggerPrice` (at or below it for a long, at or above it for a short).
+    function placeLimitOrder(
+        bytes32 marketId,
+        bool isLong,
+        uint256 collateral,
+        uint256 leverage,
+        uint256 triggerPrice,
+        uint256 expiry
+    ) external returns (uint256 orderId);
+
+    /// @notice Cancels an open order; only its owner can.
+    function cancelLimitOrder(uint256 orderId) external;
+
+    /// @notice Fills an open order whose trigger has been reached. Callable by anyone.
+    function executeLimitOrder(uint256 orderId) external returns (uint256 positionId);
 }

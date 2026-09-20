@@ -10,6 +10,7 @@ import {FeeManager} from "../src/core/FeeManager.sol";
 import {OracleRouter} from "../src/oracle/OracleRouter.sol";
 import {MockPriceFeed} from "../src/oracle/MockPriceFeed.sol";
 import {MarketConfig, FeeConfig} from "../src/interfaces/DataTypes.sol";
+import {IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import {MockERC20} from "../test/mocks/MockERC20.sol";
 
 /// @notice Seeds one market (NVDA) on an already-deployed Phase 1 stack, reading contract
@@ -43,6 +44,9 @@ contract ConfigureMarkets is Script {
         address riskManager = vm.parseJsonAddress(json, ".riskManager");
         address feeManager = vm.parseJsonAddress(json, ".feeManager");
         address oracleRouter = vm.parseJsonAddress(json, ".oracleRouter");
+        // Position and open-interest limits are in settlement-token base units, the unit perp and
+        // option notional are both counted in, so the dollar figures below scale with its decimals.
+        uint256 dollar = 10 ** IERC20Metadata(vm.parseJsonAddress(json, ".settlementToken")).decimals();
 
         uint256 deployerKey = vm.envOr("PRIVATE_KEY", uint256(0));
         address admin = deployerKey == 0 ? msg.sender : vm.addr(deployerKey);
@@ -51,22 +55,26 @@ contract ConfigureMarkets is Script {
         else vm.startBroadcast(deployerKey);
 
         address underlyingToken = address(new MockERC20("NVIDIA (tokenized, mock)", "NVDA", 18));
-        address priceFeed = address(new MockPriceFeed(admin, 18, NVDA_INITIAL_PRICE));
+        // The mock feed's owner pushes prices. Set PRICE_FEED_OWNER to the keeper's address
+        // (services/keeper) so the deployer key never has to run a service; defaults to the deployer.
+        address feedOwner = vm.envOr("PRICE_FEED_OWNER", admin);
+        address priceFeed = address(new MockPriceFeed(feedOwner, 18, NVDA_INITIAL_PRICE));
 
         OracleRouter(oracleRouter).setPrimarySource(NVDA, priceFeed, 18);
 
-        MarketRegistry(marketRegistry).addMarket(
-            MarketConfig({
-                marketId: NVDA,
-                underlyingToken: underlyingToken,
-                oracleId: NVDA,
-                optionsEnabled: true,
-                perpsEnabled: true,
-                maxLeverage: 10,
-                openInterestCap: 5_000_000e18,
-                active: true
-            })
-        );
+        MarketRegistry(marketRegistry)
+            .addMarket(
+                MarketConfig({
+                    marketId: NVDA,
+                    underlyingToken: underlyingToken,
+                    oracleId: NVDA,
+                    optionsEnabled: true,
+                    perpsEnabled: true,
+                    maxLeverage: 10,
+                    openInterestCap: 5_000_000 * dollar,
+                    active: true
+                })
+            );
 
         uint256[] memory tiers = new uint256[](5);
         tiers[0] = 1;
@@ -75,30 +83,32 @@ contract ConfigureMarkets is Script {
         tiers[3] = 5;
         tiers[4] = 10;
 
-        RiskManager(riskManager).setRiskConfig(
-            NVDA,
-            RiskManager.RiskConfig({
-                maxLeverage: 10,
-                allowedLeverageTiers: tiers,
-                initialMarginRateBps: 1000, // 10%, PROJECT_BRIEF.md Section 13 example
-                maintenanceMarginRateBps: 500, // 5%, PROJECT_BRIEF.md Section 13/19 example
-                maxPositionNotional: 500_000e18, // $500K, Section 13/19 example
-                openInterestCap: 5_000_000e18 // $5M, Section 13/19 example
-            })
-        );
+        RiskManager(riskManager)
+            .setRiskConfig(
+                NVDA,
+                RiskManager.RiskConfig({
+                    maxLeverage: 10,
+                    allowedLeverageTiers: tiers,
+                    initialMarginRateBps: 1000, // 10%, PROJECT_BRIEF.md Section 13 example
+                    maintenanceMarginRateBps: 500, // 5%, PROJECT_BRIEF.md Section 13/19 example
+                    maxPositionNotional: 500_000 * dollar, // $500K, Section 13/19 example
+                    openInterestCap: 5_000_000 * dollar // $5M, Section 13/19 example
+                })
+            );
 
         // Placeholder fee schedule — not specified in PROJECT_BRIEF.md, confirm with product.
-        FeeManager(feeManager).setFeeConfig(
-            NVDA,
-            FeeConfig({
-                makerFee: 5, // 0.05%
-                takerFee: 10, // 0.10%
-                optionOpenFee: 20, // 0.20%
-                optionCloseFee: 20, // 0.20%
-                settlementFee: 10, // 0.10%
-                liquidationFee: 100 // 1.00%
-            })
-        );
+        FeeManager(feeManager)
+            .setFeeConfig(
+                NVDA,
+                FeeConfig({
+                    makerFee: 5, // 0.05%
+                    takerFee: 10, // 0.10%
+                    optionOpenFee: 20, // 0.20%
+                    optionCloseFee: 20, // 0.20%
+                    settlementFee: 10, // 0.10%
+                    liquidationFee: 100 // 1.00%
+                })
+            );
 
         vm.stopBroadcast();
 

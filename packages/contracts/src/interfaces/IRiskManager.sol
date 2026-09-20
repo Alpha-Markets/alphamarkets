@@ -8,6 +8,10 @@ pragma solidity 0.8.26;
 interface IRiskManager {
     function checkLeverage(bytes32 marketId, uint256 leverage) external view;
 
+    /// @notice Reverts unless `size / collateral` stays within the market's maximum leverage. Used
+    /// where a position's leverage is a result rather than a chosen tier (increasing a position).
+    function checkResultingLeverage(bytes32 marketId, uint256 size, uint256 collateral) external view;
+
     function checkPositionSize(bytes32 marketId, uint256 notional) external view;
 
     function checkOpenInterest(bytes32 marketId, bool isLong, uint256 notionalDelta) external view;

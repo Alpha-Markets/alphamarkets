@@ -16,6 +16,7 @@ import {OptionPositionManager} from "../src/options/OptionPositionManager.sol";
 import {OptionMarket} from "../src/options/OptionMarket.sol";
 import {OptionsEngine} from "../src/options/OptionsEngine.sol";
 import {PerpPositionManager} from "../src/perps/PerpPositionManager.sol";
+import {PerpOrderManager} from "../src/perps/PerpOrderManager.sol";
 import {FundingManager} from "../src/perps/FundingManager.sol";
 import {PerpsEngine} from "../src/perps/PerpsEngine.sol";
 import {LiquidationEngine} from "../src/perps/LiquidationEngine.sol";
@@ -45,6 +46,7 @@ contract DeployAll is Script {
         address optionMarket;
         address optionsEngine;
         address perpPositionManager;
+        address perpOrderManager;
         address fundingManager;
         address perpsEngine;
         address liquidationEngine;
@@ -73,6 +75,7 @@ contract DeployAll is Script {
         d.optionPositionManager = address(new OptionPositionManager(admin));
         d.optionMarket = address(new OptionMarket(admin));
         d.perpPositionManager = address(new PerpPositionManager(admin));
+        d.perpOrderManager = address(new PerpOrderManager(admin));
         d.fundingManager =
             address(new FundingManager(admin, d.oracleRouter, d.perpPositionManager, d.vault, settlementToken));
 
@@ -98,6 +101,7 @@ contract DeployAll is Script {
                 d.feeManager,
                 d.riskManager,
                 d.perpPositionManager,
+                d.perpOrderManager,
                 d.fundingManager,
                 settlementToken
             )
@@ -174,6 +178,7 @@ contract DeployAll is Script {
         OptionPositionManager opm = OptionPositionManager(d.optionPositionManager);
         OptionMarket om = OptionMarket(d.optionMarket);
         PerpPositionManager ppm = PerpPositionManager(d.perpPositionManager);
+        PerpOrderManager pom = PerpOrderManager(d.perpOrderManager);
 
         opm.grantRole(opm.ENGINE_ROLE(), d.optionsEngine);
         om.grantRole(om.ENGINE_ROLE(), d.optionsEngine);
@@ -182,6 +187,7 @@ contract DeployAll is Script {
         ppm.grantRole(perpEngineRole, d.perpsEngine);
         ppm.grantRole(perpEngineRole, d.fundingManager);
         ppm.grantRole(perpEngineRole, d.liquidationEngine);
+        pom.grantRole(pom.ENGINE_ROLE(), d.perpsEngine);
     }
 
     function _wireFundingAndOracle(Deployment memory d) internal {
@@ -211,6 +217,7 @@ contract DeployAll is Script {
         vm.serializeAddress(json, "optionMarket", d.optionMarket);
         vm.serializeAddress(json, "optionsEngine", d.optionsEngine);
         vm.serializeAddress(json, "perpPositionManager", d.perpPositionManager);
+        vm.serializeAddress(json, "perpOrderManager", d.perpOrderManager);
         vm.serializeAddress(json, "fundingManager", d.fundingManager);
         vm.serializeAddress(json, "perpsEngine", d.perpsEngine);
         vm.serializeAddress(json, "liquidationEngine", d.liquidationEngine);
@@ -234,6 +241,7 @@ contract DeployAll is Script {
         console.log("OptionMarket:          ", d.optionMarket);
         console.log("OptionsEngine:         ", d.optionsEngine);
         console.log("PerpPositionManager:   ", d.perpPositionManager);
+        console.log("PerpOrderManager:      ", d.perpOrderManager);
         console.log("FundingManager:        ", d.fundingManager);
         console.log("PerpsEngine:           ", d.perpsEngine);
         console.log("LiquidationEngine:     ", d.liquidationEngine);

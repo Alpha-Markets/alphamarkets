@@ -5,6 +5,7 @@ import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol
 import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
 import {EIP712} from "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
 import {ECDSA} from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
+import {IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import {IOptionsEngine} from "../interfaces/IOptionsEngine.sol";
 import {IMarketRegistry} from "../interfaces/IMarketRegistry.sol";
 import {IOrionisVault} from "../interfaces/IOrionisVault.sol";
@@ -54,6 +55,10 @@ contract OptionsEngine is IOptionsEngine, ReentrancyGuard, AccessControl, EIP712
     OptionPositionManager public immutable positionManager;
     OptionMarket public immutable optionMarket;
     address public immutable settlementToken;
+    /// @notice Decimals of the settlement token. Option maths runs in 18-decimal fixed point (price,
+    /// strike, contract size); every amount that reaches the Vault or RiskManager is converted to
+    /// this token's base units first, so a 6-decimal token settles and is capped in 6 decimals.
+    uint8 public immutable settlementDecimals;
 
     error OptionsNotEnabled(bytes32 marketId);
     error InvalidExpiry();
@@ -100,6 +105,7 @@ contract OptionsEngine is IOptionsEngine, ReentrancyGuard, AccessControl, EIP712
         positionManager = OptionPositionManager(positionManager_);
         optionMarket = OptionMarket(optionMarket_);
         settlementToken = settlementToken_;
+        settlementDecimals = IERC20Metadata(settlementToken_).decimals();
     }
 
     // ---------------------------------------------------------------------
@@ -119,7 +125,7 @@ contract OptionsEngine is IOptionsEngine, ReentrancyGuard, AccessControl, EIP712
         _consumeQuote(_openDigest(params, quote), quote);
 
         uint256 contractSize = optionMarket.getContractSize(params.marketId);
-        uint256 notional = (contractSize * params.strike / WAD) * params.contracts;
+        uint256 notional = _notional(contractSize, params.strike, params.contracts);
         bool oiSide = params.optionType == OptionType.CALL;
 
         _checkAndCharge(params.marketId, oiSide, notional, params.premium);
@@ -272,7 +278,7 @@ contract OptionsEngine is IOptionsEngine, ReentrancyGuard, AccessControl, EIP712
         }
 
         uint256 contractSize = optionMarket.getContractSize(pos.marketId);
-        uint256 notional = (contractSize * pos.strike / WAD) * pos.contracts;
+        uint256 notional = _notional(contractSize, pos.strike, pos.contracts);
         bool oiSide = pos.optionType == OptionType.CALL;
         riskManager.recordOpenInterestDelta(pos.marketId, oiSide, -int256(notional));
 
@@ -317,12 +323,14 @@ contract OptionsEngine is IOptionsEngine, ReentrancyGuard, AccessControl, EIP712
         OptionPositionManager.OptionPosition memory pos = positionManager.getPosition(positionId);
         if (pos.status != OptionPositionManager.PositionStatus.OPEN) return;
 
-        uint256 payout =
-            OptionSettlement.settlementValue(optionType, settlementPrice, strike, contractSize, pos.contracts);
+        // The payout is worked out in 18 decimals and credited in the token's own base units.
+        uint256 payout = _toTokenUnits(
+            OptionSettlement.settlementValue(optionType, settlementPrice, strike, contractSize, pos.contracts)
+        );
         uint256 net = _payFeeAndCredit(marketId, pos.owner, payout);
 
         bool oiSide = optionType == OptionType.CALL;
-        uint256 notional = (contractSize * strike / WAD) * pos.contracts;
+        uint256 notional = _notional(contractSize, strike, pos.contracts);
         riskManager.recordOpenInterestDelta(marketId, oiSide, -int256(notional));
 
         positionManager.settlePosition(positionId, int256(net) - int256(pos.entryPremium));
@@ -330,6 +338,20 @@ contract OptionsEngine is IOptionsEngine, ReentrancyGuard, AccessControl, EIP712
         if (payout > 0) {
             emit OptionExercised(positionId, payout, net);
         }
+    }
+
+    /// @dev Notional of `contracts` at `strike`, in settlement-token base units: what RiskManager's
+    /// position-size and open-interest limits are written in, the same unit perp notional uses.
+    function _notional(uint256 contractSize, uint256 strike, uint256 contracts) internal view returns (uint256) {
+        return _toTokenUnits((contractSize * strike / WAD) * contracts);
+    }
+
+    /// @dev Converts an 18-decimal amount to the settlement token's base units.
+    function _toTokenUnits(uint256 amount18) internal view returns (uint256) {
+        uint8 tokenDecimals = settlementDecimals;
+        if (tokenDecimals == 18) return amount18;
+        if (tokenDecimals < 18) return amount18 / 10 ** (18 - tokenDecimals);
+        return amount18 * 10 ** (tokenDecimals - 18);
     }
 
     function _payFeeAndCredit(bytes32 marketId, address owner, uint256 payout) internal returns (uint256 net) {
