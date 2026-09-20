@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Footer } from "@/components/Footer";
-import { HeroMark } from "@/components/HeroMark";
+import { MorphingLogo } from "@/components/MorphingLogo";
 import { LandingMarkets } from "@/components/LandingMarkets";
 import { SilkBackdrop } from "@/components/SilkBackdrop";
 import { PAGE_FRAME } from "@/lib/frame";
@@ -20,8 +20,12 @@ export default function Landing() {
     <div className="flex min-h-full flex-col">
       <section className="relative h-dvh min-h-[34rem] shrink-0">
         <SilkBackdrop />
-        <HeroMark />
         <div className={`${PAGE_FRAME} relative flex h-full flex-col justify-end pb-24 lg:pb-32`}>
+          {/* The logo sits centred in the space above the headline. */}
+          <div className="hero-logo flex min-h-0 flex-1 flex-col items-center justify-center pt-14">
+            <MorphingLogo className="w-[clamp(200px,min(36vw,46dvh),500px)]" />
+            <p className="mt-[clamp(6px,1.2vw,16px)] pl-[0.32em] text-[clamp(0.6875rem,1vw,0.875rem)] font-medium leading-none tracking-[0.32em] text-muted">ALPHAMARKETS</p>
+          </div>
           <h1 className="max-w-5xl text-balance text-[2.75rem] font-light leading-[1.05] tracking-[-0.035em] sm:text-[4rem] lg:text-[5rem] xl:text-[5.75rem]">
             Derivatives for tokenized equities.
           </h1>
