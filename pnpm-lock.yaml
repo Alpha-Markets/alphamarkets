@@ -36,6 +36,9 @@ importers:
       '@alphamarkets/ui':
         specifier: workspace:*
         version: link:../../packages/ui
+      '@next/env':
+        specifier: 15.5.25
+        version: 15.5.25
       '@tanstack/react-query':
         specifier: ^5
         version: 5.103.1(react@19.3.0)
@@ -115,18 +118,18 @@ importers:
 
   services/api:
     dependencies:
-      '@fastify/cors':
-        specifier: ^10
-        version: 10.1.0
-      '@fastify/websocket':
-        specifier: ^11.0.0
-        version: 11.3.1(bufferutil@4.1.0)(utf-8-validate@5.0.10)
       '@alphamarkets/config':
         specifier: workspace:*
         version: link:../../packages/config
       '@alphamarkets/sdk':
         specifier: workspace:*
         version: link:../../packages/sdk
+      '@fastify/cors':
+        specifier: ^10
+        version: 10.1.0
+      '@fastify/websocket':
+        specifier: ^11.0.0
+        version: 11.3.1(bufferutil@4.1.0)(utf-8-validate@5.0.10)
       fastify:
         specifier: ^5.1.0
         version: 5.12.5

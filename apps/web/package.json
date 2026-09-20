@@ -17,6 +17,7 @@
     "@alphamarkets/sdk": "workspace:*",
     "@alphamarkets/types": "workspace:*",
     "@alphamarkets/ui": "workspace:*",
+    "@next/env": "15.5.25",
     "@tanstack/react-query": "^5",
     "next": "^15",
     "react": "^19",

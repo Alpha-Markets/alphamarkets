@@ -2,6 +2,7 @@ import { chains } from "@alphamarkets/config";
 import Link from "next/link";
 import { env } from "@/lib/env";
 import { PAGE_FRAME } from "@/lib/frame";
+import { Logo } from "./Logo";
 
 const explorerAddress = (address: string) => (env.explorerUrl ? `${env.explorerUrl.replace(/\/+$/, "")}/address/${address}` : undefined);
 
@@ -19,7 +20,7 @@ export function Footer() {
     <footer className="border-t border-line">
       <div className={`${PAGE_FRAME} grid gap-8 py-8 sm:grid-cols-[1fr_auto_auto]`}>
         <div>
-          <p className="text-sm font-medium tracking-[0.32em]">ALPHAMARKETS</p>
+          <Logo size="lg" />
           <p className="mt-2 max-w-xs text-muted">Derivatives for tokenized equities.</p>
           <p className="mt-4 inline-flex items-center gap-2 rounded-md border border-line px-2 py-1 text-xs text-muted">
             <span aria-hidden="true" className="size-1.5 rounded-full bg-up" />
