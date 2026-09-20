@@ -23,7 +23,7 @@ import {
 import { useTerminal } from "@/stores/terminal";
 
 const toNumber = (value: bigint) => Number(formatUnits(value, 18));
-const selectClass = "h-8 rounded-[3px] border border-line bg-surface px-2 text-sm text-text";
+const selectClass = "h-8 rounded-md border border-line bg-surface px-2 text-sm text-text";
 
 /// A payoff-at-expiry line chart. Green above zero, red below, with the price and break-evens on
 /// the axis. Drawn as plain SVG: it is a display of the analysis, nothing here is signed.
@@ -157,8 +157,8 @@ export function StrategyBuilder() {
   const range = result && spot !== undefined ? chartRange(result.legs.flatMap((leg) => (leg.strike === undefined ? [] : [leg.strike])), result.breakEvens, spot) : undefined;
 
   return (
-    <div className="mx-auto flex w-full max-w-5xl flex-col gap-4 p-4">
-      <Panel title="Strategy builder">
+    <div className="flex flex-col gap-6">
+      <Panel>
         <div className="flex flex-col gap-4 p-3">
           <div className="flex flex-wrap items-end gap-3">
             <label className="flex flex-col gap-1 text-xs text-muted">

@@ -46,7 +46,7 @@ export function RiskLadder({
   const direction = isLong ? "below" : "above";
 
   return (
-    <figure aria-label="Distance to liquidation" className="border border-line p-3">
+    <figure aria-label="Distance to liquidation" className="rounded-lg border border-line p-3">
       <div className="relative mx-2" style={{ height }}>
         {placed.map((mark) => (
           <div key={mark.key} className="absolute left-0 right-0" style={{ top: mark.y }}>

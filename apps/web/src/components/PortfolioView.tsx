@@ -1,13 +1,15 @@
 "use client";
 
-import { Num, Panel, Stat, cn } from "@orionis/ui";
+import { Num, Panel, Skeleton, Stat, Tabs } from "@orionis/ui";
 import { OptionPositionStatus } from "@orionis/sdk";
 import { useState } from "react";
+import Link from "next/link";
 import { useAccount } from "wagmi";
 import { useOrders, usePortfolioSummary, useSettlementDecimals } from "@/hooks/queries";
 import { useNow } from "@/hooks/useNow";
 import { openOrderCount } from "@/lib/orders";
 import { fmtSigned, fmtUsd, signTone } from "@/lib/format";
+import { ConnectButton } from "./ConnectButton";
 import { FundingTable, HistoryTable } from "./ActivityTables";
 import { OptionPositionsTable } from "./OptionPositionsTable";
 import { OrdersTable } from "./OrdersTable";
@@ -24,8 +26,26 @@ const tabs: Array<{ id: Tab; label: string }> = [
   { id: "history", label: "History" },
 ];
 
-function Empty({ children }: { children: string }) {
-  return <p className="p-3 text-muted">{children}</p>;
+/// An empty section says what is missing and offers the next step.
+function Empty({ children, action }: { children: string; action?: { href: string; label: string } }) {
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-3 p-3">
+      <p className="text-muted">{children}</p>
+      {action ? (
+        <Link href={action.href} className="inline-flex h-8 items-center rounded-md border border-line px-2.5 text-xs font-medium hover:border-faint hover:bg-raised">
+          {action.label}
+        </Link>
+      ) : null}
+    </div>
+  );
+}
+
+/// Percentages for the two-part bar under the portfolio value.
+function lockedShare(available: bigint, locked: bigint): { available: number; locked: number } {
+  const total = available + locked;
+  if (total <= 0n) return { available: 0, locked: 0 };
+  const lockedPercent = Number((locked * 10_000n) / total) / 100;
+  return { available: 100 - lockedPercent, locked: lockedPercent };
 }
 
 /// PROJECT_BRIEF.md Section 28.
@@ -37,17 +57,21 @@ export function PortfolioView() {
   const { data: orders } = useOrders();
   const now = useNow();
   const waiting = orders ? openOrderCount(orders, BigInt(Math.floor(now / 1000))) : 0;
+  const tabList = tabs.map((item) => (item.id === "orders" && waiting > 0 ? { ...item, label: `${item.label} (${waiting})` } : item));
 
   if (!isConnected) {
     return (
-      <Panel title="Portfolio">
-        <Empty>Connect a wallet to see your collateral, positions and history.</Empty>
+      <Panel>
+        <div className="flex flex-wrap items-center justify-between gap-3 p-3">
+          <p className="text-muted">Connect a wallet to see your collateral, positions and history.</p>
+          <ConnectButton />
+        </div>
       </Panel>
     );
   }
   if (error) {
     return (
-      <Panel title="Portfolio">
+      <Panel>
         <p className="p-3 text-down">Could not read your portfolio from the chain. Check NEXT_PUBLIC_RPC_URL.</p>
       </Panel>
     );
@@ -60,10 +84,22 @@ export function PortfolioView() {
   const value = summary ? summary.balances.balance + summary.unrealizedPerpPnl : undefined;
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="border border-line bg-surface p-4">
+    <div className="flex flex-col gap-6">
+      <div className="rounded-[10px] border border-line/70 bg-surface p-6">
         <p className="text-xs text-muted">Portfolio value</p>
-        <p className="mt-1 text-3xl font-medium tabular-nums">{isPending ? "–" : fmtUsd(value, decimals)}</p>
+        <p className="mt-1 text-[2.5rem] font-light leading-tight tabular-nums">
+          {isPending ? <Skeleton className="h-9 w-56" /> : fmtUsd(value, decimals)}
+        </p>
+        {summary ? (
+          <div
+            role="img"
+            aria-label={`Available collateral ${fmtUsd(summary.balances.available, decimals)}, locked margin ${fmtUsd(summary.balances.lockedMargin, decimals)}`}
+            className="mt-4 flex h-1.5 max-w-md overflow-hidden rounded-[2px] bg-line"
+          >
+            <div className="bg-text" style={{ width: `${lockedShare(summary.balances.available, summary.balances.lockedMargin).available}%` }} />
+            <div className="bg-faint" style={{ width: `${lockedShare(summary.balances.available, summary.balances.lockedMargin).locked}%` }} />
+          </div>
+        ) : null}
         <dl className="mt-5 flex flex-wrap gap-x-10 gap-y-3">
           <Stat label="Available collateral">{fmtUsd(summary?.balances.available, decimals)}</Stat>
           <Stat label="Locked margin">{fmtUsd(summary?.balances.lockedMargin, decimals)}</Stat>
@@ -80,39 +116,22 @@ export function PortfolioView() {
       </div>
 
       <Panel
-        title={
-          <div role="tablist" aria-label="Portfolio sections" className="-mb-px flex h-9 gap-5">
-            {tabs.map((item) => (
-              <button
-                key={item.id}
-                role="tab"
-                type="button"
-                aria-selected={tab === item.id}
-                onClick={() => setTab(item.id)}
-                className={cn(
-                  "h-9 border-b px-0.5 text-sm font-medium",
-                  tab === item.id ? "border-text text-text" : "border-transparent text-muted hover:text-text",
-                )}
-              >
-                {item.label}
-                {item.id === "orders" && waiting > 0 ? ` (${waiting})` : ""}
-              </button>
-            ))}
-          </div>
-        }
+        title={<Tabs label="Portfolio sections" tabs={tabList} value={tab} onChange={setTab} />}
       >
         <div role="tabpanel" className="overflow-x-auto">
           {tab === "all" || tab === "perps" ? (
             <section aria-label="Perpetual positions">
               {tab === "all" ? <h3 className="px-3 pt-3 text-xs text-muted">Perpetuals</h3> : null}
-              {perps.length === 0 ? <Empty>No open perpetual positions.</Empty> : <PerpPositionsTable positions={perps} decimals={decimals} />}
+              {perps.length === 0 ? <Empty action={{ href: "/perpetuals", label: "Open a perpetual" }}>No open perpetual positions.</Empty> : <PerpPositionsTable positions={perps} decimals={decimals} />}
             </section>
           ) : null}
           {tab === "all" || tab === "options" ? (
             <section aria-label="Option positions" className={tab === "all" ? "border-t border-line" : undefined}>
               {tab === "all" ? <h3 className="px-3 pt-3 text-xs text-muted">Options</h3> : null}
               {(tab === "all" ? openOptions : options).length === 0 ? (
-                <Empty>{tab === "all" ? "No open option positions." : "No option positions yet."}</Empty>
+                <Empty action={{ href: "/options", label: "Open the option chain" }}>
+                  {tab === "all" ? "No open option positions." : "No option positions yet."}
+                </Empty>
               ) : (
                 <OptionPositionsTable positions={tab === "all" ? openOptions : options} />
               )}

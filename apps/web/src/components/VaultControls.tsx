@@ -1,6 +1,6 @@
 "use client";
 
-import { Button, Row, TextField } from "@orionis/ui";
+import { Button, Row, Skeleton, TextField } from "@orionis/ui";
 import { toBaseUnits } from "@orionis/sdk";
 import { useState } from "react";
 import { useAccount } from "wagmi";
@@ -22,6 +22,10 @@ export function VaultControls() {
   const { data: balances } = useVaultBalances();
   const { data: walletBalance } = useWalletTokenBalance();
   const [mode, setMode] = useState<Mode>();
+  const [manual, setManual] = useState<boolean>();
+  // Trading needs collateral in the Vault, so an empty Vault opens this block; otherwise it stays
+  // to one line and leaves the room to the order form.
+  const expanded = manual ?? (isConnected && balances?.available === 0n);
   const [amount, setAmount] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -51,43 +55,61 @@ export function VaultControls() {
   }
 
   return (
-    <div className="border-b border-line p-3">
-      <dl>
-        <Row label="Available collateral">{fmtUsd(balances?.available, decimals)}</Row>
-        <Row label="Locked margin">{fmtUsd(balances?.lockedMargin, decimals)}</Row>
-        <Row label="Wallet balance">{fmtUsd(walletBalance, decimals)}</Row>
-      </dl>
+    <div className="border-b border-line">
+      <button
+        type="button"
+        aria-expanded={expanded}
+        onClick={() => setManual(!expanded)}
+        className="flex h-11 w-full items-center justify-between gap-3 px-3 text-left hover:bg-raised"
+      >
+        <span className="text-muted">Available collateral</span>
+        <span className="flex items-center gap-2">
+          <span className="tabular-nums">
+            {balances ? fmtUsd(balances.available, decimals) : isConnected ? <Skeleton className="w-16" /> : "–"}
+          </span>
+          <span className="text-xs text-muted">{expanded ? "Hide" : "Manage"}</span>
+        </span>
+      </button>
 
-      {mode ? (
-        <div className="mt-3 flex flex-col gap-2">
-          <TextField
-            label={mode === "deposit" ? "Deposit amount" : "Withdraw amount"}
-            value={amount}
-            onValueChange={setAmount}
-            suffix="USD"
-            placeholder="0.00"
-            invalid={tooMuch}
-            hint={tooMuch ? "More than you have" : undefined}
-          />
-          <div className="flex gap-2">
-            <Button variant="primary" size="sm" className="flex-1" disabled={!valid || tooMuch || busy} onClick={submit}>
-              {busy ? "Working…" : mode === "deposit" ? "Deposit" : "Withdraw"}
-            </Button>
-            <Button size="sm" disabled={busy} onClick={() => setMode(undefined)}>
-              Cancel
-            </Button>
-          </div>
+      {expanded ? (
+        <div className="px-3 pb-3">
+          <dl>
+            <Row label="Locked margin">{fmtUsd(balances?.lockedMargin, decimals)}</Row>
+            <Row label="Wallet balance">{fmtUsd(walletBalance, decimals)}</Row>
+          </dl>
+
+          {mode ? (
+            <div className="mt-3 flex flex-col gap-2">
+              <TextField
+                label={mode === "deposit" ? "Deposit amount" : "Withdraw amount"}
+                value={amount}
+                onValueChange={setAmount}
+                suffix="USD"
+                placeholder="0.00"
+                invalid={tooMuch}
+                hint={tooMuch ? "More than you have" : undefined}
+              />
+              <div className="flex gap-2">
+                <Button variant="primary" size="sm" className="flex-1" disabled={!valid || tooMuch || busy} onClick={submit}>
+                  {busy ? "Working…" : mode === "deposit" ? "Deposit" : "Withdraw"}
+                </Button>
+                <Button size="sm" disabled={busy} onClick={() => setMode(undefined)}>
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <div className="mt-3 flex gap-2">
+              <Button size="sm" className="flex-1" disabled={!isConnected} onClick={() => setMode("deposit")}>
+                Deposit
+              </Button>
+              <Button size="sm" className="flex-1" disabled={!isConnected} onClick={() => setMode("withdraw")}>
+                Withdraw
+              </Button>
+            </div>
+          )}
         </div>
-      ) : (
-        <div className="mt-3 flex gap-2">
-          <Button size="sm" className="flex-1" disabled={!isConnected} onClick={() => setMode("deposit")}>
-            Deposit
-          </Button>
-          <Button size="sm" className="flex-1" disabled={!isConnected} onClick={() => setMode("withdraw")}>
-            Withdraw
-          </Button>
-        </div>
-      )}
+      ) : null}
     </div>
   );
 }

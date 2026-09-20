@@ -1,22 +1,13 @@
-import { Header } from "@/components/Header";
+import { PageHeader } from "@/components/PageHeader";
 import { StrategyBuilder } from "@/components/StrategyBuilder";
-import { TxToasts } from "@/components/TxToasts";
-import { env } from "@/lib/env";
 
-/// PROJECT_BRIEF.md Section 41: the options strategy builder.
+/// PROJECT_BRIEF.md Section 41: the options strategy builder. Same page width and padding as
+/// Portfolio and Activity.
 export default function Strategies() {
   return (
-    <div className="flex min-h-screen flex-col">
-      <Header current="Strategies" />
-      {env.rpcConfigured ? null : (
-        <p role="alert" className="border-b border-line bg-raised px-4 py-2 text-down">
-          NEXT_PUBLIC_RPC_URL is not set, so no market data can load. Add it to .env and restart.
-        </p>
-      )}
-      <main className="flex-1">
-        <StrategyBuilder />
-      </main>
-      <TxToasts />
+    <div className="mx-auto w-full max-w-[1400px] p-6 lg:p-10">
+      <PageHeader title="Strategies">Build an options strategy and see its payoff, cost and break-even before you trade.</PageHeader>
+      <StrategyBuilder />
     </div>
   );
 }

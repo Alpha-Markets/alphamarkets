@@ -1,6 +1,6 @@
 "use client";
 
-import { Num, Panel, Segmented, Stat, cn } from "@orionis/ui";
+import { Num, Panel, Segmented, Stat, Tabs } from "@orionis/ui";
 import type { OpenInterestRange } from "@orionis/sdk";
 import { useMemo, useState } from "react";
 import { useAccount } from "wagmi";
@@ -191,30 +191,12 @@ export function MarketAnalytics() {
   const [tab, setTab] = useState<Tab>("positions");
   const { data } = usePositions();
   const count = data?.perps.filter((position) => position.open).length ?? 0;
+  const tabList = TABS.map((item) => (item.id === "positions" && count > 0 ? { ...item, label: `${item.label} (${count})` } : item));
 
   return (
     <Panel
       className="h-64 shrink-0"
-      title={
-        <div role="tablist" aria-label="Market sections" className="-mb-px flex h-9 gap-5">
-          {TABS.map((item) => (
-            <button
-              key={item.id}
-              role="tab"
-              type="button"
-              aria-selected={tab === item.id}
-              onClick={() => setTab(item.id)}
-              className={cn(
-                "h-9 border-b px-0.5 text-sm font-medium",
-                tab === item.id ? "border-text text-text" : "border-transparent text-muted hover:text-text",
-              )}
-            >
-              {item.label}
-              {item.id === "positions" && count > 0 ? ` (${count})` : ""}
-            </button>
-          ))}
-        </div>
-      }
+      title={<Tabs label="Market sections" tabs={tabList} value={tab} onChange={setTab} />}
     >
       <div role="tabpanel" className="min-h-0 flex-1 overflow-auto">
         {tab === "positions" ? <PositionsBody /> : tab === "funding" ? <FundingHistory /> : <OpenInterestAnalytics />}

@@ -1,0 +1,20 @@
+{
+  "$schema": "https://railway.com/railway.schema.json",
+  "build": {
+    "builder": "RAILPACK",
+    "buildCommand": "true",
+    "watchPatterns": [
+      "/services/pricing/**",
+      "/packages/**",
+      "/pnpm-lock.yaml",
+      "/package.json"
+    ]
+  },
+  "deploy": {
+    "startCommand": "pnpm --filter @orionis/pricing start",
+    "restartPolicyType": "ON_FAILURE",
+    "restartPolicyMaxRetries": 10,
+    "healthcheckPath": "/health",
+    "healthcheckTimeout": 60
+  }
+}

@@ -1,10 +1,11 @@
-import type { Metadata } from "next";
-import { IBM_Plex_Sans } from "next/font/google";
+import type { Metadata, Viewport } from "next";
+import { Geist } from "next/font/google";
 import type { ReactNode } from "react";
+import { AppShell } from "@/components/AppShell";
 import { Providers } from "../providers";
 import "./globals.css";
 
-const plex = IBM_Plex_Sans({ subsets: ["latin"], weight: ["400", "500", "600"], variable: "--font-plex", display: "swap" });
+const geist = Geist({ subsets: ["latin"], variable: "--font-geist", display: "swap" });
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
 
@@ -25,11 +26,15 @@ export const metadata: Metadata = {
   },
 };
 
+export const viewport: Viewport = { themeColor: "#1a1a19" };
+
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="en" className={plex.variable}>
-      <body className="min-h-screen">
-        <Providers>{children}</Providers>
+    <html lang="en" className={geist.variable}>
+      <body>
+        <Providers>
+          <AppShell>{children}</AppShell>
+        </Providers>
       </body>
     </html>
   );

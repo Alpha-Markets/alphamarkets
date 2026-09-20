@@ -197,11 +197,11 @@ export function PriceChart() {
   return (
     <Panel
       title={title}
-      className="min-h-0 flex-1"
+      className="min-h-[300px] flex-1 lg:min-h-0"
       actions={
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2 py-1">
           {showCandles ? (
-            <Segmented label="Candle interval" value={interval} onChange={setInterval} options={INTERVALS.map((value) => ({ value, label: value }))} className="w-40" />
+            <Segmented label="Candle interval" value={interval} onChange={setInterval} options={INTERVALS.map((value) => ({ value, label: value }))} className="w-36" />
           ) : null}
           <Segmented
             label="Chart type"

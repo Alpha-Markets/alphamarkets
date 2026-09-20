@@ -4,7 +4,7 @@ export const alt = "Orionis Markets — Derivatives for tokenized equities";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
-// Social preview. Same palette as globals.css: black ground, off-white text, one thin ring.
+// Social preview. Same palette as globals.css: charcoal ground, off-white text, one thin ring.
 export default function OpengraphImage() {
   return new ImageResponse(
     (
@@ -16,7 +16,7 @@ export default function OpengraphImage() {
           flexDirection: "column",
           justifyContent: "center",
           padding: "0 96px",
-          background: "#000000",
+          background: "#1a1a19",
           color: "#ece9e2",
         }}
       >
@@ -30,7 +30,7 @@ export default function OpengraphImage() {
           }}
         />
         <div style={{ fontSize: 72, letterSpacing: 18, fontWeight: 500 }}>ORIONIS MARKETS</div>
-        <div style={{ fontSize: 34, color: "#8a8983", marginTop: 28 }}>Derivatives for tokenized equities.</div>
+        <div style={{ fontSize: 34, color: "#aaa9a2", marginTop: 28 }}>Derivatives for tokenized equities.</div>
       </div>
     ),
     size,
