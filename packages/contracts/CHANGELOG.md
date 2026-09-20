@@ -3,6 +3,83 @@
 All notable changes to Orionis Markets smart contracts are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.3.0-testnet] - 2026-09-20
+
+Full redeploy to Robinhood Chain testnet (chain ID 46630) via `script/DeployAll.s.sol` then `script/ConfigureMarkets.s.sol`, from the deployer `0xC804c6c50CE6F5B5dFB035378A3F84145914697F`. It replaces `[1.2.0-testnet]`, which is abandoned. Phase 7: trigger orders, subaccounts, cross margin, other collateral, portfolio margin, the insurance fund and RFQ. The settlement token `0x70b0FDa35dEb7BA710C601Ed9c45b9F992027112` is unchanged, and the NVDA mock feed (`0xFB1000c1Bf239D34Af27f54686C9D077F1938Be0`, seeded at $190) is owned by the keeper `0xa22e9da21Ae258f733EE932f767c46CB6508eD69`.
+
+| Contract | Address |
+|---|---|
+| MarketRegistry | `0xD1019516182cCC5976884b31e39E63247d5bdA3b` |
+| CollateralManager | `0x3CF01Ed4C450aec514Ed3cFEBF38fCCC8bb9a360` |
+| OrionisVault | `0x2C4751299bf5c3B659da825ce9Ba610D30509d19` |
+| FeeManager | `0xF0B42B2d5eBF0f4b8ae195eb230Aee164914F710` |
+| BuybackModule | `0x1EDF2A8eb01ae0199A605B23482E3266C5BAdeeC` |
+| PriceValidator | `0x3b0Fe50B4FA6A6144F320f34acf7ff29307eFf79` |
+| OracleRouter | `0x690b3039266535bEe12ec63247eCB75A056bb453` |
+| RiskManager | `0xB0D49b787dABa84b1Bc87EF6735a006Dd90dfca2` |
+| OptionPositionManager | `0x544624e7dB172C1b614952eA6D7A51597Ac53677` |
+| OptionMarket | `0x72a716E0995324A94723fccf98b315b0421C19c8` |
+| OptionsEngine | `0x28CEF869Bc5736C815d3c1304A7b53c064e35D32` |
+| PerpPositionManager | `0xB2fa58A93b05b1Cc2773D795976EFc08BF3aF246` |
+| PerpOrderManager | `0x3a7E7f9da5758fd9519e13fdeB3A77891b1B51e7` |
+| FundingManager | `0x181D8e405560b16F8d42a9Ba941CC3a8513F1676` |
+| PerpsEngine | `0x0f47b9CC8de372D02c7664a931CFBFdbbB505446` |
+| LiquidationEngine | `0x17c47aB434ef561348eC70A0927703d838Fe8d70` |
+| InsuranceFund | `0x8B46113C13ecCd7e1D01c0fEf18d4241740d2212` |
+| CrossMarginManager | `0x82e464Da82Ab1447637dE8Fe9faF490A978019c0` |
+| SubaccountFactory | `0xA0068d8E945bBD3b23aB029E17e4B1C749E40062` |
+| RFQManager | `0xB314f10cA6C71F723c08EAa545688dF9EBe53F94` |
+
+Confirmed live with `cast`: code at every address above; `vault.withdrawGuard`, `perpsEngine.crossMargin` and `perpsEngine.rfqManager` point at the new managers; `crossMargin` holds the engine and liquidator roles; the deployer holds `MAKER_ROLE` on `RFQManager` (no `MAKER_ADDRESS` was set); the keeper owns the feed; the mark price reads $190. `DeployAll` gave `QUOTER_ROLE` on `OptionsEngine` to the deployer (`QUOTER_ADDRESS` was not in the contracts `.env`), so it was granted to the pricing quoter `0xC9FA7B955B9FeffDFC3363e095447B99F8c2D31c` and revoked from the deployer right after. Explorer verification is still pending (the explorer's certificate). Wallet pass on 2026-09-20, by hand with the full stack running (keeper, indexer with a reset database, pricing, API, web): deposit; an isolated and a cross-margin perp; a stop-loss placed, rejected on the wrong side, cancelled, and fired by the keeper after the mock feed moved to $188 (then reset to $190); an option opened from the chain; the strategy builder page; positions closed. Not tried: RFQ against a real market maker, subaccounts and the insurance fund from a wallet, portfolio margin, other collateral, block trades.
+
+**None of this has been audited.** The parts that hold or move money (cross margin, collateral seizure, the insurance fund, RFQ prices) need the third-party audit in DEVELOPMENT_STEPS.md before any mainnet use. The suite is 216 tests (it was 135); coverage is 96.0% of lines and 66.7% of branches.
+
+Constructor changes (redeploy only, nothing upgrades in place): `PerpsEngine` takes a `crossMargin_` address last (zero turns `openPositionCross` off); `LiquidationEngine` takes `crossMargin_` and `insuranceFund_` last (zero means all positions are isolated and a shortfall is not covered). `OrionisVault` gained `setWithdrawGuard` and `withdrawGuard` (default off).
+
+### Added — trigger orders (PROJECT_BRIEF.md Section 39)
+
+- `PerpsEngine.placeTriggerOrder(positionId, kind, triggerPrice, expiry)`, `cancelTriggerOrder(orderId)` (owner only) and `executeTriggerOrder(orderId)`. `kind` is `TriggerKind.STOP_LOSS` or `TAKE_PROFIT` (new enum in `interfaces/DataTypes.sol`).
+- A trigger order is attached to an open position and closes the **whole remaining position** at the mark price when the mark reaches the trigger. A long's stop-loss and a short's take-profit fire when the mark falls to the trigger; a long's take-profit and a short's stop-loss fire when it rises to it. At placement the trigger must sit on the not-yet-fired side of the current mark (a long's stop-loss below it, its take-profit above it; a short is the mirror image), otherwise `InvalidTriggerPrice`: a trigger that is already reached would close the position at once.
+- `executeTriggerOrder` is permissionless, like `executeLimitOrder`: the price condition is checked onchain, so no keeper is trusted (`services/keeper` runs one for convenience). Margin, PnL and the taker fee settle for the position's owner exactly as in `closePosition`; the caller gets nothing. It works while the market is paused, like `closePosition`.
+- **No slippage bound on the exit.** The position closes at the mark price when the order fires, which can be worse than the trigger if the price gapped past it. A stop-loss must get out; a bound would leave the position open exactly when it matters. The UI and SDK say so.
+- An order left on a position that closed, was reduced to nothing or was liquidated another way can never fire: `executeTriggerOrder` reverts with `PositionNotOpen` and the order stays `OPEN` until its owner cancels it or it expires. Nothing loops over a position's orders onchain, so a close never costs more gas because of them. After a partial reduce the order closes what is left.
+- `PerpOrderManager` also stores trigger orders (`createTriggerOrder`, `markTriggerExecuted`, `markTriggerCancelled`, `getTriggerOrder`, `getUserTriggerOrders`, `nextTriggerOrderId`), with ids separate from limit orders. It stays storage only, written by `PerpsEngine` (`ENGINE_ROLE`).
+- Events: `TriggerOrderPlaced`, `TriggerOrderCancelled`, `TriggerOrderExecuted` (also watched by `services/indexer`). New error: `TriggerPriceNotReached`. Reused: `InvalidTriggerPrice`, `OrderNotOpen`, `OrderExpired`, `PositionNotOpen`, `NotPositionOwner`.
+- `PerpsEngine._reduce` was split: `_applyReduce` holds the PnL, margin, fee, open-interest and position-record steps, shared by `reducePosition`, `closePosition` and `executeTriggerOrder`. No behavior change for the existing calls.
+- Tests: `test/perps/TriggerOrders.t.sol` (23 cases: side rules for both directions, placing, both kinds firing for both directions, a gap through the trigger, partial reduce, expiry, cancel, closed position, paused market, access control on the storage, and a fuzz that an order fires only when the mark has reached it and always exits at the mark), and the SDK's Anvil integration test. The suite is 158 tests; coverage 94.75% of lines and 65.88% of branches.
+- Not built: partial-size triggers, trailing stops, a trigger tied to the liquidation price, an incentive for keepers, and a cap on orders per position or owner. Also not built: a stop-loss or take-profit set in the same call that opens a position.
+
+### Added — subaccounts (Section 40)
+
+- `SubaccountFactory.createSubaccount(index)` creates a `Subaccount` at a deterministic CREATE2 address (owner and index); `computeAddress`, `subaccountsOf`. The factory keeps the list of contracts a subaccount may call (`setTargetAllowed`, `TARGET_ADMIN_ROLE`): the engines only. The Vault can never be added.
+- `Subaccount` is a small contract wallet. The engines see it as the trader, so its balance, positions, orders and margin are separate from the owner's main account. The owner can `execute` one engine call or `multicall` several all-or-nothing, `deposit` and `withdraw` (owner only; a withdrawal always goes to the owner), and name delegates (`setDelegate`). A delegate can trade and nothing else: it cannot deposit or withdraw and cannot reach the Vault or a token, so it cannot move funds out.
+- A target's own revert is bubbled up unchanged (`InsufficientMargin` stays `InsufficientMargin`).
+- Tests: `test/accounts/Subaccounts.t.sol` (17).
+
+### Added — clearing: the insurance fund and bad-debt handling (Section 40)
+
+- **Fixed:** `LiquidationEngine.liquidate` reverted when a position had lost more than its owner held (the Vault debit underflowed), which left a deeply underwater position impossible to liquidate. It now settles what the owner has and treats the rest as a shortfall.
+- `InsuranceFund` is the last step of the loss waterfall: an ordinary Vault account (anyone can `deposit`; only `FUND_ADMIN_ROLE` can `withdraw`) that pays a shortfall in the settlement token. What it cannot cover is bad debt: the events `ShortfallCovered(positionId, owner, amount)` and `BadDebt(positionId, owner, amount)` say which.
+- Nothing pays into the fund automatically yet (no share of fees or liquidation penalties): it is funded by deposits. Sizing and funding it is a product decision.
+- Tests: `test/risk/CrossMargin.t.sol` (shortfall covered, partly covered, not covered, and on an isolated position).
+
+### Added — cross margin, other collateral and portfolio margin (Sections 39 and 40)
+
+- `PerpsEngine.openPositionCross(...)` opens a position backed by the whole account instead of only its own margin. The margin is still locked at the position's leverage; what changes is liquidation. `CrossMarginManager.accountHealth(owner)` returns `equity` (free balance, plus margin and unrealised PnL of every open cross position, plus the haircut value of other collateral) and a `requirement` (the sum of each cross position's maintenance margin). `LiquidationEngine.isLiquidatable` for a cross position is `equity < requirement` for the account, and cross positions are liquidated worst margin ratio first (`NotWorstPosition`), so a liquidator cannot close a healthy position while a failing one stays open. At most 10 open cross positions per account, so every health check has a bounded cost.
+- **Withdrawals are checked.** The Vault asks `CrossMarginManager.check` before every withdrawal (`IWithdrawGuard`): an account with open cross positions cannot withdraw the balance that backs them, and must stay 10% above its requirement (`WithdrawWouldUndermargin`). An account with no cross position withdraws freely, as before.
+- **Other collateral.** `setCollateralConfig(token, factorBps, priceMarketId, enabled)` lets another supported token count towards equity at `factorBps` of its oracle value. When a liquidated cross position leaves a shortfall, that collateral is seized into the insurance fund at the same haircut (`CollateralSeized`) and the fund pays the shortfall in the settlement token, so the fund ends up holding the seized tokens (to be sold or withdrawn by its admin). A token that is not configured, or is disabled, counts for nothing.
+- **Portfolio margin (opt-in).** `setPortfolioMargin(true)` and `addPortfolioOption(id)` (up to 20 open long options) replace the requirement with the worst loss across price shocks (default -20%, -10%, +10%, +20%; `setPortfolioParameters`) on the cross perps plus the intrinsic value of the registered options, floored at a share of the standard requirement (default 30%). A hedged book (a long perp and a put) is charged less than the sum of its parts; a naked one is charged more.
+- **Limits.** Not modelled: funding accrued and not yet settled, and options' time value and volatility (intrinsic value is a lower bound for a long option, so it errs on the safe side). Oracle reads revert on a stale price, so a health check does too. Isolated positions are untouched by all of this.
+- Tests: `test/risk/CrossMargin.t.sol` (23), including cross surviving where isolated is liquidated, worst-first order, withdraw guard, seizure into the fund, a disabled token, and a hedged versus a naked portfolio-margin book.
+
+### Added — RFQ and block trades (Sections 39 and 40)
+
+- `RFQManager.execute(quote, signature)` opens a perp position at a market maker's signed price instead of the mark. The quote is EIP-712 (`RFQQuote`: user, market, side, margin, leverage, price, `validUntil`, nonce), signed by a `MAKER_ROLE` holder for exactly that user, valid for a short time, single use, and its price must be within `maxDeviationBps` (default 1%) of the oracle mark (`PriceOutOfBand`), so a compromised maker key cannot sell the pool a position at a wild price.
+- A **block trade** is an RFQ whose notional is at least `blockMinNotional`: it may exceed the ordinary per-position cap, up to `blockMaxNotional` (`BlockTooLarge`). The open-interest cap and the leverage tiers still apply. Off by default (`setParameters`).
+- `PerpsEngine.openPositionAtPrice` is the only new entry to the engine, callable only by the RFQ manager, wired once by the deployer (`setRfqManager`). `_openPosition` was split so a market order and an RFQ share `_openAt`.
+- **Trust:** the maker sets the price, so its key is as critical as the options quoter's: a dedicated key held by the maker's own service, behind a multisig or HSM before mainnet.
+- Tests: `test/perps/RFQ.t.sol` (18) and the SDK's Anvil integration test, which signs with the maker key and opens a position at the quoted price.
+
 ## [1.2.0-testnet] - 2026-09-20
 
 Full redeploy to Robinhood Chain testnet (chain ID 46630) via `script/DeployAll.s.sol` then `script/ConfigureMarkets.s.sol`. It replaces `[1.1.0-testnet]`, which is abandoned: it has the `increasePosition` flaw below. Deployer `0xC804c6c50CE6F5B5dFB035378A3F84145914697F` (a new testnet-only key; the old admin `0xD1bC08B8081F718BE30645A2FeA7E015e04E29E9` holds no role on these contracts). Quoter `0xC9FA7B955B9FeffDFC3363e095447B99F8c2D31c` (unchanged, granted `QUOTER_ROLE` on the new engine). Keeper `0xa22e9da21Ae258f733EE932f767c46CB6508eD69` owns the NVDA mock price feed and holds no other role. The settlement token `0x70b0FDa35dEb7BA710C601Ed9c45b9F992027112` (mUSDC, 18 decimals) is unchanged. Every contract was confirmed live with `cast code`; the quoter role, the keeper's feed ownership, the order manager's engine role and `optionsEngine.settlementDecimals() == 18` were confirmed with `cast call`.

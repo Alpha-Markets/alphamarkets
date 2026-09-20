@@ -18,6 +18,9 @@ import {IOptionsEngine} from "../../src/interfaces/IOptionsEngine.sol";
 import {OptionsEngine} from "../../src/options/OptionsEngine.sol";
 import {PerpPositionManager} from "../../src/perps/PerpPositionManager.sol";
 import {PerpOrderManager} from "../../src/perps/PerpOrderManager.sol";
+import {InsuranceFund} from "../../src/core/InsuranceFund.sol";
+import {RFQManager} from "../../src/perps/RFQManager.sol";
+import {CrossMarginManager} from "../../src/risk/CrossMarginManager.sol";
 import {FundingManager} from "../../src/perps/FundingManager.sol";
 import {PerpsEngine} from "../../src/perps/PerpsEngine.sol";
 import {LiquidationEngine} from "../../src/perps/LiquidationEngine.sol";
@@ -59,6 +62,9 @@ contract BaseTest is Test {
     FundingManager internal fundingManager;
     PerpsEngine internal perpsEngine;
     LiquidationEngine internal liquidationEngine;
+    InsuranceFund internal insuranceFund;
+    CrossMarginManager internal crossMargin;
+    RFQManager internal rfqManager;
 
     /// @dev Decimals of the settlement token. A test overrides this to run the whole stack on a token
     /// that is not 18 decimals, like the 6-decimal USDC-style token the testnet uses.
@@ -100,6 +106,19 @@ contract BaseTest is Test {
             address(usdc)
         );
 
+        insuranceFund = new InsuranceFund(admin, address(vault), address(usdc));
+        crossMargin = new CrossMarginManager(
+            admin,
+            address(oracleRouter),
+            address(riskManager),
+            address(vault),
+            address(perpPositionManager),
+            address(optionPositionManager),
+            address(optionMarket),
+            address(usdc),
+            address(insuranceFund)
+        );
+
         perpsEngine = new PerpsEngine(
             address(marketRegistry),
             address(oracleRouter),
@@ -109,7 +128,8 @@ contract BaseTest is Test {
             address(perpPositionManager),
             address(perpOrderManager),
             address(fundingManager),
-            address(usdc)
+            address(usdc),
+            address(crossMargin)
         );
 
         liquidationEngine = new LiquidationEngine(
@@ -119,8 +139,14 @@ contract BaseTest is Test {
             address(riskManager),
             address(perpPositionManager),
             address(fundingManager),
-            address(usdc)
+            address(usdc),
+            address(crossMargin),
+            address(insuranceFund)
         );
+
+        rfqManager = new RFQManager(admin, address(perpsEngine), address(oracleRouter));
+        perpsEngine.setRfqManager(address(rfqManager));
+        rfqManager.grantRole(rfqManager.MAKER_ROLE(), quoter);
 
         _wireRoles();
         _seedMarket();
@@ -139,7 +165,11 @@ contract BaseTest is Test {
         vault.grantRole(vaultEngineRole, address(perpsEngine));
         vault.grantRole(vaultEngineRole, address(liquidationEngine));
         vault.grantRole(vaultEngineRole, address(fundingManager));
+        vault.grantRole(vaultEngineRole, address(crossMargin));
         vault.grantRole(vault.FEE_MANAGER_ROLE(), address(feeManager));
+        vault.setWithdrawGuard(address(crossMargin));
+        crossMargin.grantRole(crossMargin.ENGINE_ROLE(), address(perpsEngine));
+        crossMargin.grantRole(crossMargin.LIQUIDATOR_ROLE(), address(liquidationEngine));
 
         bytes32 feeEngineRole = feeManager.ENGINE_ROLE();
         feeManager.grantRole(feeEngineRole, address(optionsEngine));

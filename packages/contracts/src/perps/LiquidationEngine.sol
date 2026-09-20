@@ -10,6 +10,7 @@ import {OracleRouter} from "../oracle/OracleRouter.sol";
 import {PerpPositionManager} from "./PerpPositionManager.sol";
 import {FundingManager} from "./FundingManager.sol";
 import {MarginEngine} from "../risk/MarginEngine.sol";
+import {CrossMarginManager} from "../risk/CrossMarginManager.sol";
 
 /// @notice Deterministic liquidation flow (PROJECT_BRIEF.md Section 14): oracle update →
 /// mark update → revaluation → margin check → liquidation execution → PnL/fees settled.
@@ -28,9 +29,15 @@ contract LiquidationEngine is ReentrancyGuard {
     PerpPositionManager public immutable positionManager;
     FundingManager public immutable fundingManager;
     address public immutable settlementToken;
+    /// @notice Account-level margin; zero means every position is isolated.
+    CrossMarginManager public immutable crossMargin;
+    /// @notice Pays a liquidated position's shortfall; zero means a shortfall reverts the liquidation.
+    address public immutable insuranceFund;
 
     error PositionNotLiquidatable();
     error PositionNotOpen();
+    /// @dev A cross account's positions are liquidated worst first.
+    error NotWorstPosition(uint256 worstPositionId);
 
     event PositionLiquidated(
         uint256 indexed positionId,
@@ -41,6 +48,10 @@ contract LiquidationEngine is ReentrancyGuard {
         int256 pnl,
         uint256 fee
     );
+    /// @notice A liquidated position lost more than its owner held; the insurance fund paid `amount`.
+    event ShortfallCovered(uint256 indexed positionId, address indexed owner, uint256 amount);
+    /// @notice The fund could not cover all of a shortfall: `amount` is bad debt the pool absorbs.
+    event BadDebt(uint256 indexed positionId, address indexed owner, uint256 amount);
 
     constructor(
         address oracleRouter_,
@@ -49,7 +60,9 @@ contract LiquidationEngine is ReentrancyGuard {
         address riskManager_,
         address positionManager_,
         address fundingManager_,
-        address settlementToken_
+        address settlementToken_,
+        address crossMargin_,
+        address insuranceFund_
     ) {
         oracleRouter = OracleRouter(oracleRouter_);
         vault = IOrionisVault(vault_);
@@ -58,6 +71,8 @@ contract LiquidationEngine is ReentrancyGuard {
         positionManager = PerpPositionManager(positionManager_);
         fundingManager = FundingManager(fundingManager_);
         settlementToken = settlementToken_;
+        crossMargin = CrossMarginManager(crossMargin_);
+        insuranceFund = insuranceFund_;
     }
 
     /// @notice True once a position's margin ratio has breached the market's maintenance
@@ -65,6 +80,9 @@ contract LiquidationEngine is ReentrancyGuard {
     function isLiquidatable(uint256 positionId) public view returns (bool) {
         PerpPositionManager.PerpPosition memory pos = positionManager.getPosition(positionId);
         if (!pos.open) return false;
+
+        // A cross position is judged with its whole account, not on its own margin.
+        if (_isCross(positionId)) return crossMargin.isAccountLiquidatable(pos.owner);
 
         (uint256 markPrice,) = oracleRouter.getMarkPrice(pos.marketId);
         int256 pnl = MarginEngine.unrealizedPnl(pos.isLong, pos.entryPrice, markPrice, pos.size);
@@ -83,6 +101,10 @@ contract LiquidationEngine is ReentrancyGuard {
         // Re-read after funding settlement in case it moved collateral.
         pos = positionManager.getPosition(positionId);
         if (!isLiquidatable(positionId)) revert PositionNotLiquidatable();
+        if (_isCross(positionId)) {
+            uint256 worst = crossMargin.worstPosition(pos.owner);
+            if (worst != positionId) revert NotWorstPosition(worst);
+        }
 
         (uint256 markPrice,) = oracleRouter.getMarkPrice(pos.marketId);
         int256 pnl = MarginEngine.unrealizedPnl(pos.isLong, pos.entryPrice, markPrice, pos.size);
@@ -92,7 +114,7 @@ contract LiquidationEngine is ReentrancyGuard {
         uint256 liquidatorReward = (pos.collateral * LIQUIDATOR_REWARD_BPS) / BPS_DENOMINATOR;
 
         vault.releaseMargin(pos.owner, settlementToken, pos.collateral);
-        if (pnl != 0) vault.settlePnl(pos.owner, settlementToken, pnl);
+        _settlePnl(positionId, pos.owner, pnl);
 
         // Cap fee + reward to the owner's actual remaining available balance (not just
         // this position's original collateral, since a user's ledger is shared across
@@ -124,5 +146,39 @@ contract LiquidationEngine is ReentrancyGuard {
         positionManager.setRealizedPnl(positionId, pnl);
 
         emit PositionLiquidated(positionId, pos.marketId, pos.owner, msg.sender, markPrice, pnl, liquidationFee);
+    }
+
+    function _isCross(uint256 positionId) internal view returns (bool) {
+        return address(crossMargin) != address(0) && crossMargin.isCross(positionId);
+    }
+
+    /// @dev Settles the position's PnL against the owner's ledger. A loss the owner cannot pay is
+    /// a shortfall: other collateral of a cross account is seized into the insurance fund, the fund
+    /// pays what it can in the settlement token, and only the rest is bad debt. Nothing here can
+    /// revert on a loss bigger than the balance, so a deeply underwater position stays liquidatable.
+    function _settlePnl(uint256 positionId, address owner, int256 pnl) internal {
+        if (pnl >= 0) {
+            if (pnl != 0) vault.settlePnl(owner, settlementToken, pnl);
+            return;
+        }
+
+        uint256 loss = uint256(-pnl);
+        uint256 held = vault.availableBalance(owner, settlementToken);
+        uint256 paid = loss > held ? held : loss;
+        if (paid != 0) vault.settlePnl(owner, settlementToken, -int256(paid));
+        if (loss == paid) return;
+
+        uint256 shortfall = loss - paid;
+        uint256 covered;
+        if (insuranceFund != address(0)) {
+            if (_isCross(positionId)) crossMargin.seizeForShortfall(owner, shortfall);
+            uint256 fundBalance = vault.availableBalance(insuranceFund, settlementToken);
+            covered = shortfall > fundBalance ? fundBalance : shortfall;
+            if (covered != 0) {
+                vault.settlePnl(insuranceFund, settlementToken, -int256(covered));
+                emit ShortfallCovered(positionId, owner, covered);
+            }
+        }
+        if (shortfall > covered) emit BadDebt(positionId, owner, shortfall - covered);
     }
 }

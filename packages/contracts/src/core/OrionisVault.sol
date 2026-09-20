@@ -6,6 +6,7 @@ import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {IOrionisVault} from "../interfaces/IOrionisVault.sol";
+import {IWithdrawGuard} from "../interfaces/IWithdrawGuard.sol";
 import {CollateralManager} from "./CollateralManager.sol";
 
 /// @notice The collateral and settlement layer (PROJECT_BRIEF.md Section 7): deposits,
@@ -25,6 +26,12 @@ contract OrionisVault is IOrionisVault, AccessControl, ReentrancyGuard {
     CollateralManager public immutable collateralManager;
 
     mapping(address => mapping(address => uint256)) public lockedMargin;
+
+    /// @notice Optional check run before every withdrawal: it keeps a cross-margin account from
+    /// withdrawing the free balance that backs its positions. Zero means no check.
+    IWithdrawGuard public withdrawGuard;
+
+    event WithdrawGuardUpdated(address indexed guard);
 
     error InsufficientCollateral();
     error ZeroAddress();
@@ -51,9 +58,15 @@ contract OrionisVault is IOrionisVault, AccessControl, ReentrancyGuard {
         emit CollateralDeposited(msg.sender, token, amount);
     }
 
+    function setWithdrawGuard(address guard) external onlyRole(VAULT_ADMIN_ROLE) {
+        withdrawGuard = IWithdrawGuard(guard);
+        emit WithdrawGuardUpdated(guard);
+    }
+
     function withdraw(address token, uint256 amount) external nonReentrant {
         if (amount == 0) revert ZeroAmount();
         if (amount > availableBalance(msg.sender, token)) revert InsufficientCollateral();
+        if (address(withdrawGuard) != address(0)) withdrawGuard.check(msg.sender, token, amount);
 
         collateralManager.withdraw(msg.sender, token, amount);
         IERC20(token).safeTransfer(msg.sender, amount);
