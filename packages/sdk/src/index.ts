@@ -4,11 +4,15 @@ export {
   InsufficientCollateralError,
   InsufficientMarginError,
   InvalidQuoteError,
+  InvalidTriggerPriceError,
+  LimitPriceNotReachedError,
   InvalidOraclePriceError,
   MarketPausedError,
   mapError,
   NotImplementedError,
   OpenInterestLimitExceededError,
+  OrderExpiredError,
+  OrderNotOpenError,
   OrionisContractError,
   OrionisError,
   PositionLimitExceededError,
@@ -37,6 +41,7 @@ export type {
   OpenOptionPositionParams,
   OptionOpenPreview,
   OptionSeries,
+  OptionSeriesStats,
   OptionSeriesParams,
   OptionSide,
   OptionsNamespace,
@@ -53,22 +58,23 @@ export type {
   PerpMarketInfo,
   PerpOpenPreview,
   PerpsNamespace,
+  PlaceLimitOrderParams,
   ReducePerpPositionParams,
   Side,
 } from "./perps.js";
 export type {
   FundingPayment,
   HistoryEvent,
-  OpenOrder,
   PortfolioNamespace,
   PortfolioPositions,
   PortfolioSummary,
 } from "./portfolio.js";
+export type { OpenOrder, OrderStatus } from "./orders.js";
 export type { VaultBalances, VaultNamespace } from "./vault.js";
 export type { Erc20Namespace } from "./erc20.js";
-export type { OracleNamespace, PricePoint, PriceRange, PriceReading, PriceSet, PricesNamespace } from "./oracle.js";
-export type { FundingNamespace, FundingInfo } from "./funding.js";
-export type { OpenInterest, RiskNamespace, RiskInfo } from "./risk.js";
+export type { Candle, CandleInterval, OracleNamespace, PricePoint, PriceRange, PriceReading, PriceSet, PricesNamespace } from "./oracle.js";
+export type { FundingNamespace, FundingInfo, FundingRatePoint } from "./funding.js";
+export type { OpenInterest, OpenInterestPoint, OpenInterestRange, RiskNamespace, RiskInfo } from "./risk.js";
 export type { FeeInfo, FeesNamespace } from "./fees.js";
 export type { ExplorerNamespace } from "./explorer.js";
 export type { MarketTick, StreamNamespace, SubscribeOptions, WebSocketConstructor } from "./stream.js";

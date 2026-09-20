@@ -44,7 +44,17 @@ export interface SignedQuote {
 /// display-only floats and never the source of settlement truth; `authorization` is present only
 /// when a `user` was supplied and the pricing service has a signing key.
 export interface OptionsQuoteResult {
+  /// The model's mark price per underlying unit.
   premium: number;
+  /// What closing receives, per underlying unit (`premium` less half the spread).
+  bid: number;
+  /// What opening pays, per underlying unit (`premium` plus half the spread). Equals `premium`
+  /// while no spread is configured.
+  ask: number;
+  /// Where the volatility behind this quote came from: measured from the indexed price history
+  /// (`realized`) or the flat assumption (`default`). It is not market-implied: options here are
+  /// bought from and sold back to the pool, so there is no market to imply it from.
+  ivSource?: "realized" | "default";
   iv: number;
   delta: number;
   gamma: number;
@@ -123,7 +133,22 @@ export interface OptionSeries {
   optionType: OptionType;
 }
 
+/// Open interest and 24h volume for one option series, in contracts, from the indexer.
+export interface OptionSeriesStats {
+  expiry: bigint;
+  /// 18 decimals.
+  strike: bigint;
+  type: OptionSide;
+  /// Contracts opened and not closed, for a series that has not expired.
+  openInterest: bigint;
+  /// Contracts opened plus contracts closed in the last 24 hours.
+  volume24h: bigint;
+}
+
 export interface OptionsNamespace {
+  /// Open interest and 24h volume per series that has been traded, optionally for one expiry.
+  /// Requires `apiUrl`. Display data.
+  stats(underlying: string, expiry?: bigint | Date | string): Promise<OptionSeriesStats[]>;
   /// Expiries with at least one opened series, from `services/indexer` via the API. Requires
   /// `apiUrl`. This contract design has no pre-listed strike matrix — see `services/api`.
   expiries(underlying: string): Promise<bigint[]>;
@@ -213,6 +238,21 @@ export function createOptions(deps: OptionsDeps): OptionsNamespace {
     }));
   }
 
+  async function stats(underlying: string, expiry?: bigint | Date | string): Promise<OptionSeriesStats[]> {
+    const query = expiry === undefined ? "" : `?expiry=${toUnixSeconds(expiry)}`;
+    const rows = await getJson<Array<{ expiry: string; strike: string; optionType: number; openInterest: string; volume24h: string }>>(
+      "options.stats",
+      `/v1/options/${underlying}/stats${query}`,
+    );
+    return rows.map((row) => ({
+      expiry: BigInt(row.expiry),
+      strike: BigInt(row.strike),
+      type: row.optionType === OptionType.CALL ? "CALL" : "PUT",
+      openInterest: BigInt(row.openInterest.split(".")[0]!),
+      volume24h: BigInt(row.volume24h.split(".")[0]!),
+    }));
+  }
+
   async function postJson<T>(method: string, path: string, body: unknown): Promise<T> {
     const response = await fetch(`${requireApi(method)}${path}`, {
       method: "POST",
@@ -230,7 +270,7 @@ export function createOptions(deps: OptionsDeps): OptionsNamespace {
     requireApi("options.quote");
     const strike = toBaseUnits(params.strike, PRICE_DECIMALS);
 
-    const raw = await postJson<Omit<OptionsQuoteResult, "authorization"> & { authorization?: RawSignedQuote }>(
+    const raw = await postJson<Omit<OptionsQuoteResult, "authorization" | "bid" | "ask"> & { bid?: number; ask?: number; authorization?: RawSignedQuote }>(
       "options.quote",
       "/v1/options/quote",
       {
@@ -245,17 +285,18 @@ export function createOptions(deps: OptionsDeps): OptionsNamespace {
         user: params.user,
       },
     );
-    return { ...raw, authorization: parseAuthorization(raw.authorization) };
+    // A pricing service that predates the spread returns no bid or ask: both are the mark.
+    return { ...raw, bid: raw.bid ?? raw.premium, ask: raw.ask ?? raw.premium, authorization: parseAuthorization(raw.authorization) };
   }
 
   async function quoteClose(positionId: bigint, user: Address): Promise<CloseQuote> {
-    const raw = await postJson<Omit<OptionsQuoteResult, "authorization"> & { authorization: RawSignedQuote }>(
+    const raw = await postJson<Omit<OptionsQuoteResult, "authorization" | "bid" | "ask"> & { bid?: number; ask?: number; authorization: RawSignedQuote }>(
       "options.quoteClose",
       "/v1/options/quote/close",
       { positionId: positionId.toString(), user },
     );
     const authorization = parseAuthorization(raw.authorization)!;
-    return { premium: authorization.premium, quote: { ...raw, authorization }, authorization };
+    return { premium: authorization.premium, quote: { ...raw, bid: raw.bid ?? raw.premium, ask: raw.ask ?? raw.premium, authorization }, authorization };
   }
 
   async function contractSizeOf(marketId: Hex): Promise<bigint> {
@@ -284,9 +325,10 @@ export function createOptions(deps: OptionsDeps): OptionsNamespace {
     // The quote is per underlying unit. The total the chain will charge is the signed premium
     // when there is one; otherwise (no `user`, so nothing to sign) it is the same calculation the
     // pricing service would have signed, shown for display only.
-    const premiumPerUnit = toBaseUnits(quoted.premium.toFixed(8), PRICE_DECIMALS);
+    // Opening pays the ask, so the per-unit price used for break-even and max profit is the ask.
+    const premiumPerUnit = toBaseUnits(quoted.ask.toFixed(8), PRICE_DECIMALS);
     const premium =
-      quoted.authorization?.premium ?? premiumForOrder(quoted.premium, contractSize, contracts, tokenDecimals);
+      quoted.authorization?.premium ?? premiumForOrder(quoted.ask, contractSize, contracts, tokenDecimals);
     const fee = feeFromBps(premium, feeInfo.optionOpenFee);
     const totalRequired = premium + fee;
 
@@ -300,8 +342,8 @@ export function createOptions(deps: OptionsDeps): OptionsNamespace {
         );
 
     // Same notional, in the same units, that OptionsEngine passes to RiskManager's size and
-    // open-interest checks.
-    const notional = ((contractSize * strike) / WAD) * contracts;
+    // open-interest checks: the 18-decimal product narrowed to the settlement token's base units.
+    const notional = convertDecimals(((contractSize * strike) / WAD) * contracts, PRICE_DECIMALS, tokenDecimals);
     const [violations, availableBalance] = await Promise.all([
       collectRiskViolations(client, addresses, markets, { marketId, isLong: isCall, notional, needs: "options" }),
       params.user
@@ -405,6 +447,7 @@ export function createOptions(deps: OptionsDeps): OptionsNamespace {
   }
 
   return {
+    stats,
     expiries,
     chain,
     quote,

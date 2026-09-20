@@ -53,13 +53,34 @@ test("summary aggregates open perp PnL at mark and realized PnL across positions
   assert.equal(summary.positions.perps.length, 3);
 });
 
-test("orders and history require apiUrl; orders reads the API when set", async () => {
-  await assert.rejects(setup().orders(USER), NotImplementedError);
+test("history requires apiUrl", async () => {
   await assert.rejects(setup().history(USER), NotImplementedError);
+});
 
-  globalThis.fetch = (async (url: string) => {
-    assert.equal(url, `http://api.test/v1/orders/${USER}`);
-    return new Response("[]");
-  }) as typeof fetch;
-  assert.deepEqual(await setup("http://api.test").orders(USER), []);
+test("orders come from the order manager on chain, with no apiUrl needed", async () => {
+  const { client } = fakeClient({
+    getUserOrders: [1n, 2n],
+    getOrder: {
+      marketId: NVDA,
+      isLong: false,
+      collateral: 5n,
+      leverage: 2n,
+      triggerPrice: 100n * WAD,
+      expiry: 9n,
+      owner: USER,
+      status: 2,
+      positionId: 0n,
+    },
+  });
+  const portfolio = createPortfolio({ client, addresses, vault: {} as never, oracle: {} as never });
+  const orders = await portfolio.orders(USER);
+  assert.deepEqual(orders.map((o) => [o.id, o.status, o.isLong]), [[1n, "CANCELLED", false], [2n, "CANCELLED", false]]);
+});
+
+test("orders are empty on a deployment without an order manager", async () => {
+  const { client, calls } = fakeClient();
+  const bare = new Proxy(addresses, { get: (target, key) => (key === "perpOrderManager" ? undefined : target[key as keyof typeof target]) });
+  const portfolio = createPortfolio({ client, addresses: bare, vault: {} as never, oracle: {} as never });
+  assert.deepEqual(await portfolio.orders(USER), []);
+  assert.equal(calls.length, 0);
 });

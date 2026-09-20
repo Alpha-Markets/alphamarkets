@@ -15,9 +15,19 @@ const source = readFileSync(sourcePath, "utf8");
 const match = literal.exec(source);
 if (!match) throw new Error("sync-deployments: robinhoodTestnetAddresses literal not found");
 
-// The existing literal fixes the key order and the key set the JSON must match exactly.
-const keys = [...match[2]!.matchAll(/^\s+(\w+):/gm)].map((m) => m[1]!);
+// Contracts added after the first deployment. A deployment that predates one omits it, and the
+// SDK treats the feature as unavailable; a newer deployment must record it.
+const OPTIONAL_KEYS = ["perpOrderManager"];
+
 const deployed = JSON.parse(readFileSync(jsonPath, "utf8")) as Record<string, unknown>;
+// The existing literal fixes the key order and the required key set the JSON must match; optional
+// keys are added in (or dropped) according to what the JSON records.
+const keys = [
+  ...new Set([
+    ...[...match[2]!.matchAll(/^\s+(\w+):/gm)].map((m) => m[1]!).filter((key) => !OPTIONAL_KEYS.includes(key)),
+    ...OPTIONAL_KEYS.filter((key) => key in deployed),
+  ]),
+];
 
 const missing = keys.filter((key) => !(key in deployed));
 const extra = Object.keys(deployed).filter((key) => !keys.includes(key));

@@ -12,7 +12,7 @@ afterEach(() => {
 
 const SIGNATURE = `0x${"11".repeat(65)}` as const;
 
-function mockQuote(premium: number, authorization?: Record<string, string>) {
+function mockQuote(premium: number, authorization?: Record<string, string>, extra: Record<string, unknown> = {}) {
   const requests: Array<{ url: string; body: Record<string, unknown> }> = [];
   globalThis.fetch = (async (url: string, init: { body: string }) => {
     requests.push({ url, body: JSON.parse(init.body) });
@@ -26,6 +26,7 @@ function mockQuote(premium: number, authorization?: Record<string, string>) {
         vega: 0.22,
         breakEven: 194.82,
         spot: 184.42,
+        ...extra,
         ...(authorization ? { authorization } : {}),
       }),
       { status: 200 },
@@ -193,4 +194,49 @@ test("chain and expiries parse the API rows", async () => {
   assert.deepEqual(await options.chain("NVDA"), [
     { seriesId: "0x01", expiry: 1_790_294_400n, strike: 190n * WAD, optionType: OptionType.PUT },
   ]);
+});
+
+test("an older pricing service without bid and ask still previews: both default to the mark", async () => {
+  mockQuote(4.82);
+  const { options } = setup();
+  const quote = await options.quote(callParams);
+  assert.equal(quote.bid, 4.82);
+  assert.equal(quote.ask, 4.82);
+});
+
+test("break-even and max profit follow the ask the buyer pays, not the mark", async () => {
+  mockQuote(4.82, undefined, { bid: 4.72, ask: 4.92 });
+  const { options } = setup();
+  const preview = await options.previewOpen(callParams);
+  assert.equal(preview.breakEven, 194_920_000_000_000_000_000n);
+  assert.equal(preview.premium, 4_920_000_000n, "unsigned display total is the ask");
+
+  const put = await options.previewOpen({ ...callParams, type: "PUT" });
+  assert.equal(put.breakEven, 185_080_000_000_000_000_000n);
+});
+
+test("options.stats parses contracts and series from the indexer", async () => {
+  let requested = "";
+  globalThis.fetch = (async (url: string) => {
+    requested = url;
+    return new Response(
+      JSON.stringify([
+        { expiry: "1790000000", strike: "190000000000000000000", optionType: 1, openInterest: "12", volume24h: "30.0000" },
+      ]),
+    );
+  }) as unknown as typeof fetch;
+  const { options } = setup();
+  const [row] = await options.stats("NVDA", 1_790_000_000n);
+  assert.equal(requested, "http://api.test/v1/options/NVDA/stats?expiry=1790000000");
+  assert.deepEqual(row, { expiry: 1_790_000_000n, strike: 190n * WAD, type: "PUT", openInterest: 12n, volume24h: 30n });
+});
+
+test("the risk checks see the option notional in settlement-token units, as OptionsEngine passes it", async () => {
+  mockQuote(4.82);
+  const { options, calls } = setup(); // 6-decimal token, contract size 100 units
+  await options.previewOpen(callParams);
+
+  // 10 contracts x 100 units x $190 = $190,000, in 6-decimal base units (not 18).
+  const size = calls.find((call) => call.functionName === "checkPositionSize");
+  assert.equal(size?.args?.[1], 190_000_000_000n);
 });

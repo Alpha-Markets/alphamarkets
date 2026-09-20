@@ -34,7 +34,25 @@ export interface PricePoint {
   price: bigint;
 }
 
+export type CandleInterval = "1m" | "5m" | "15m" | "1h" | "1d";
+
+/// One candlestick from the indexer's sampled index price. Prices are 18 decimals. `volume` is the
+/// perp notional traded in the bucket, settlement-token base units. Display data only.
+export interface Candle {
+  /// Unix seconds, the start of the bucket.
+  time: number;
+  open: bigint;
+  high: bigint;
+  low: bigint;
+  close: bigint;
+  volume: bigint;
+}
+
 export interface PricesNamespace {
+  /// Candlesticks (open, high, low, close, perp volume) from the indexer's price samples, oldest
+  /// first. A bucket with no price sample is absent, so a quiet indexer leaves gaps. Requires
+  /// `apiUrl`.
+  candles(marketIdOrSymbol: string, interval?: CandleInterval, limit?: number): Promise<Candle[]>;
   /// Index-price history sampled by the indexer, for charts. Requires `apiUrl`. Display only.
   history(marketIdOrSymbol: string, range?: PriceRange): Promise<PricePoint[]>;
   /// Index, Mark and Last price, read from OracleRouter.
@@ -78,7 +96,22 @@ export function createPrices(
     return rows.map((row) => ({ time: row.time, price: BigInt(row.price) }));
   }
 
-  return { get, settlement, history };
+  async function candles(marketIdOrSymbol: string, interval: CandleInterval = "5m", limit = 120): Promise<Candle[]> {
+    const rows = await apiGet<Array<{ time: number; open: string; high: string; low: string; close: string; volume: string }>>(
+      "prices.candles",
+      `/v1/prices/${marketIdOrSymbol}/candles?interval=${interval}&limit=${limit}`,
+    );
+    return rows.map((row) => ({
+      time: row.time,
+      open: BigInt(row.open),
+      high: BigInt(row.high),
+      low: BigInt(row.low),
+      close: BigInt(row.close),
+      volume: BigInt(row.volume),
+    }));
+  }
+
+  return { get, settlement, history, candles };
 }
 
 export function createOracle(client: OrionisClient, addresses: ContractAddresses): OracleNamespace {

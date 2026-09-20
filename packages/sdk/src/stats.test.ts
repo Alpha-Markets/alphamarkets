@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import { afterEach, test } from "node:test";
+import { createFunding } from "./funding.js";
 import { createMarkets } from "./markets.js";
+import { createRisk } from "./risk.js";
 import { createPrices } from "./oracle.js";
 import { NotImplementedError } from "./errors.js";
 import { addresses, fakeClient, NVDA } from "./testing.js";
@@ -53,4 +55,46 @@ test("portfolio.funding parses the API's camelCase rows", async () => {
   assert.equal(payment!.positionId, 5n);
   assert.equal(payment!.amount, -1_500_000n);
   assert.equal(payment!.txHash, "0xabc");
+});
+
+test("prices.candles asks for the interval and limit and restores bigints", async () => {
+  let requested = "";
+  globalThis.fetch = (async (url: string) => {
+    requested = url;
+    return new Response(
+      JSON.stringify([{ time: 1_700_000_000, open: "190000000000000000000", high: "191000000000000000000", low: "189000000000000000000", close: "190500000000000000000", volume: "5000000000" }]),
+    );
+  }) as unknown as typeof fetch;
+  const prices = createPrices(fakeClient().client, addresses, {} as OracleNamespace, "http://api.test");
+  const [candle] = await prices.candles("NVDA", "15m", 60);
+  assert.equal(requested, "http://api.test/v1/prices/NVDA/candles?interval=15m&limit=60");
+  assert.equal(candle!.high, 191n * 10n ** 18n);
+  assert.equal(candle!.volume, 5_000_000_000n);
+});
+
+test("funding.history and risk.openInterestHistory parse the API rows", async () => {
+  const requests: string[] = [];
+  globalThis.fetch = (async (url: string) => {
+    requests.push(url);
+    return new Response(
+      JSON.stringify(
+        url.includes("funding")
+          ? [{ time: 5, rateBps: "-12", cumulativeIndex: "-40", txHash: "0xabc" }]
+          : [{ time: 9, long: "5000", short: "2000" }],
+      ),
+    );
+  }) as unknown as typeof fetch;
+  const { client } = fakeClient();
+  const funding = await createFunding(client, addresses, "http://api.test").history("NVDA", 20);
+  const oi = await createRisk(client, addresses, "http://api.test").openInterestHistory("NVDA", "24h");
+  assert.deepEqual(requests, ["http://api.test/v1/perps/NVDA/funding/history?limit=20", "http://api.test/v1/perps/NVDA/open-interest?range=24h"]);
+  assert.deepEqual(funding, [{ time: 5, rateBps: -12n, cumulativeIndex: -40n, txHash: "0xabc" }]);
+  assert.deepEqual(oi, [{ time: 9, long: 5000n, short: 2000n }]);
+});
+
+test("analytics methods without apiUrl fail with NotImplementedError", async () => {
+  const { client } = fakeClient();
+  await assert.rejects(createFunding(client, addresses).history("NVDA"), NotImplementedError);
+  await assert.rejects(createRisk(client, addresses).openInterestHistory("NVDA"), NotImplementedError);
+  await assert.rejects(createPrices(client, addresses, {} as OracleNamespace).candles("NVDA"), NotImplementedError);
 });

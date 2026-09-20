@@ -47,6 +47,11 @@ export class InvalidQuoteError extends OrionisContractError {}
 export class QuoteExpiredError extends OrionisContractError {}
 export class QuoteAlreadyUsedError extends OrionisContractError {}
 export class SlippageExceededError extends OrionisContractError {}
+export class OrderNotOpenError extends OrionisContractError {}
+export class OrderExpiredError extends OrionisContractError {}
+/// The mark price has not reached the limit order's trigger yet.
+export class LimitPriceNotReachedError extends OrionisContractError {}
+export class InvalidTriggerPriceError extends OrionisContractError {}
 
 type ContractErrorClass = new (errorName: string, args: readonly unknown[], cause?: unknown) => OrionisContractError;
 
@@ -64,6 +69,10 @@ const contractErrorClasses: Record<string, ContractErrorClass> = {
   QuoteExpired: QuoteExpiredError,
   QuoteAlreadyUsed: QuoteAlreadyUsedError,
   SlippageExceeded: SlippageExceededError,
+  OrderNotOpen: OrderNotOpenError,
+  OrderExpired: OrderExpiredError,
+  LimitPriceNotReached: LimitPriceNotReachedError,
+  InvalidTriggerPrice: InvalidTriggerPriceError,
 };
 
 /// Revert data can sit on any error in viem's `cause` chain, under different property names

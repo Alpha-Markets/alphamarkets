@@ -89,8 +89,8 @@ export class Orionis {
     this.markets = createMarkets(client, this.addresses, config.apiUrl);
     this.oracle = createOracle(client, this.addresses);
     this.prices = createPrices(client, this.addresses, this.oracle, config.apiUrl);
-    this.funding = createFunding(client, this.addresses);
-    this.risk = createRisk(client, this.addresses);
+    this.funding = createFunding(client, this.addresses, config.apiUrl);
+    this.risk = createRisk(client, this.addresses, config.apiUrl);
     this.fees = createFees(client, this.addresses);
     this.erc20 = createErc20(client, decimals);
     this.vault = createVault(client, this.addresses, decimals);

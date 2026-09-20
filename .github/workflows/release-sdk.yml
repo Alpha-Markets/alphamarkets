@@ -1,0 +1,50 @@
+name: release-sdk
+
+# Manual only: publishing to npm cannot be undone, so a person starts it on purpose.
+# Needs an NPM_TOKEN repository secret with publish rights to the @orionis scope.
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Pack and check the package without publishing"
+        type: boolean
+        default: true
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write # npm provenance
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          registry-url: https://registry.npmjs.org
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Test
+        run: pnpm --filter @orionis/sdk test
+        env:
+          SKIP_ANVIL_TESTS: "1"
+
+      - name: Build
+        run: pnpm --filter @orionis/sdk build
+
+      - name: Publish (dry run)
+        if: ${{ inputs.dry_run }}
+        run: pnpm --filter @orionis/sdk publish --access public --dry-run --no-git-checks
+
+      - name: Publish
+        if: ${{ !inputs.dry_run }}
+        run: pnpm --filter @orionis/sdk publish --access public --provenance --no-git-checks
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

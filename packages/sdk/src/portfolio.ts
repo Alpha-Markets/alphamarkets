@@ -3,6 +3,7 @@ import type { Address, OptionPosition, PerpPosition } from "@orionis/types";
 import { optionPositionManagerAbi, perpPositionManagerAbi } from "./abis.js";
 import type { OrionisClient } from "./client.js";
 import { NotImplementedError, OrionisError } from "./errors.js";
+import { readUserOrders, type OpenOrder } from "./orders.js";
 import { createApiGet } from "./api.js";
 import { unrealizedPnl } from "./math.js";
 import type { OracleNamespace } from "./oracle.js";
@@ -38,12 +39,6 @@ export interface PortfolioSummary {
   realizedPnl: bigint;
 }
 
-/// A resting order. Always empty until limit orders ship (DEVELOPMENT_STEPS.md Phase 5).
-export interface OpenOrder {
-  id: string;
-  marketId: string;
-}
-
 /// One funding payment on a perp position (PROJECT_BRIEF.md Section 15). Positive `amount` was
 /// received, negative was paid; settlement-token base units.
 export interface FundingPayment {
@@ -61,7 +56,9 @@ export interface PortfolioNamespace {
   /// (oldest first). Requires `apiUrl`.
   funding(user: Address, options?: { limit?: number; cursor?: number }): Promise<FundingPayment[]>;
   summary(user: Address): Promise<PortfolioSummary>;
-  /// Resting orders from `services/api`. Requires `apiUrl`.
+  /// Every limit order the user placed, oldest first, read from the chain (no `apiUrl` needed).
+  /// Filter on `status === "OPEN"` for the ones still resting. Empty on a deployment that
+  /// predates limit orders.
   orders(user: Address): Promise<OpenOrder[]>;
   /// Reads open/closed/settled positions directly from the position-manager contracts.
   positions(user: Address): Promise<PortfolioPositions>;
@@ -194,16 +191,8 @@ export function createPortfolio({ client, addresses, vault, oracle, apiUrl }: Po
     return { balances, positions: allPositions, unrealizedPerpPnl, realizedPnl };
   }
 
-  async function orders(user: Address): Promise<OpenOrder[]> {
-    if (!apiUrl) {
-      throw new NotImplementedError(
-        "portfolio.orders",
-        "requires `apiUrl` in the Orionis constructor config, pointing at services/api",
-      );
-    }
-    const response = await fetch(`${apiUrl}/v1/orders/${user}`);
-    if (!response.ok) throw new OrionisError(`portfolio.orders: services/api returned ${response.status}`);
-    return (await response.json()) as OpenOrder[];
+  function orders(user: Address): Promise<OpenOrder[]> {
+    return readUserOrders(client, addresses, user);
   }
 
   async function funding(user: Address, options?: { limit?: number; cursor?: number }): Promise<FundingPayment[]> {

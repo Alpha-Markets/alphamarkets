@@ -1,6 +1,7 @@
 import type { ContractAddresses } from "@orionis/config";
 import { fundingManagerAbi } from "./abis.js";
 import type { OrionisClient } from "./client.js";
+import { createApiGet } from "./api.js";
 import { resolveMarketId } from "./utils.js";
 
 export interface FundingInfo {
@@ -9,11 +10,25 @@ export interface FundingInfo {
   nextFundingTimestamp: bigint;
 }
 
-export interface FundingNamespace {
-  get(marketIdOrSymbol: string): Promise<FundingInfo>;
+/// The funding rate the chain applied at one interval. Positive means longs paid shorts.
+export interface FundingRatePoint {
+  /// Unix seconds (when the indexer recorded it).
+  time: number;
+  rateBps: bigint;
+  cumulativeIndex: bigint;
+  txHash: string;
 }
 
-export function createFunding(client: OrionisClient, addresses: ContractAddresses): FundingNamespace {
+export interface FundingNamespace {
+  get(marketIdOrSymbol: string): Promise<FundingInfo>;
+  /// Funding rates the chain applied to a market, oldest first, from `services/indexer`. Requires
+  /// `apiUrl`. Display data.
+  history(marketIdOrSymbol: string, limit?: number): Promise<FundingRatePoint[]>;
+}
+
+export function createFunding(client: OrionisClient, addresses: ContractAddresses, apiUrl?: string): FundingNamespace {
+  const apiGet = createApiGet(apiUrl);
+
   async function get(marketIdOrSymbol: string): Promise<FundingInfo> {
     const marketId = resolveMarketId(marketIdOrSymbol);
     const [currentFundingRateBps, fundingIntervalSeconds, nextFundingTimestamp] = await Promise.all([
@@ -39,5 +54,13 @@ export function createFunding(client: OrionisClient, addresses: ContractAddresse
     return { currentFundingRateBps, fundingIntervalSeconds, nextFundingTimestamp };
   }
 
-  return { get };
+  async function history(marketIdOrSymbol: string, limit = 100): Promise<FundingRatePoint[]> {
+    const rows = await apiGet<Array<{ time: number; rateBps: string; cumulativeIndex: string; txHash: string }>>(
+      "funding.history",
+      `/v1/perps/${marketIdOrSymbol}/funding/history?limit=${limit}`,
+    );
+    return rows.map((row) => ({ time: row.time, rateBps: BigInt(row.rateBps), cumulativeIndex: BigInt(row.cumulativeIndex), txHash: row.txHash }));
+  }
+
+  return { get, history };
 }

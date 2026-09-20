@@ -1,12 +1,12 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { InsufficientMarginError, NotImplementedError, PositionLimitExceededError } from "./errors.js";
+import { InsufficientMarginError, NotImplementedError, OrionisError, PositionLimitExceededError } from "./errors.js";
 import { createPerps, type PerpsDeps } from "./perps.js";
 import { activeMarket, addresses, fakeClient, NVDA, revertError, USER, WAD } from "./testing.js";
 
 const MARK = 184_480_000_000_000_000_000n; // 184.48, 18 decimals
 
-function setup(reads: Record<string, unknown> = {}, market = activeMarket) {
+function setup(reads: Record<string, unknown> = {}, market = activeMarket, deployed: PerpsDeps["addresses"] = addresses) {
   const fake = fakeClient({
     availableBalance: 2_000_000_000n,
     getPosition: { isLong: true, marketId: NVDA },
@@ -14,7 +14,7 @@ function setup(reads: Record<string, unknown> = {}, market = activeMarket) {
   });
   const deps: PerpsDeps = {
     client: fake.client,
-    addresses,
+    addresses: deployed,
     decimals: async () => 6,
     markets: { list: async () => [market], get: async () => market, stats: async () => [] },
     oracle: {
@@ -24,6 +24,7 @@ function setup(reads: Record<string, unknown> = {}, market = activeMarket) {
     },
     risk: {
       openInterest: async () => ({ long: 0n, short: 0n, total: 0n }),
+      openInterestHistory: async () => [],
       get: async () => ({
         maxLeverage: 10n,
         allowedLeverageTiers: [1n, 2n, 3n, 5n, 10n],
@@ -38,6 +39,7 @@ function setup(reads: Record<string, unknown> = {}, market = activeMarket) {
     },
     funding: {
       get: async () => ({ currentFundingRateBps: 8n, fundingIntervalSeconds: 3600n, nextFundingTimestamp: 99n }),
+      history: async () => [],
     },
   };
   return { perps: createPerps(deps), ...fake };
@@ -108,17 +110,86 @@ test("a short entry bound sits below mark; an explicit worstPrice wins", async (
   assert.equal(explicit.simulated()[0]!.args![4], 200n * WAD);
 });
 
-test("LIMIT orders are rejected before any RPC call", async () => {
+test("openPosition points a LIMIT order at placeLimitOrder before any RPC call", async () => {
   const { perps, calls } = setup();
   await assert.rejects(
     perps.openPosition({ market: "NVDA", side: "LONG", collateral: "1", leverage: 1, orderType: "LIMIT" }),
-    NotImplementedError,
-  );
-  await assert.rejects(
-    perps.previewOpen({ market: "NVDA", side: "LONG", collateral: "1", leverage: 1, orderType: "LIMIT" }),
-    NotImplementedError,
+    /placeLimitOrder/,
   );
   assert.equal(calls.length, 0);
+});
+
+test("a LIMIT preview needs a trigger and works out its figures at that price", async () => {
+  const { perps } = setup();
+  await assert.rejects(
+    perps.previewOpen({ market: "NVDA", side: "LONG", collateral: "1000", leverage: 5, orderType: "LIMIT" }),
+    OrionisError,
+  );
+
+  const preview = await perps.previewOpen({ market: "NVDA", side: "LONG", collateral: "1000", leverage: 5, orderType: "LIMIT", limitPrice: "180" });
+  assert.equal(preview.entryPrice, 180n * WAD);
+  // 15% below the 180 trigger, not below the 184.48 mark.
+  assert.equal(preview.liquidationPrice, 153n * WAD);
+  assert.equal(preview.fee, 4_000_000n);
+});
+
+const order = (overrides: Record<string, unknown> = {}) => ({
+  marketId: NVDA,
+  isLong: true,
+  collateral: 1_000_000_000n,
+  leverage: 5n,
+  triggerPrice: 180n * WAD,
+  expiry: 2_000_000_000n,
+  owner: USER,
+  status: 0,
+  positionId: 0n,
+  ...overrides,
+});
+
+test("placeLimitOrder sends the trigger, expiry and side to the engine", async () => {
+  const { perps, simulated } = setup();
+  const { orderId } = await perps.placeLimitOrder({
+    market: "NVDA",
+    side: "SHORT",
+    collateral: "1000",
+    leverage: 5,
+    limitPrice: "195.5",
+    expiry: 2_000_000_000n,
+  });
+
+  assert.equal(orderId, 42n);
+  const call = simulated()[0]!;
+  assert.equal(call.functionName, "placeLimitOrder");
+  assert.deepEqual(call.args, [NVDA, false, 1_000_000_000n, 5n, 195_500_000_000_000_000_000n, 2_000_000_000n]);
+});
+
+test("limit orders are unavailable on a deployment without a PerpOrderManager", async () => {
+  const bare = new Proxy(addresses, { get: (target, key) => (key === "perpOrderManager" ? undefined : target[key as keyof typeof target]) });
+  const { perps } = setup({}, activeMarket, bare);
+  await assert.rejects(perps.placeLimitOrder({ market: "NVDA", side: "LONG", collateral: "1", leverage: 1, limitPrice: "1" }), NotImplementedError);
+});
+
+test("cancel and execute go to the engine; getOrder decodes the status", async () => {
+  const { perps, simulated } = setup({ getOrder: order({ status: 1, positionId: 7n }) });
+  await perps.cancelLimitOrder(3n);
+  const { positionId } = await perps.executeLimitOrder(4n);
+
+  assert.equal(positionId, 42n);
+  assert.deepEqual(simulated().map((call) => [call.functionName, call.args]), [
+    ["cancelLimitOrder", [3n]],
+    ["executeLimitOrder", [4n]],
+  ]);
+  const read = await perps.getOrder(9n);
+  assert.equal(read.status, "EXECUTED");
+  assert.equal(read.positionId, 7n);
+  assert.equal(read.id, 9n);
+});
+
+test("scanOrders reads every order from the given id up to the newest", async () => {
+  const { perps, calls } = setup({ nextOrderId: 3n, getOrder: order() });
+  const orders = await perps.scanOrders(2n);
+  assert.deepEqual(orders.map((o) => o.id), [2n, 3n]);
+  assert.equal(calls.filter((c) => c.functionName === "getOrder").length, 2);
 });
 
 test("closing a long uses a lower-bound exit price; a short uses an upper bound", async () => {

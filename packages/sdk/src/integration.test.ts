@@ -12,7 +12,15 @@ import { createWalletClient, http, parseAbi, publicActions } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import type { ContractAddresses } from "@orionis/config";
 import { Orionis } from "./client.js";
-import { InvalidQuoteError, OrionisContractError, QuoteAlreadyUsedError, UserRejectedError } from "./errors.js";
+import {
+  InvalidQuoteError,
+  LimitPriceNotReachedError,
+  OrionisContractError,
+  PositionLimitExceededError,
+  QuoteAlreadyUsedError,
+  UserRejectedError,
+} from "./errors.js";
+import { oracleRouterAbi } from "./abis.js";
 import { closeQuoteTypedData, openQuoteTypedData } from "./quotes.js";
 import { OptionPositionStatus, OptionType } from "@orionis/types";
 import { resolveMarketId } from "./utils.js";
@@ -270,5 +278,70 @@ describe("SDK against a local Anvil deployment", { skip: skipReason, timeout: 18
     assert.equal(closed.status, OptionPositionStatus.CLOSED);
     const afterClose = (await orionis.vault.balances(account.address, token)).available;
     assert.equal(afterClose - afterOpen, closePremium - (closePremium * 20n) / 10_000n); // premium less 0.20% close fee
+  });
+
+  test("increasing a position charges the taker fee and cannot exceed the leverage ceiling", async () => {
+    const token = addresses.settlementToken;
+    await orionis.vault.deposit(token, "5000", { wait: true });
+    const { positionId } = await orionis.perps.openPosition({ market: "NVDA", side: "LONG", collateral: "500", leverage: 5, tx: { wait: true } });
+
+    // 5x on $500 is $2,500; adding $4,000 of size with no margin would be 13x.
+    await assert.rejects(orionis.perps.increasePosition(positionId, { addSize: "4000" }), PositionLimitExceededError);
+
+    const before = (await orionis.vault.balances(account.address, token)).available;
+    await orionis.perps.increasePosition(positionId, { addCollateral: "500", addSize: "2500", tx: { wait: true } });
+    const spent = before - (await orionis.vault.balances(account.address, token)).available;
+    const fee = (await orionis.fees.get("NVDA")).takerFee;
+    assert.equal(spent, 500_000_000n + (2_500_000_000n * fee) / 10_000n);
+
+    const grown = await orionis.portfolio.getPerpPosition(positionId);
+    assert.equal(grown.size, 5_000_000_000n);
+    assert.equal(grown.collateral, 1_000_000_000n);
+    await orionis.perps.closePosition(positionId, { tx: { wait: true } });
+  });
+
+  test("a limit order rests until the mark reaches its trigger, then anyone can fill it", async () => {
+    const token = addresses.settlementToken;
+    const publicClient = createWalletClient({ account, transport: http(rpcUrl) }).extend(publicActions);
+    const feed = await publicClient.readContract({ address: addresses.oracleRouter, abi: oracleRouterAbi, functionName: "primarySource", args: [resolveMarketId("NVDA")] });
+    const setFeedPrice = async (price: string) => {
+      const hash = await publicClient.writeContract({
+        address: feed,
+        abi: parseAbi(["function setPrice(uint256 price)"]),
+        chain: null,
+        functionName: "setPrice",
+        args: [BigInt(price) * 10n ** 18n],
+      });
+      await publicClient.waitForTransactionReceipt({ hash });
+    };
+
+    const preview = await orionis.perps.previewOpen({ market: "NVDA", side: "LONG", collateral: "1000", leverage: 5, orderType: "LIMIT", limitPrice: "180", user: account.address });
+    assert.equal(preview.entryPrice, 180n * 10n ** 18n);
+
+    const before = (await orionis.vault.balances(account.address, token)).available;
+    const { orderId } = await orionis.perps.placeLimitOrder({ market: "NVDA", side: "LONG", collateral: "1000", leverage: 5, limitPrice: "180", tx: { wait: true } });
+    assert.equal((await orionis.vault.balances(account.address, token)).available, before, "a resting order reserves nothing");
+
+    const [resting] = (await orionis.portfolio.orders(account.address)).filter((order) => order.status === "OPEN");
+    assert.equal(resting?.id, orderId);
+    assert.equal(resting?.triggerPrice, 180n * 10n ** 18n);
+
+    // The mark is 190: the trigger is not reached.
+    await assert.rejects(orionis.perps.executeLimitOrder(orderId), LimitPriceNotReachedError);
+
+    await setFeedPrice("179");
+    const { positionId } = await orionis.perps.executeLimitOrder(orderId, { wait: true });
+    const position = await orionis.portfolio.getPerpPosition(positionId);
+    assert.equal(position.owner, account.address);
+    assert.equal(position.entryPrice, 179n * 10n ** 18n);
+    assert.equal((await orionis.perps.getOrder(orderId)).status, "EXECUTED");
+
+    // A cancelled order cannot fill.
+    const second = await orionis.perps.placeLimitOrder({ market: "NVDA", side: "LONG", collateral: "100", leverage: 2, limitPrice: "179", tx: { wait: true } });
+    await orionis.perps.cancelLimitOrder(second.orderId, { wait: true });
+    await assert.rejects(orionis.perps.executeLimitOrder(second.orderId), OrionisContractError);
+
+    await orionis.perps.closePosition(positionId, { tx: { wait: true } });
+    await setFeedPrice("190");
   });
 });
