@@ -1,6 +1,7 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { IBM_Plex_Sans } from "next/font/google";
 import type { ReactNode } from "react";
+import { AppShell } from "@/components/AppShell";
 import { Providers } from "../providers";
 import "./globals.css";
 
@@ -25,11 +26,15 @@ export const metadata: Metadata = {
   },
 };
 
+export const viewport: Viewport = { themeColor: "#1a1a19" };
+
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en" className={plex.variable}>
-      <body className="min-h-screen">
-        <Providers>{children}</Providers>
+      <body>
+        <Providers>
+          <AppShell>{children}</AppShell>
+        </Providers>
       </body>
     </html>
   );

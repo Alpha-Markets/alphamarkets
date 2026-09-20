@@ -3,7 +3,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { Button, Panel, Row, TextField } from "@orionis/ui";
 import { useState } from "react";
-import { useAccount, useConnect, useSwitchChain } from "wagmi";
+import { useAccount, useSwitchChain } from "wagmi";
 import { useSettlementDecimals, useVaultBalances } from "@/hooks/queries";
 import { useDebounced } from "@/hooks/useDebounced";
 import { useWalletOrionis } from "@/hooks/useOrionis";
@@ -25,6 +25,7 @@ import { orionisRead } from "@/lib/orionis";
 import { chain } from "@/lib/wagmi";
 import { useOptionOrder, type OptionSelection } from "@/stores/optionOrder";
 import { errorMessage } from "@/stores/tx";
+import { ConnectButton } from "./ConnectButton";
 import { VaultControls } from "./VaultControls";
 
 /// A signed price is only good for a short window; refresh it well inside that.
@@ -46,7 +47,6 @@ function previewArgs(selection: OptionSelection, contracts: bigint, user?: `0x${
 export function OptionTicket() {
   const selection = useOptionOrder((state) => state.selection);
   const { address, isConnected, chainId } = useAccount();
-  const { connect, connectors } = useConnect();
   const { switchChain } = useSwitchChain();
   const wallet = useWalletOrionis();
   const run = useTx();
@@ -137,9 +137,7 @@ export function OptionTicket() {
   }
 
   const action = !isConnected ? (
-    <Button variant="primary" className="w-full" disabled={!connectors[0]} onClick={() => connectors[0] && connect({ connector: connectors[0] })}>
-      Connect wallet
-    </Button>
+    <ConnectButton className="w-full" />
   ) : chainId !== chain.id ? (
     <Button variant="down" className="w-full" onClick={() => switchChain({ chainId: chain.id })}>
       Switch to {chain.name}

@@ -8,12 +8,12 @@ import { useAllMarkets, useMarketOverview, useMarketStats, useSettlementDecimals
 import { env } from "@/lib/env";
 import { fmt, fmtBps, fmtPrice } from "@/lib/format";
 import { symbolOf } from "@/lib/market";
+import { useTerminal } from "@/stores/terminal";
 
 const head = "px-3 py-2 text-right text-xs font-normal text-muted first:text-left";
 const cell = "px-3 py-2.5 text-right tabular-nums first:text-left";
 
 const linkClass = "inline-flex h-7 items-center rounded-[3px] border border-line px-2.5 text-xs font-medium hover:border-faint hover:bg-raised";
-const disabledClass = "inline-flex h-7 cursor-not-allowed items-center rounded-[3px] px-2.5 text-xs text-faint";
 
 /// "+1.25%" with the sign and market colour; a shorter-than-24h window is called out so a move
 /// over twenty minutes is not mistaken for a day's.
@@ -33,6 +33,7 @@ function Change({ stats }: { stats?: MarketStats }) {
 function Row({ market, stats, decimals }: { market: MarketConfig; stats?: MarketStats; decimals: number }) {
   const symbol = symbolOf(market.marketId);
   const { data } = useMarketOverview(symbol);
+  const setSymbol = useTerminal((state) => state.setSymbol);
 
   return (
     <tr className="border-t border-line">
@@ -53,9 +54,9 @@ function Row({ market, stats, decimals }: { market: MarketConfig; stats?: Market
       <td className={cn(cell, market.active ? "text-up" : "text-down")}>{market.active ? "Active" : "Paused"}</td>
       <td className={cn(cell, "space-x-2")}>
         {market.optionsEnabled ? (
-          <span className={disabledClass} title="The options terminal is not available yet">
+          <Link href="/options" onClick={() => setSymbol(symbol)} className={linkClass}>
             Trade options
-          </span>
+          </Link>
         ) : null}
         {market.perpsEnabled ? (
           <Link href={`/perpetuals?market=${symbol}`} className={linkClass}>

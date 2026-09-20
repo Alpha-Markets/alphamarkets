@@ -1,36 +1,33 @@
 import { Suspense } from "react";
-import { Header } from "@/components/Header";
 import { MarketHeader } from "@/components/MarketHeader";
 import { MarketAnalytics } from "@/components/MarketAnalytics";
 import { MarketList } from "@/components/MarketList";
 import { OrderPanel } from "@/components/OrderPanel";
+import { PerpTradeBar } from "@/components/PerpTradeBar";
 import { PriceChart } from "@/components/PriceChart";
-import { env } from "@/lib/env";
-import { TxToasts } from "@/components/TxToasts";
+import { TradeSheet } from "@/components/TradeSheet";
 
 /// PROJECT_BRIEF.md Section 24, desktop-first: market list on the left, chart and positions in
-/// the middle, order panel on the right. Under the chart: positions, funding and open interest.
+/// the middle, order panel on the right. Under 1024px the list moves into the price header and the
+/// order panel opens as a sheet from the bar at the bottom.
 export default function PerpetualsTerminal() {
   return (
-    <div className="flex h-screen flex-col">
-      <Header current="Perpetuals" />
-      {env.rpcConfigured ? null : (
-        <p role="alert" className="border-b border-line bg-raised px-4 py-2 text-down">
-          NEXT_PUBLIC_RPC_URL is not set, so no market data can load. Add it to .env and restart.
-        </p>
-      )}
-      <main className="grid min-h-0 flex-1 grid-cols-[220px_minmax(0,1fr)_340px] gap-px bg-line">
-        <Suspense fallback={null}>
-          <MarketList />
-        </Suspense>
-        <div className="flex min-h-0 flex-col gap-px">
+    <div className="flex flex-col lg:h-full">
+      <div className="grid gap-px bg-line lg:min-h-0 lg:flex-1 lg:grid-cols-[220px_minmax(0,1fr)_340px]">
+        <div className="hidden min-h-0 lg:block">
+          <Suspense fallback={null}>
+            <MarketList />
+          </Suspense>
+        </div>
+        <div className="flex min-h-0 flex-col gap-px lg:overflow-y-auto">
           <MarketHeader />
           <PriceChart />
           <MarketAnalytics />
         </div>
-        <OrderPanel />
-      </main>
-      <TxToasts />
+        <TradeSheet title="Order" bar={(open) => <PerpTradeBar open={open} />}>
+          <OrderPanel />
+        </TradeSheet>
+      </div>
     </div>
   );
 }

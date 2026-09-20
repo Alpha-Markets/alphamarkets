@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { Header } from "@/components/Header";
 
 const blocks = [
   { title: "Options", body: "Trade volatility and defined-risk exposure." },
@@ -9,9 +8,8 @@ const blocks = [
 
 export default function Landing() {
   return (
-    <div className="flex min-h-screen flex-col">
-      <Header />
-      <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col justify-center gap-16 px-6 py-16">
+    <div className="flex min-h-full flex-col">
+      <div className="mx-auto flex w-full max-w-5xl flex-1 flex-col justify-center gap-16 px-6 py-16">
         <div>
           <p className="text-sm font-medium tracking-[0.32em] text-muted">ORIONIS MARKETS</p>
           <h1 className="mt-6 max-w-3xl text-5xl font-medium leading-[1.08] tracking-tight sm:text-6xl">
@@ -43,7 +41,7 @@ export default function Landing() {
             </div>
           ))}
         </dl>
-      </main>
+      </div>
     </div>
   );
 }

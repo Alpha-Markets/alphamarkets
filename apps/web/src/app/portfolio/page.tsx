@@ -1,15 +1,11 @@
-import { Header } from "@/components/Header";
+import { PageHeader } from "@/components/PageHeader";
 import { PortfolioView } from "@/components/PortfolioView";
-import { TxToasts } from "@/components/TxToasts";
 
 export default function PortfolioPage() {
   return (
-    <div className="flex min-h-screen flex-col">
-      <Header current="Portfolio" />
-      <main className="mx-auto w-full max-w-[1400px] flex-1 p-4">
-        <PortfolioView />
-      </main>
-      <TxToasts />
+    <div className="mx-auto w-full max-w-[1400px] p-4">
+      <PageHeader title="Portfolio">Your collateral, open positions and orders.</PageHeader>
+      <PortfolioView />
     </div>
   );
 }

@@ -1,15 +1,11 @@
-import { Header } from "@/components/Header";
 import { MarketsTable } from "@/components/MarketsTable";
-import { TxToasts } from "@/components/TxToasts";
+import { PageHeader } from "@/components/PageHeader";
 
 export default function MarketsPage() {
   return (
-    <div className="flex min-h-screen flex-col">
-      <Header current="Markets" />
-      <main className="flex-1 p-4">
-        <MarketsTable />
-      </main>
-      <TxToasts />
+    <div className="p-4">
+      <PageHeader title="Markets">Every listed market. Open a row to trade its perpetual, or go straight to its options.</PageHeader>
+      <MarketsTable />
     </div>
   );
 }

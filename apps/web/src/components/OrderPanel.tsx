@@ -2,9 +2,9 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { Button, Panel, Row, Segmented, TextField } from "@orionis/ui";
-import { toBaseUnits, type OrderType, type Side } from "@orionis/sdk";
+import { toBaseUnits, type OrderType } from "@orionis/sdk";
 import { useState } from "react";
-import { useAccount, useConnect, useSwitchChain } from "wagmi";
+import { useAccount, useSwitchChain } from "wagmi";
 import { usePerpMarket, useSettlementDecimals, useVaultBalances } from "@/hooks/queries";
 import { useDebounced } from "@/hooks/useDebounced";
 import { useWalletOrionis } from "@/hooks/useOrionis";
@@ -16,6 +16,7 @@ import { orionisRead } from "@/lib/orionis";
 import { chain } from "@/lib/wagmi";
 import { errorMessage } from "@/stores/tx";
 import { useTerminal } from "@/stores/terminal";
+import { ConnectButton } from "./ConnectButton";
 import { RiskLadder } from "./RiskLadder";
 import { VaultControls } from "./VaultControls";
 
@@ -24,7 +25,6 @@ import { VaultControls } from "./VaultControls";
 export function OrderPanel() {
   const symbol = useTerminal((state) => state.symbol);
   const { address, isConnected, chainId } = useAccount();
-  const { connect, connectors } = useConnect();
   const { switchChain } = useSwitchChain();
   const wallet = useWalletOrionis();
   const run = useTx();
@@ -32,7 +32,8 @@ export function OrderPanel() {
   const { data: decimals = 6 } = useSettlementDecimals();
   const { data: balances } = useVaultBalances();
 
-  const [side, setSide] = useState<Side>("LONG");
+  const side = useTerminal((state) => state.side);
+  const setSide = useTerminal((state) => state.setSide);
   const [orderType, setOrderType] = useState<OrderType>("MARKET");
   const [marginMode, setMarginMode] = useState<"ISOLATED" | "CROSS">("ISOLATED");
   const [limitPrice, setLimitPrice] = useState("");
@@ -131,9 +132,7 @@ export function OrderPanel() {
   }
 
   const action = !isConnected ? (
-    <Button variant="primary" className="w-full" disabled={!connectors[0]} onClick={() => connectors[0] && connect({ connector: connectors[0] })}>
-      Connect wallet
-    </Button>
+    <ConnectButton className="w-full" />
   ) : chainId !== chain.id ? (
     <Button variant="down" className="w-full" onClick={() => switchChain({ chainId: chain.id })}>
       Switch to {chain.name}

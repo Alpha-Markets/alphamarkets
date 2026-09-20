@@ -1,6 +1,6 @@
 "use client";
 
-import { Num, Panel, Stat, cn } from "@orionis/ui";
+import { Num, Panel, Stat, Tabs } from "@orionis/ui";
 import { OptionPositionStatus } from "@orionis/sdk";
 import { useState } from "react";
 import { useAccount } from "wagmi";
@@ -37,6 +37,7 @@ export function PortfolioView() {
   const { data: orders } = useOrders();
   const now = useNow();
   const waiting = orders ? openOrderCount(orders, BigInt(Math.floor(now / 1000))) : 0;
+  const tabList = tabs.map((item) => (item.id === "orders" && waiting > 0 ? { ...item, label: `${item.label} (${waiting})` } : item));
 
   if (!isConnected) {
     return (
@@ -80,26 +81,7 @@ export function PortfolioView() {
       </div>
 
       <Panel
-        title={
-          <div role="tablist" aria-label="Portfolio sections" className="-mb-px flex h-9 gap-5">
-            {tabs.map((item) => (
-              <button
-                key={item.id}
-                role="tab"
-                type="button"
-                aria-selected={tab === item.id}
-                onClick={() => setTab(item.id)}
-                className={cn(
-                  "h-9 border-b px-0.5 text-sm font-medium",
-                  tab === item.id ? "border-text text-text" : "border-transparent text-muted hover:text-text",
-                )}
-              >
-                {item.label}
-                {item.id === "orders" && waiting > 0 ? ` (${waiting})` : ""}
-              </button>
-            ))}
-          </div>
-        }
+        title={<Tabs label="Portfolio sections" tabs={tabList} value={tab} onChange={setTab} />}
       >
         <div role="tabpanel" className="overflow-x-auto">
           {tab === "all" || tab === "perps" ? (

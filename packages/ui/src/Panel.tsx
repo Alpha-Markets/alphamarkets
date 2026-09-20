@@ -11,8 +11,8 @@ export function Panel({ title, actions, className, children, ...props }: PanelPr
   return (
     <section className={cn("flex min-h-0 flex-col border border-line bg-surface", className)} {...props}>
       {title || actions ? (
-        <header className="flex h-9 shrink-0 items-center justify-between border-b border-line px-3">
-          <h2 className="text-xs font-medium text-muted">{title}</h2>
+        <header className="flex min-h-9 shrink-0 flex-wrap items-center justify-between gap-x-3 border-b border-line px-3">
+          <h2 className="min-w-0 max-w-full text-sm font-medium">{title}</h2>
           {actions}
         </header>
       ) : null}

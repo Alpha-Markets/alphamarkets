@@ -1,23 +1,44 @@
 @import "tailwindcss";
 @source "../../../../packages/ui/src";
 
-/* Orionis terminal tokens (PROJECT_BRIEF.md Section 2): black and off-white, neutral grays, and
-   green/red used only to say which way a market or position is moving. No accent colour. */
+/* Orionis terminal tokens (PROJECT_BRIEF.md Section 2): a charcoal dark theme with off-white text,
+   neutral grays, and green/red used only to say which way a market or position is moving. No accent
+   colour. The ramp is warm-neutral to match the off-white text; muted and faint are set so text in
+   them stays at or above 4.5:1 on ground, surface and raised. */
 @theme {
-  --color-ground: #000000;
-  --color-surface: #0d0d0d;
-  --color-raised: #171717;
-  --color-line: #262626;
-  --color-text: #ece9e2;
-  --color-muted: #8a8983;
-  --color-faint: #5c5b57;
-  --color-up: #4cb782;
-  --color-down: #e0605a;
+  --color-ground: #1a1a19;
+  --color-surface: #222221;
+  --color-raised: #2c2c2a;
+  --color-line: #3b3b38;
+  --color-text: #f0ede6;
+  --color-muted: #aaa9a2;
+  --color-faint: #96958e;
+  --color-up: #52c48f;
+  --color-down: #ee7069;
+  --color-up-soft: rgb(82 196 143 / 0.14);
+  --color-down-soft: rgb(238 112 105 / 0.14);
   --font-sans: var(--font-plex), ui-sans-serif, system-ui, sans-serif;
+
+  /* The root font size is 16px, so rem-based text sizes are the usual ones (xs 12, sm 14, base 16).
+     The spacing unit stays 3.5px, which keeps every gap, height and padding the terminal was laid
+     out with. These add the sizes the scale was missing. */
+  --spacing: 0.21875rem;
+  --text-cell: 0.8125rem;
+  --text-cell--line-height: 1.25rem;
+  --text-title: 1.25rem;
+  --text-title--line-height: 1.75rem;
+  --text-figure: 1.75rem;
+  --text-figure--line-height: 2rem;
+  --text-display: 3rem;
+  --text-display--line-height: 1.08;
 }
 
 :root {
   color-scheme: dark;
+}
+
+html {
+  font-size: 16px;
 }
 
 html,
@@ -25,15 +46,19 @@ body {
   background: var(--color-ground);
   color: var(--color-text);
   font-family: var(--font-sans);
-  font-size: 14px;
   -webkit-font-smoothing: antialiased;
+}
+
+body {
+  font-size: 14px;
+  line-height: 1.5;
 }
 
 /* In the base layer so component utilities (e.g. `outline-none` on an input whose wrapper shows
    the focus border instead) can override it. */
 @layer base {
   :focus-visible {
-    outline: 1px solid var(--color-text);
+    outline: 2px solid var(--color-text);
     outline-offset: 2px;
   }
 }
@@ -48,6 +73,7 @@ body {
   *::before,
   *::after {
     animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
 }
