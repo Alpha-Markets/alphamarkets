@@ -17,6 +17,7 @@ services/
     indexer/            Contract event indexer (PostgreSQL)
     pricing/            Offchain options analytics (display-only, never settlement truth)
     risk-monitor/       Margin health read path
+    keeper/             Keeps testnet price feeds fresh and fills limit orders
 packages/
     contracts/          Solidity contracts (Foundry + OpenZeppelin)
     sdk/                @orionis/sdk — the sanctioned client for contracts/API
@@ -37,7 +38,7 @@ No chain ID, RPC URL, contract address, leverage cap, fee percentage, or protoco
 
 ## Development
 
-Build order, engineering practices, and phase-by-phase steps live in `DEVELOPMENT_STEPS.md`, derived from `PROJECT_BRIEF.md`. Current phase: **Phase 0 — Repository Scaffolding**.
+Build order, engineering practices, and phase-by-phase steps live in `DEVELOPMENT_STEPS.md`, derived from `PROJECT_BRIEF.md`. Current phase: **Phase 5 — Priority 2 polish** (see the status table in `DEVELOPMENT_STEPS.md`).
 
 ## Docs
 
