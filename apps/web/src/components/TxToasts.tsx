@@ -1,6 +1,6 @@
 "use client";
 
-import { Button, cn } from "@alphamarkets/ui";
+import { Button, cn, textLink } from "@alphamarkets/ui";
 import { useEffect } from "react";
 import type { TxStatus } from "@alphamarkets/sdk";
 import { alphaMarketsRead } from "@/lib/alphamarkets";
@@ -45,7 +45,7 @@ function Toast({ record }: { record: TxRecord }) {
       <div className="flex items-start justify-between gap-3">
         <p className="font-medium">{done ? `${record.title} confirmed` : failed ? `${record.title} failed` : record.title}</p>
         {done || failed ? (
-          <Button variant="ghost" size="sm" className="-mr-2 -mt-1" onClick={() => dismiss(record.id)} aria-label="Dismiss">
+          <Button variant="secondary" size="sm" className="-mt-1" onClick={() => dismiss(record.id)} aria-label="Dismiss">
             Close
           </Button>
         ) : null}
@@ -75,7 +75,7 @@ function Toast({ record }: { record: TxRecord }) {
         <p className="mt-2 flex items-center justify-between text-xs text-muted">
           <span className="tabular-nums">{shortHash(record.hash)}</span>
           {link ? (
-            <a href={link} target="_blank" rel="noreferrer" className="text-text underline underline-offset-2">
+            <a href={link} target="_blank" rel="noreferrer" className={textLink}>
               View on explorer
             </a>
           ) : null}

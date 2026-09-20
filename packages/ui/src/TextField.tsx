@@ -21,7 +21,7 @@ export function TextField({ label, onValueChange, suffix, hint, invalid, classNa
       </div>
       <div
         className={cn(
-          "flex h-10 items-center rounded-md border bg-ground px-3 focus-within:border-accent",
+          "flex h-10 items-center rounded-md border bg-ground px-3 hover:border-accent-line focus-within:border-accent",
           invalid ? "border-down" : "border-line",
         )}
       >

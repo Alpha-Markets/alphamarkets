@@ -25,8 +25,10 @@ function MarketRow({ symbol }: { symbol: string }) {
         onClick={() => setSymbol(symbol)}
         aria-pressed={selected}
         className={cn(
-          "grid w-full grid-cols-[1fr_auto] items-baseline gap-x-3 border-l-2 px-3 py-2 text-left",
-          selected ? "border-accent bg-raised" : "border-transparent hover:bg-raised/60",
+          "grid w-full grid-cols-[1fr_auto] items-baseline gap-x-3 border-l-[3px] px-3 py-2 text-left transition-colors duration-150",
+          selected
+            ? "border-accent bg-accent-soft"
+            : "border-transparent bg-transparent hover:border-accent-line hover:bg-accent-soft active:border-accent active:bg-accent-soft",
         )}
       >
         <span className="font-medium">{symbol}</span>
@@ -93,7 +95,7 @@ export function MarketList() {
             placeholder="Filter markets"
             value={filter}
             onChange={(event) => setFilter(event.target.value)}
-            className="h-9 w-full rounded-md border border-line bg-ground px-2 text-sm outline-none placeholder:text-faint focus:border-accent"
+            className="h-9 w-full rounded-md border border-line bg-ground px-2 text-sm outline-none placeholder:text-faint hover:border-accent-line focus:border-accent"
           />
         </div>
       ) : null}

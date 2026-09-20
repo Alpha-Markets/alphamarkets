@@ -1,6 +1,6 @@
 "use client";
 
-import { Button } from "@alphamarkets/ui";
+import { Button, cn, menuItem } from "@alphamarkets/ui";
 import Link from "next/link";
 import { useCallback, useRef, useState } from "react";
 import { useAccount, useDisconnect, useSwitchChain } from "wagmi";
@@ -10,7 +10,7 @@ import { alphaMarketsRead } from "@/lib/alphamarkets";
 import { chain } from "@/lib/wagmi";
 import { ConnectButton } from "./ConnectButton";
 
-const item = "flex h-9 w-full items-center px-3 text-left text-sm hover:bg-line";
+const item = cn(menuItem, "flex h-9 w-full items-center px-3 text-left text-sm");
 
 function explorerAddressUrl(address: `0x${string}`): string | undefined {
   try {

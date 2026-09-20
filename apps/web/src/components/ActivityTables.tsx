@@ -1,6 +1,6 @@
 "use client";
 
-import { Num } from "@alphamarkets/ui";
+import { Num, textLink } from "@alphamarkets/ui";
 import type { FundingPayment, HistoryEvent } from "@alphamarkets/sdk";
 import { useFunding, useHistory, useSettlementDecimals } from "@/hooks/queries";
 import { env } from "@/lib/env";
@@ -25,7 +25,7 @@ function TxCell({ hash }: { hash: string }) {
   return (
     <td className={cell}>
       {link ? (
-        <a href={link} target="_blank" rel="noreferrer" className="underline underline-offset-2">
+        <a href={link} target="_blank" rel="noreferrer" className={textLink}>
           {shortHash(hash)}
         </a>
       ) : (

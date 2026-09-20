@@ -1,6 +1,6 @@
 "use client";
 
-import { Panel, Skeleton, cn } from "@alphamarkets/ui";
+import { Panel, Skeleton, cn, chip } from "@alphamarkets/ui";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState, type ReactNode } from "react";
@@ -30,7 +30,7 @@ const columns: Array<{ key: SortKey; label: string; hide?: string }> = [
 ];
 
 const cell = "px-3 py-2.5 text-right tabular-nums first:text-left max-md:px-2";
-const linkClass = "inline-flex h-8 items-center rounded-md border border-line px-2.5 text-xs font-medium hover:border-faint hover:bg-raised";
+const linkClass = cn(chip, "h-8 px-2.5 text-xs font-medium");
 
 interface Line {
   market: MarketConfig;
@@ -85,13 +85,13 @@ function MarketRow({ line, decimals }: { line: Line; decimals: number }) {
 
   return (
     <tr
-      className={cn("border-t border-line", market.perpsEnabled && "cursor-pointer hover:bg-raised/60")}
+      className={cn("border-t border-line transition-colors duration-150", market.perpsEnabled && "cursor-pointer hover:bg-accent-soft hover:shadow-[inset_3px_0_0_var(--color-accent)] active:bg-accent-soft/60")}
       onClick={market.perpsEnabled ? () => router.push(perps) : undefined}
     >
       <td className={cell}>
         <div className="flex items-center gap-2">
           {market.perpsEnabled ? (
-            <Link href={perps} className="font-medium hover:underline" onClick={(event) => event.stopPropagation()}>
+            <Link href={perps} className="font-medium transition-colors duration-150 hover:text-accent" onClick={(event) => event.stopPropagation()}>
               {symbol}
             </Link>
           ) : (
@@ -106,7 +106,7 @@ function MarketRow({ line, decimals }: { line: Line; decimals: number }) {
               event.stopPropagation();
               setSymbol(symbol);
             }}
-            className="mt-0.5 inline-block text-xs text-muted underline underline-offset-2 hover:text-text md:hidden"
+            className={cn(chip, "mt-1 h-7 px-2 text-xs font-medium md:hidden")}
           >
             Options
           </Link>
@@ -189,7 +189,7 @@ export function MarketsTable() {
             placeholder="Filter markets"
             value={filter}
             onChange={(event) => setFilter(event.target.value)}
-            className="my-1 h-8 w-44 rounded-md border border-line bg-ground px-2 text-sm outline-none placeholder:text-faint focus:border-accent"
+            className="my-1 h-8 w-44 rounded-md border border-line bg-ground px-2 text-sm outline-none placeholder:text-faint hover:border-accent-line focus:border-accent"
           />
         ) : null
       }
@@ -219,7 +219,7 @@ export function MarketsTable() {
                       <button
                         type="button"
                         onClick={() => sortBy(column.key)}
-                        className={cn("inline-flex h-8 items-center gap-1 whitespace-nowrap hover:text-text", active ? "text-text" : "text-muted")}
+                        className={cn("-mx-1.5 inline-flex h-8 items-center gap-1 whitespace-nowrap rounded-md px-1.5 transition-colors duration-150 hover:bg-accent-soft hover:text-accent active:bg-accent active:text-accent-ink", active ? "text-accent" : "text-muted")}
                       >
                         {column.label}
                         <span aria-hidden="true" className="w-2 text-[10px]">

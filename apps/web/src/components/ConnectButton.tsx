@@ -1,6 +1,6 @@
 "use client";
 
-import { Button, type ButtonProps } from "@alphamarkets/ui";
+import { Button, type ButtonProps, cn, menuItem } from "@alphamarkets/ui";
 import { useCallback, useRef, useState } from "react";
 import { useConnect } from "wagmi";
 import { useDismiss } from "@/hooks/useDismiss";
@@ -65,7 +65,7 @@ export function ConnectButton({ variant = "primary", size = "md", className }: P
                   reset();
                   connect({ connector }, { onSuccess: () => setOpen(false) });
                 }}
-                className="flex h-9 w-full items-center gap-2 px-2 text-left text-sm hover:bg-line"
+                className={cn(menuItem, "flex h-9 w-full items-center gap-2 rounded-md px-2 text-left text-sm")}
               >
                 {connector.name}
               </button>

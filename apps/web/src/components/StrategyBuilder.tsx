@@ -1,6 +1,6 @@
 "use client";
 
-import { Num, Panel, Segmented, Stat, TextField } from "@alphamarkets/ui";
+import { Num, Panel, Segmented, Stat, TextField, cn, fieldBorder } from "@alphamarkets/ui";
 import { analyzeStrategy, payoffCurve, strategyLegs, STRATEGY_KINDS, type Leg, type OptionQuote, type StrategyKind } from "@alphamarkets/sdk";
 import { useEffect, useMemo, useState } from "react";
 import { formatUnits } from "viem";
@@ -23,7 +23,7 @@ import {
 import { useTerminal } from "@/stores/terminal";
 
 const toNumber = (value: bigint) => Number(formatUnits(value, 18));
-const selectClass = "h-8 rounded-md border border-line bg-surface px-2 text-sm text-text";
+const selectClass = cn(fieldBorder, "h-8 rounded-md border bg-raised px-2 text-sm text-text hover:bg-accent-soft");
 
 /// A payoff-at-expiry line chart. Green above zero, red below, with the price and break-evens on
 /// the axis. Drawn as plain SVG: it is a display of the analysis, nothing here is signed.

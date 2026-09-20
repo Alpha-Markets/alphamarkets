@@ -58,7 +58,7 @@ export function TradeSheet({
         aria-label={title}
       >
         <div className="flex h-11 shrink-0 items-center justify-end border-b border-line px-1 lg:hidden">
-          <Button variant="ghost" aria-label={`Close ${title.toLowerCase()}`} onClick={() => setOpen(false)}>
+          <Button variant="secondary" size="sm" aria-label={`Close ${title.toLowerCase()}`} onClick={() => setOpen(false)}>
             Close
           </Button>
         </div>

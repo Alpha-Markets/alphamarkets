@@ -4,6 +4,7 @@ import { HeroMark } from "@/components/HeroMark";
 import { LandingMarkets } from "@/components/LandingMarkets";
 import { SilkBackdrop } from "@/components/SilkBackdrop";
 import { PAGE_FRAME } from "@/lib/frame";
+import { chip, cn, textLink } from "@alphamarkets/ui";
 
 const blocks = [
   { title: "Options", body: "Trade volatility and defined-risk exposure.", href: "/options", cta: "Open the option chain" },
@@ -28,13 +29,13 @@ export default function Landing() {
           <div className="mt-10 flex flex-wrap gap-3">
             <Link
               href="/perpetuals"
-              className="inline-flex h-11 items-center rounded-lg bg-accent px-5 text-sm font-medium text-accent-ink hover:bg-accent-hover"
+              className="inline-flex h-11 items-center rounded-lg bg-accent px-5 text-sm font-medium text-accent-ink transition-[background-color,box-shadow] duration-150 hover:bg-accent-hover hover:shadow-[0_0_0_3px_var(--color-accent-line)] active:bg-accent-press active:shadow-none"
             >
               Launch terminal
             </Link>
             <Link
               href="/markets"
-              className="inline-flex h-11 items-center rounded-lg border border-line px-5 text-sm font-medium hover:border-accent-line hover:bg-raised"
+              className={cn(chip, "h-11 rounded-lg px-5 text-sm font-medium")}
             >
               Explore markets
             </Link>
@@ -56,7 +57,7 @@ export default function Landing() {
               <dt className="text-title font-light">{block.title}</dt>
               <dd className="mt-2 leading-relaxed text-muted">{block.body}</dd>
               <dd className="mt-4">
-                <Link href={block.href} className="text-sm underline underline-offset-2 hover:text-accent">
+                <Link href={block.href} className={cn(textLink, "text-sm")}>
                   {block.cta}
                 </Link>
               </dd>

@@ -1,4 +1,5 @@
 import { cn } from "./cn.js";
+import { pill } from "./interaction.js";
 
 export interface TabOption<T extends string> {
   id: T;
@@ -21,7 +22,7 @@ export function Tabs<T extends string>({
   className?: string;
 }) {
   return (
-    <div role="tablist" aria-label={label} className={cn("flex h-9 max-w-full gap-5 overflow-x-auto whitespace-nowrap", className)}>
+    <div role="tablist" aria-label={label} className={cn("flex h-11 max-w-full items-center gap-1.5 overflow-x-auto whitespace-nowrap px-0.5", className)}>
       {tabs.map((tab) => (
         <button
           key={tab.id}
@@ -29,10 +30,7 @@ export function Tabs<T extends string>({
           type="button"
           aria-selected={value === tab.id}
           onClick={() => onChange(tab.id)}
-          className={cn(
-            "h-9 shrink-0 border-b-2 px-0.5 text-sm font-medium",
-            value === tab.id ? "border-accent text-text" : "border-transparent text-muted hover:text-text",
-          )}
+          className={cn("h-8 shrink-0 px-3 text-sm", pill(value === tab.id))}
         >
           {tab.label}
         </button>

@@ -1,6 +1,6 @@
 "use client";
 
-import { Num, Panel, Skeleton } from "@alphamarkets/ui";
+import { Num, Panel, Skeleton, chip, cn } from "@alphamarkets/ui";
 import Link from "next/link";
 import { useMemo } from "react";
 import { formatUnits } from "viem";
@@ -26,7 +26,7 @@ function Row({ symbol }: { symbol: string }) {
     <li>
       <Link
         href={`/perpetuals?market=${symbol}`}
-        className="grid grid-cols-[1fr_auto_auto] items-center gap-x-6 px-5 py-4 hover:bg-raised/60 sm:grid-cols-[1fr_7rem_8rem_6rem_6rem]"
+        className="grid grid-cols-[1fr_auto_auto] items-center gap-x-6 px-5 py-4 transition-colors duration-150 hover:bg-accent-soft hover:shadow-[inset_3px_0_0_var(--color-accent)] active:bg-accent-soft/60 sm:grid-cols-[1fr_7rem_8rem_6rem_6rem]"
       >
         <span className="text-base">{symbol}</span>
         <Sparkline points={points} className="hidden h-7 w-full sm:block" />
@@ -45,7 +45,7 @@ export function LandingMarkets() {
   const { data: markets, isPending } = usePerpMarkets();
   const symbols = (markets ?? []).map((market) => symbolOf(market.marketId));
   return (
-    <Panel title="Markets" actions={<Link href="/markets" className="text-sm underline underline-offset-2">All markets</Link>}>
+    <Panel title="Markets" actions={<Link href="/markets" className={cn(chip, "h-8 px-2.5 text-xs font-medium")}>All markets</Link>}>
       {isPending ? (
         <p className="p-4 text-muted">Loading markets…</p>
       ) : symbols.length === 0 ? (

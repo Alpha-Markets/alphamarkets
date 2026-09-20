@@ -21,13 +21,18 @@
   --color-faint: #93a4a0;
   --color-up: #72d977;
   --color-down: #ee7069;
-  --color-up-soft: rgb(114 217 119 / 0.14);
-  --color-down-soft: rgb(238 112 105 / 0.14);
+  --color-up-soft: rgb(114 217 119 / 0.2);
+  --color-down-soft: rgb(238 112 105 / 0.2);
   --color-accent: #3adbd0;
   --color-accent-hover: #66e8df;
   --color-accent-ink: #031a18;
-  --color-accent-soft: #17403c;
+  --color-accent-soft: #1b4c47;
   --color-accent-line: rgb(58 219 208 / 0.4);
+  --color-accent-press: #24b3a9;
+  --color-up-hover: #8be890;
+  --color-up-press: #5cc262;
+  --color-down-hover: #f38c86;
+  --color-down-press: #d95d56;
   --font-sans: var(--font-geist), ui-sans-serif, system-ui, sans-serif;
 
   /* The root font size is 16px, so rem-based text sizes are the usual ones (xs 12, sm 14, base 16).

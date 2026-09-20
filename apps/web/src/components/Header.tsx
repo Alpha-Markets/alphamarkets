@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useDismiss } from "@/hooks/useDismiss";
 import { PAGE_FRAME } from "@/lib/frame";
-import { cn } from "@alphamarkets/ui";
+import { chip, cn, menuItem, pill } from "@alphamarkets/ui";
 import { Logo } from "./Logo";
 import { WalletButton } from "./WalletButton";
 
@@ -58,7 +58,7 @@ export function Header() {
           <Link href="/" aria-label="AlphaMarkets home" className="pt-1">
             <Logo />
           </Link>
-          <nav aria-label="Primary" className="hidden h-full items-stretch gap-6 md:flex">
+          <nav aria-label="Primary" className="hidden h-full items-center gap-1.5 md:flex">
             {items.map((item) => {
               const current = isCurrent(pathname, item.href);
               return (
@@ -66,10 +66,7 @@ export function Header() {
                   key={item.href}
                   href={item.href}
                   aria-current={current ? "page" : undefined}
-                  className={cn(
-                    "flex items-center border-b-2 pt-0.5 text-sm",
-                    current ? "border-accent text-text" : "border-transparent text-muted hover:text-text",
-                  )}
+                  className={cn("h-8 self-center px-3 text-sm", pill(current))}
                 >
                   {item.label}
                 </Link>
@@ -84,7 +81,7 @@ export function Header() {
             aria-expanded={open}
             aria-controls="mobile-nav"
             onClick={() => setOpen((value) => !value)}
-            className="inline-flex h-9 items-center rounded-md border border-line px-3 text-sm font-medium hover:border-faint hover:bg-raised md:hidden"
+            className={cn(chip, "h-9 px-3 text-sm font-medium md:hidden")}
           >
             {open ? "Close" : "Menu"}
           </button>
@@ -100,8 +97,8 @@ export function Header() {
                 href={item.href}
                 aria-current={current ? "page" : undefined}
                 className={cn(
-                  "flex h-12 items-center border-l-2 px-4 text-base",
-                  current ? "border-accent bg-raised text-text" : "border-transparent text-muted",
+                  "flex h-12 items-center px-4 text-base font-medium",
+                  current ? "bg-accent text-accent-ink" : cn("bg-raised text-muted", menuItem),
                 )}
               >
                 {item.label}

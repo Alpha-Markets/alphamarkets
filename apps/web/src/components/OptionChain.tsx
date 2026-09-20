@@ -80,7 +80,7 @@ const askColumn: Column = {
       onClick={onSelect}
       aria-pressed={selected}
       aria-label={side === "CALL" ? "Buy call" : "Buy put"}
-      className="font-medium underline-offset-2 hover:underline disabled:cursor-not-allowed disabled:no-underline"
+      className="-mx-2 rounded-md bg-raised px-2 py-1 font-medium transition-colors duration-150 hover:bg-accent-soft hover:text-accent active:bg-accent active:text-accent-ink aria-pressed:bg-accent aria-pressed:text-accent-ink disabled:cursor-not-allowed disabled:bg-transparent disabled:text-muted disabled:hover:bg-transparent"
     >
       {quoted(quote, (data) => fmtQuotePremium(data.ask))}
     </button>

@@ -1,6 +1,6 @@
 "use client";
 
-import { Num, Panel, Skeleton, Stat, Tabs } from "@alphamarkets/ui";
+import { Num, Panel, Skeleton, Stat, Tabs, chip, cn } from "@alphamarkets/ui";
 import { OptionPositionStatus } from "@alphamarkets/sdk";
 import { useState } from "react";
 import Link from "next/link";
@@ -32,7 +32,7 @@ function Empty({ children, action }: { children: string; action?: { href: string
     <div className="flex flex-wrap items-center justify-between gap-3 p-3">
       <p className="text-muted">{children}</p>
       {action ? (
-        <Link href={action.href} className="inline-flex h-8 items-center rounded-md border border-line px-2.5 text-xs font-medium hover:border-faint hover:bg-raised">
+        <Link href={action.href} className={cn(chip, "h-8 px-2.5 text-xs font-medium")}>
           {action.label}
         </Link>
       ) : null}
