@@ -14,14 +14,17 @@ import type { ContractAddresses } from "@orionis/config";
 import { Orionis } from "./client.js";
 import {
   InvalidQuoteError,
+  InvalidTriggerPriceError,
   LimitPriceNotReachedError,
   OrionisContractError,
   PositionLimitExceededError,
   QuoteAlreadyUsedError,
+  TriggerPriceNotReachedError,
   UserRejectedError,
 } from "./errors.js";
 import { oracleRouterAbi } from "./abis.js";
 import { closeQuoteTypedData, openQuoteTypedData } from "./quotes.js";
+import { rfqQuoteTypedData } from "./rfq.js";
 import { OptionPositionStatus, OptionType } from "@orionis/types";
 import { resolveMarketId } from "./utils.js";
 import type { TxEvent } from "./transactions.js";
@@ -343,5 +346,129 @@ describe("SDK against a local Anvil deployment", { skip: skipReason, timeout: 18
 
     await orionis.perps.closePosition(positionId, { tx: { wait: true } });
     await setFeedPrice("190");
+  });
+
+  test("a stop-loss rests until the mark falls to its trigger, then anyone can close the position", async () => {
+    const publicClient = createWalletClient({ account, transport: http(rpcUrl) }).extend(publicActions);
+    const feed = await publicClient.readContract({ address: addresses.oracleRouter, abi: oracleRouterAbi, functionName: "primarySource", args: [resolveMarketId("NVDA")] });
+    const setFeedPrice = async (price: string) => {
+      const hash = await publicClient.writeContract({
+        address: feed,
+        abi: parseAbi(["function setPrice(uint256 price)"]),
+        chain: null,
+        functionName: "setPrice",
+        args: [BigInt(price) * 10n ** 18n],
+      });
+      await publicClient.waitForTransactionReceipt({ hash });
+    };
+
+    // The vault still holds the earlier tests' deposits, which is plenty for 500 of margin.
+    const { positionId } = await orionis.perps.openPosition({ market: "NVDA", side: "LONG", collateral: "500", leverage: 5, tx: { wait: true } });
+
+    // A long's stop-loss must sit below the mark (190), its take-profit above.
+    await assert.rejects(orionis.perps.placeTriggerOrder({ positionId, kind: "STOP_LOSS", triggerPrice: "195" }), InvalidTriggerPriceError);
+    await assert.rejects(orionis.perps.placeTriggerOrder({ positionId, kind: "TAKE_PROFIT", triggerPrice: "185" }), InvalidTriggerPriceError);
+
+    const stop = await orionis.perps.placeTriggerOrder({ positionId, kind: "STOP_LOSS", triggerPrice: "180", tx: { wait: true } });
+    const profit = await orionis.perps.placeTriggerOrder({ positionId, kind: "TAKE_PROFIT", triggerPrice: "200", tx: { wait: true } });
+
+    const resting = (await orionis.portfolio.triggerOrders(account.address)).filter((order) => order.status === "OPEN");
+    assert.deepEqual(resting.map((order) => [order.id, order.kind, order.positionId]), [
+      [stop.orderId, "STOP_LOSS", positionId],
+      [profit.orderId, "TAKE_PROFIT", positionId],
+    ]);
+
+    // The mark is 190: neither trigger is reached.
+    await assert.rejects(orionis.perps.executeTriggerOrder(stop.orderId), TriggerPriceNotReachedError);
+
+    await setFeedPrice("179");
+    await assert.rejects(orionis.perps.executeTriggerOrder(profit.orderId), TriggerPriceNotReachedError);
+    await orionis.perps.executeTriggerOrder(stop.orderId, { wait: true });
+
+    const closed = await orionis.portfolio.getPerpPosition(positionId);
+    assert.equal(closed.open, false);
+    assert.ok(closed.realizedPnl < 0n, "the stop-loss closed at a loss");
+    assert.equal((await orionis.perps.getTriggerOrder(stop.orderId)).status, "EXECUTED");
+
+    // The take-profit is left on a closed position and cannot fire; its owner cancels it.
+    await setFeedPrice("205");
+    await assert.rejects(orionis.perps.executeTriggerOrder(profit.orderId), OrionisContractError);
+    await orionis.perps.cancelTriggerOrder(profit.orderId, { wait: true });
+    assert.equal((await orionis.perps.getTriggerOrder(profit.orderId)).status, "CANCELLED");
+    await setFeedPrice("190");
+  });
+
+  test("a cross-margin position is backed by the account, and its health comes from the contract", async () => {
+    assert.ok(orionis.crossMargin.supported());
+    const before = await orionis.crossMargin.health(account.address);
+    assert.equal(before.hasCrossPositions, false);
+    assert.equal(before.liquidatable, false);
+
+    const { positionId } = await orionis.perps.openPosition({ market: "NVDA", side: "LONG", collateral: "500", leverage: 5, marginMode: "CROSS", tx: { wait: true } });
+    const health = await orionis.crossMargin.health(account.address);
+    assert.equal(health.hasCrossPositions, true);
+    assert.equal(health.liquidatable, false);
+    // 5x on $500 is $2,500 of notional, and the maintenance requirement is 5% of it (RiskManager's default).
+    assert.equal(health.requirement, 125_000_000n);
+    assert.ok(health.buffer > 0n);
+    assert.deepEqual(await orionis.crossMargin.positions(account.address), [positionId]);
+    assert.equal(await orionis.crossMargin.worstPosition(account.address), positionId);
+
+    await orionis.perps.closePosition(positionId, { tx: { wait: true } });
+    assert.equal((await orionis.crossMargin.health(account.address)).hasCrossPositions, false);
+  });
+
+  test("a market maker's signed price opens a position at exactly that price", async () => {
+    assert.ok(orionis.rfq.supported());
+    const params = await orionis.rfq.parameters();
+    assert.equal(params.maxDeviationBps, 100n);
+
+    const now = BigInt(Math.floor(Date.now() / 1000));
+    const quote = { user: account.address, market: "NVDA", side: "LONG" as const, collateral: 500_000_000n, leverage: 5, price: 190_500_000_000_000_000_000n, validUntil: now + 120n, nonce: 1n };
+    // The deployer holds the maker role on a local deployment (`MAKER_ADDRESS` defaults to it).
+    const signature = await account.signTypedData(orionis.rfq.typedData(quote));
+
+    const { positionId } = await orionis.rfq.execute({ ...quote, signature }, { wait: true });
+    const position = await orionis.portfolio.getPerpPosition(positionId);
+    assert.equal(position.entryPrice, 190_500_000_000_000_000_000n);
+    assert.equal(position.owner, account.address);
+
+    // A quote is single use, and one far from the mark is refused.
+    await assert.rejects(orionis.rfq.execute({ ...quote, signature }), OrionisContractError);
+    const far = { ...quote, price: 250n * 10n ** 18n, nonce: 2n };
+    await assert.rejects(orionis.rfq.execute({ ...far, signature: await account.signTypedData(orionis.rfq.typedData(far)) }), OrionisContractError);
+
+    await orionis.perps.closePosition(positionId, { tx: { wait: true } });
+  });
+
+  test("a subaccount trades with its own balance, and a failed leg undoes the whole package", async () => {
+    assert.ok(orionis.subaccounts.supported());
+    const predicted = await orionis.subaccounts.computeAddress(account.address, 1n);
+    const { address: sub } = await orionis.subaccounts.create(1n, { wait: true });
+    assert.equal(sub, predicted);
+    assert.deepEqual((await orionis.subaccounts.list(account.address)).map((s) => [s.address, s.index]), [[sub, 1n]]);
+
+    await orionis.subaccounts.deposit(sub, "1000", { tx: { wait: true } });
+    assert.equal((await orionis.subaccounts.balances(sub)).available, 1_000_000_000n);
+
+    // Trade as the subaccount: the engine sees it, not the wallet, as the trader.
+    const open = await orionis.trading.prepareOpenPerp({ market: "NVDA", side: "LONG", collateral: "400", leverage: 5 });
+    await orionis.subaccounts.execute(sub, open, { wait: true });
+    const held = (await orionis.portfolio.positions(sub)).perps.filter((position) => position.open);
+    assert.equal(held.length, 1);
+    assert.equal(held[0]!.owner, sub);
+    assert.equal((await orionis.subaccounts.balances(sub)).lockedMargin, 400_000_000n);
+
+    // An all-or-nothing package: the second call fails (4x is not a tier), so the first is undone.
+    const good = await orionis.trading.prepareOpenPerp({ market: "NVDA", side: "SHORT", collateral: "100", leverage: 2 });
+    const bad = await orionis.trading.prepareOpenPerp({ market: "NVDA", side: "SHORT", collateral: "100", leverage: 4 });
+    await assert.rejects(orionis.subaccounts.multicall(sub, [good, bad]));
+    assert.equal((await orionis.portfolio.positions(sub)).perps.filter((position) => position.open).length, 1);
+
+    const close = await orionis.trading.prepareClosePerp(held[0]!.positionId, { market: "NVDA", side: "LONG" });
+    await orionis.subaccounts.execute(sub, close, { wait: true });
+    const free = (await orionis.subaccounts.balances(sub)).available;
+    await orionis.subaccounts.withdraw(sub, (Number(free) / 1e6).toFixed(6), { tx: { wait: true } });
+    assert.equal((await orionis.subaccounts.balances(sub)).available, 0n);
   });
 });

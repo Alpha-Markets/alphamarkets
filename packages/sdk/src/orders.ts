@@ -96,3 +96,81 @@ export async function readOrderRange(
   for (let id = from < 1n ? 1n : from; id <= last; id++) ids.push(id);
   return Promise.all(ids.map((id) => readOrder(client, addresses, id)));
 }
+
+export type TriggerKind = "STOP_LOSS" | "TAKE_PROFIT";
+
+/// A stop-loss or take-profit attached to an open perp position (PROJECT_BRIEF.md Section 39).
+/// When the mark price reaches the trigger, anyone can fire it and the whole remaining position
+/// closes at the mark price.
+export interface TriggerOrder {
+  id: bigint;
+  positionId: bigint;
+  kind: TriggerKind;
+  /// Mark price that fires the order, 18 decimals. For a long a stop-loss sits below the mark at
+  /// placement and a take-profit above it; a short is the mirror image.
+  triggerPrice: bigint;
+  /// Unix seconds. The order can no longer fire after this.
+  expiry: bigint;
+  owner: Address;
+  status: OrderStatus;
+}
+
+export const TRIGGER_KINDS: TriggerKind[] = ["STOP_LOSS", "TAKE_PROFIT"];
+
+/// True when the order fires as the mark price falls to the trigger: a long's stop-loss and a
+/// short's take-profit. Otherwise it fires as the price rises to it. Mirrors
+/// `PerpsEngine._firesBelow`.
+export function triggerFiresBelow(isLong: boolean, kind: TriggerKind): boolean {
+  return (kind === "STOP_LOSS") === isLong;
+}
+
+function toTriggerOrder(id: bigint, raw: {
+  positionId: bigint;
+  kind: number;
+  triggerPrice: bigint;
+  expiry: bigint;
+  owner: Address;
+  status: number;
+}): TriggerOrder {
+  return {
+    id,
+    positionId: raw.positionId,
+    kind: TRIGGER_KINDS[raw.kind] ?? "STOP_LOSS",
+    triggerPrice: raw.triggerPrice,
+    expiry: raw.expiry,
+    owner: raw.owner,
+    status: STATUS[raw.status] ?? "OPEN",
+  };
+}
+
+export async function readTriggerOrder(client: OrionisClient, addresses: ContractAddresses, orderId: bigint): Promise<TriggerOrder> {
+  const raw = await client.readContract({
+    address: requireOrderManager(addresses, "perps.getTriggerOrder"),
+    abi: perpOrderManagerAbi,
+    functionName: "getTriggerOrder",
+    args: [orderId],
+  });
+  return toTriggerOrder(orderId, raw);
+}
+
+/// Every trigger order a user ever placed, oldest first, read from the chain. Filter on `status`
+/// for the resting ones. Empty on a deployment without an order manager.
+export async function readUserTriggerOrders(client: OrionisClient, addresses: ContractAddresses, user: Address): Promise<TriggerOrder[]> {
+  const manager = addresses.perpOrderManager;
+  if (!manager) return [];
+  const ids = await client.readContract({ address: manager, abi: perpOrderManagerAbi, functionName: "getUserTriggerOrders", args: [user] });
+  return Promise.all(ids.map((id) => readTriggerOrder(client, addresses, id)));
+}
+
+/// Trigger orders with ids from `from` (inclusive) up to the newest, for a keeper scanning the book.
+export async function readTriggerOrderRange(
+  client: OrionisClient,
+  addresses: ContractAddresses,
+  from: bigint,
+): Promise<TriggerOrder[]> {
+  const manager = requireOrderManager(addresses, "perps.scanTriggerOrders");
+  const last = await client.readContract({ address: manager, abi: perpOrderManagerAbi, functionName: "nextTriggerOrderId" });
+  const ids: bigint[] = [];
+  for (let id = from < 1n ? 1n : from; id <= last; id++) ids.push(id);
+  return Promise.all(ids.map((id) => readTriggerOrder(client, addresses, id)));
+}

@@ -3,6 +3,12 @@ import { chains, resolveAddresses, type ChainId, type ContractAddresses } from "
 import { createDecimalsReader, createErc20, type Erc20Namespace } from "./erc20.js";
 import { createExplorer, type ExplorerNamespace } from "./explorer.js";
 import { createFees, type FeesNamespace } from "./fees.js";
+import { createSubaccounts, type SubaccountsNamespace } from "./accounts.js";
+import { createCrossMargin, type CrossMarginNamespace } from "./crossmargin.js";
+import { createStructured, type StructuredNamespace } from "./structured.js";
+import { createRfq, type RfqNamespace } from "./rfq.js";
+import { createTrading, type TradingNamespace } from "./trading.js";
+import { createInstitutional, type InstitutionalNamespace } from "./institutional.js";
 import { createFunding, type FundingNamespace } from "./funding.js";
 import { createMarkets, type MarketsNamespace } from "./markets.js";
 import { createOptions, type OptionsNamespace } from "./options.js";
@@ -78,6 +84,12 @@ export class Orionis {
   readonly fees: FeesNamespace;
   readonly explorer: ExplorerNamespace;
   readonly stream: StreamNamespace;
+  readonly institutional: InstitutionalNamespace;
+  readonly trading: TradingNamespace;
+  readonly subaccounts: SubaccountsNamespace;
+  readonly crossMargin: CrossMarginNamespace;
+  readonly rfq: RfqNamespace;
+  readonly structured: StructuredNamespace;
 
   constructor(config: OrionisConfig) {
     this.chainId = config.chainId;
@@ -121,5 +133,16 @@ export class Orionis {
     });
     this.explorer = createExplorer(config.explorerUrl);
     this.stream = createStream(config.apiUrl, config.webSocket);
+    this.institutional = createInstitutional(config.apiUrl);
+    this.trading = createTrading({ client, addresses: this.addresses, chainId: config.chainId, decimals, oracle: this.oracle });
+    this.subaccounts = createSubaccounts({ client, addresses: this.addresses, vault: this.vault, erc20: this.erc20, decimals });
+    this.crossMargin = createCrossMargin(client, this.addresses);
+    this.rfq = createRfq(client, this.addresses, config.chainId);
+    this.structured = createStructured({
+      options: this.options,
+      trading: this.trading,
+      oracle: this.oracle,
+      decimals: () => decimals(this.addresses.settlementToken),
+    });
   }
 }

@@ -62,7 +62,63 @@ export interface OptionsQuoteResult {
   vega: number;
   breakEven: number;
   spot: number;
+  /// Higher-order Greeks from the same model (display only): per 1.00 change in the rate,
+  /// volatility or spot, and per year of time passing. Absent from an older pricing service.
+  rho?: number;
+  vanna?: number;
+  vomma?: number;
+  charm?: number;
+  speed?: number;
+  color?: number;
   authorization?: SignedQuote;
+}
+
+/// One side (call or put) at one strike and expiry on the model's volatility surface.
+export interface SurfaceSide {
+  premium: number;
+  delta: number;
+  gamma: number;
+  theta: number;
+  vega: number;
+  greeks: { rho: number; vanna: number; vomma: number; charm: number; speed: number; color: number };
+}
+
+export interface SurfacePoint {
+  strike: number;
+  /// The volatility the model prices this strike and expiry with.
+  iv: number;
+  call: SurfaceSide;
+  put: SurfaceSide;
+}
+
+export interface SurfaceExpiry {
+  /// Unix seconds.
+  expiry: number;
+  timeToExpiryYears: number;
+  atmIv: number;
+  /// Volatility 10% below spot less 10% above: positive means puts are priced higher.
+  skew: number;
+  points: SurfacePoint[];
+}
+
+/// The pricing model's volatility surface (PROJECT_BRIEF.md Sections 39 and 42). Not
+/// market-implied: there is no order book to imply it from. `ivSource` says whether the base
+/// level was measured from price history or is the flat default, and `shape` is the configured
+/// skew, smile and term slope (all 0 means a flat surface).
+export interface VolatilitySurface {
+  spot: number;
+  ivSource: "realized" | "default";
+  baseVolatility: number;
+  shape: { skewSlope: number; smileCurve: number; termSlope: number };
+  strikes: number[];
+  expiries: SurfaceExpiry[];
+}
+
+export interface SurfaceQuery {
+  /// Unix seconds, `Date` or ISO string. Defaults to 7, 14, 30, 60 and 90 days out.
+  expiries?: Array<bigint | Date | string>;
+  /// Plain decimal prices. Defaults to 80% to 120% of spot.
+  strikes?: number[];
 }
 
 /// Wire shape of `authorization` before bigints are restored.
@@ -149,6 +205,9 @@ export interface OptionsNamespace {
   /// Open interest and 24h volume per series that has been traded, optionally for one expiry.
   /// Requires `apiUrl`. Display data.
   stats(underlying: string, expiry?: bigint | Date | string): Promise<OptionSeriesStats[]>;
+  /// The model's volatility surface with prices and Greeks per strike and expiry. Requires
+  /// `apiUrl`. Display data, like `quote`.
+  surface(underlying: string, query?: SurfaceQuery): Promise<VolatilitySurface>;
   /// Expiries with at least one opened series, from `services/indexer` via the API. Requires
   /// `apiUrl`. This contract design has no pre-listed strike matrix — see `services/api`.
   expiries(underlying: string): Promise<bigint[]>;
@@ -236,6 +295,14 @@ export function createOptions(deps: OptionsDeps): OptionsNamespace {
       strike: BigInt(row.strike),
       optionType: row.optionType as OptionType,
     }));
+  }
+
+  async function surface(underlying: string, query: SurfaceQuery = {}): Promise<VolatilitySurface> {
+    const params = new URLSearchParams();
+    if (query.expiries?.length) params.set("expiries", query.expiries.map((expiry) => toUnixSeconds(expiry).toString()).join(","));
+    if (query.strikes?.length) params.set("strikes", query.strikes.join(","));
+    const queryString = params.toString();
+    return getJson<VolatilitySurface>("options.surface", `/v1/options/${underlying}/surface${queryString ? `?${queryString}` : ""}`);
   }
 
   async function stats(underlying: string, expiry?: bigint | Date | string): Promise<OptionSeriesStats[]> {
@@ -448,6 +515,7 @@ export function createOptions(deps: OptionsDeps): OptionsNamespace {
 
   return {
     stats,
+    surface,
     expiries,
     chain,
     quote,
