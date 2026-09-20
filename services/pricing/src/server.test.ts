@@ -196,3 +196,50 @@ test("history is cached between quotes", async () => {
   for (let i = 0; i < 3; i++) await app.inject({ method: "POST", url: "/quote", payload: body });
   assert.equal(calls, 1);
 });
+
+test("the quote carries the higher-order Greeks for display", async () => {
+  const app = buildServer({ orionis: fakeOrionis(), now: () => NOW_MS });
+  const json = (await app.inject({ method: "POST", url: "/quote", payload: { ...body, user: undefined } })).json();
+  for (const key of ["rho", "vanna", "vomma", "charm", "speed", "color"]) {
+    assert.equal(typeof json[key], "number", key);
+  }
+});
+
+test("a skewed surface prices a low strike with more volatility than the ATM, and the quote follows it", async () => {
+  const shape = { skewSlope: -0.5, smileCurve: 0, termSlope: 0 };
+  const skewed = buildServer({ orionis: fakeOrionis(), now: () => NOW_MS, surfaceShape: shape });
+  const flat = buildServer({ orionis: fakeOrionis(), now: () => NOW_MS });
+  const put = { ...body, user: undefined, type: "PUT", strike: "170" };
+  const skewedPut = (await skewed.inject({ method: "POST", url: "/quote", payload: put })).json();
+  const flatPut = (await flat.inject({ method: "POST", url: "/quote", payload: put })).json();
+  assert.ok(skewedPut.premium > flatPut.premium, "the 170 put costs more when low strikes carry more volatility");
+  assert.ok(skewedPut.vega > 0);
+});
+
+test("the surface endpoint returns a grid, a default one when no strikes or expiries are given", async () => {
+  const app = buildServer({ orionis: fakeOrionis(), now: () => NOW_MS, surfaceShape: { skewSlope: -0.3, smileCurve: 0, termSlope: 0 } });
+  const response = await app.inject({ url: "/surface?underlying=NVDA" });
+  const surface = response.json();
+  assert.equal(response.statusCode, 200);
+  assert.equal(surface.spot, 190);
+  assert.equal(surface.expiries.length, 5);
+  assert.equal(surface.strikes.length, 9);
+  assert.equal(surface.ivSource, "default");
+  const week = surface.expiries[0];
+  assert.ok(week.skew > 0);
+  assert.ok(week.points[0].iv > week.points[8].iv);
+});
+
+test("the surface endpoint takes explicit strikes and expiries and rejects bad input", async () => {
+  const app = buildServer({ orionis: fakeOrionis(), now: () => NOW_MS });
+  const expiry = Math.floor(NOW_MS / 1000) + 10 * 86_400;
+  const ok = (await app.inject({ url: `/surface?underlying=NVDA&strikes=180,200&expiries=${expiry}` })).json();
+  assert.deepEqual(ok.strikes, [180, 200]);
+  assert.equal(ok.expiries.length, 1);
+
+  assert.equal((await app.inject({ url: "/surface" })).statusCode, 400);
+  assert.equal((await app.inject({ url: "/surface?underlying=NVDA&strikes=abc" })).statusCode, 400);
+  assert.equal((await app.inject({ url: "/surface?underlying=NVDA&expiries=-5" })).statusCode, 400);
+  const many = Array.from({ length: 30 }, (_, i) => 100 + i).join(",");
+  assert.equal((await app.inject({ url: `/surface?underlying=NVDA&strikes=${many}` })).statusCode, 400);
+});

@@ -17,6 +17,8 @@ import Fastify from "fastify";
 import { http, isAddress, type LocalAccount } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { quote, type OptionType } from "./blackScholes.js";
+import { advancedGreeks } from "./greeks.js";
+import { buildSurface, surfaceVolatility, type SurfaceShape } from "./surface.js";
 import { applySpread } from "./spread.js";
 import { chooseVolatility, type PriceSample, type Volatility } from "./volatility.js";
 
@@ -33,6 +35,16 @@ const VOL_MIN_SAMPLES = Number(process.env.VOLATILITY_MIN_SAMPLES ?? 24);
 const VOL_MIN = Number(process.env.VOLATILITY_MIN_BPS ?? 1000) / 10_000;
 const VOL_MAX = Number(process.env.VOLATILITY_MAX_BPS ?? 30_000) / 10_000;
 const VOL_CACHE_MS = Number(process.env.VOLATILITY_CACHE_SECONDS ?? 300) * 1000;
+/// Shape of the volatility surface around the base volatility (see `surface.ts`). All 0 keeps the
+/// surface flat: every strike and expiry prices with the same volatility. A placeholder until
+/// product sets a skew, like the spread.
+const SURFACE_SHAPE: SurfaceShape = {
+  skewSlope: Number(process.env.VOL_SKEW_SLOPE ?? 0),
+  smileCurve: Number(process.env.VOL_SMILE_CURVE ?? 0),
+  termSlope: Number(process.env.VOL_TERM_SLOPE ?? 0),
+};
+const SURFACE_MAX_STRIKES = 25;
+const SURFACE_MAX_EXPIRIES = 12;
 /// A signed quote is a price the chain will honour, so it lives only briefly: a longer window is a
 /// longer window for the spot price to move against the protocol.
 const QUOTE_TTL_SECONDS = BigInt(process.env.QUOTE_TTL_SECONDS ?? 30);
@@ -66,6 +78,8 @@ export interface PricingOptions {
   priceHistory?: (market: string) => Promise<PriceSample[]>;
   /// Overrides `OPTION_SPREAD_BPS`.
   spreadBps?: number;
+  /// Overrides `VOL_SKEW_SLOPE`, `VOL_SMILE_CURVE` and `VOL_TERM_SLOPE`.
+  surfaceShape?: SurfaceShape;
 }
 
 /// Reads the indexer's index-price history through services/api's public endpoint, so this service
@@ -106,6 +120,7 @@ export function buildServer(options: PricingOptions = {}) {
   const account = options.account ?? quoterFromEnv();
   const now = options.now ?? Date.now;
   const spreadBps = options.spreadBps ?? SPREAD_BPS;
+  const surfaceShape = options.surfaceShape ?? SURFACE_SHAPE;
 
   const app = Fastify({ logger: true });
 
@@ -125,6 +140,15 @@ export function buildServer(options: PricingOptions = {}) {
     });
     volatilityCache.set(market, { at: now(), value });
     return value;
+  }
+
+  /// The model price and Greeks for one option, at the surface's volatility for that strike and
+  /// expiry (the base volatility when the surface is flat), with the spread applied. The
+  /// higher-order Greeks ride along for display.
+  function priceOption(base: number, spot: number, strike: number, timeToExpiryYears: number, optionType: OptionType) {
+    const volatility = surfaceVolatility(base, surfaceShape, { min: VOL_MIN, max: VOL_MAX }, spot, strike, timeToExpiryYears);
+    const input = { spot, strike, timeToExpiryYears, volatility, riskFreeRate: RISK_FREE_RATE, optionType };
+    return { ...applySpread(quote(input), spreadBps, strike, optionType), ...advancedGreeks(input) };
   }
 
   app.post<{ Body: QuoteRequestBody }>("/quote", async (request, reply) => {
@@ -167,19 +191,7 @@ export function buildServer(options: PricingOptions = {}) {
     // multiplies by it for a total position cost. The signed authorization, by contrast, is for
     // the whole order.
     const volatility = await volatilityFor(underlying);
-    const result = applySpread(
-      quote({
-        spot,
-        strike: strikeNumber,
-        timeToExpiryYears,
-        volatility: volatility.value,
-        riskFreeRate: RISK_FREE_RATE,
-        optionType: type,
-      }),
-      spreadBps,
-      strikeNumber,
-      type,
-    );
+    const result = priceOption(volatility.value, spot, strikeNumber, timeToExpiryYears, type);
 
     let authorization;
     if (account && user) {
@@ -246,12 +258,7 @@ export function buildServer(options: PricingOptions = {}) {
     const optionType = position.optionType === ChainOptionType.CALL ? "CALL" : "PUT";
     const strike = Number(fromBaseUnits(position.strike, 18));
     const volatility = await volatilityFor(position.marketId);
-    const result = applySpread(
-      quote({ spot, strike, timeToExpiryYears, volatility: volatility.value, riskFreeRate: RISK_FREE_RATE, optionType }),
-      spreadBps,
-      strike,
-      optionType,
-    );
+    const result = priceOption(volatility.value, spot, strike, timeToExpiryYears, optionType);
 
     const [contractSize, tokenDecimals] = await Promise.all([
       orionis.options.contractSize(position.marketId),
@@ -284,6 +291,47 @@ export function buildServer(options: PricingOptions = {}) {
         signature,
       },
     };
+  });
+
+  /// The model's volatility surface for one underlying: implied-style volatility, prices and Greeks
+  /// per strike and expiry, plus the at-the-money volatility and skew of each expiry. Display only.
+  /// Query: `underlying`; optional `expiries` (comma-separated unix seconds, default 7, 14, 30, 60
+  /// and 90 days out) and `strikes` (comma-separated decimals, default 80% to 120% of spot).
+  app.get<{ Querystring: { underlying?: string; expiries?: string; strikes?: string } }>("/surface", async (request, reply) => {
+    const { underlying, expiries, strikes } = request.query;
+    if (!underlying) return reply.code(400).send({ error: "underlying is required" });
+
+    const parseList = (text: string | undefined, name: string, max: number): number[] | undefined | { error: string } => {
+      if (text === undefined || text === "") return undefined;
+      const parts = text.split(",");
+      const values = parts.map((part) => (/^\d+(\.\d+)?$/.test(part.trim()) ? Number(part) : Number.NaN));
+      if (values.some((value) => !Number.isFinite(value) || value <= 0)) return { error: `${name} must be a comma-separated list of positive numbers` };
+      if (values.length > max) return { error: `${name} takes at most ${max} values` };
+      return values;
+    };
+    const expiryList = parseList(expiries, "expiries", SURFACE_MAX_EXPIRIES);
+    const strikeList = parseList(strikes, "strikes", SURFACE_MAX_STRIKES);
+    for (const parsed of [expiryList, strikeList]) {
+      if (parsed && !Array.isArray(parsed)) return reply.code(400).send(parsed);
+    }
+
+    const { price: spotRaw } = await orionis.oracle.getIndexPrice(underlying);
+    const spot = Number(spotRaw) / 1e18;
+    const nowSecondsNumber = Math.floor(now() / 1000);
+    const volatility = await volatilityFor(underlying);
+
+    const surface = buildSurface({
+      spot,
+      strikes: (strikeList as number[] | undefined) ?? [0.8, 0.85, 0.9, 0.95, 1, 1.05, 1.1, 1.15, 1.2].map((ratio) => Math.round(spot * ratio * 100) / 100),
+      expiries: (expiryList as number[] | undefined) ?? [7, 14, 30, 60, 90].map((days) => nowSecondsNumber + days * 86_400),
+      nowSeconds: nowSecondsNumber,
+      baseVolatility: volatility.value,
+      ivSource: volatility.source,
+      shape: surfaceShape,
+      bounds: { min: VOL_MIN, max: VOL_MAX },
+      riskFreeRate: RISK_FREE_RATE,
+    });
+    return surface;
   });
 
   /// `quoter` and `optionsEngine` let an operator confirm this service signs as the address holding

@@ -67,6 +67,17 @@ describe("analytics routes against PostgreSQL", { skip: url ? undefined : "TEST_
     await event("LimitOrderCancelled", 25, { orderId: "2", owner: ALICE });
     await event("LimitOrderExecuted", 24, { orderId: "3", owner: ALICE, positionId: "7", executionPrice: "1" });
 
+    // Trigger orders on BOB's open short (position 2): 1 open, 2 cancelled, 3 fired, 4 open but
+    // expired. Order 5 is ALICE's, on position 1, which was closed.
+    const trigger = { owner: BOB, positionId: "2", kind: 1, triggerPrice: (170n * WAD).toString() };
+    await event("TriggerOrderPlaced", 30, { ...trigger, orderId: "1", expiry: IN_A_WEEK });
+    await event("TriggerOrderPlaced", 29, { ...trigger, orderId: "2", expiry: IN_A_WEEK });
+    await event("TriggerOrderPlaced", 28, { ...trigger, orderId: "3", expiry: IN_A_WEEK });
+    await event("TriggerOrderPlaced", 27, { ...trigger, orderId: "4", expiry: "1000" });
+    await event("TriggerOrderPlaced", 26, { ...trigger, orderId: "5", owner: ALICE, positionId: "1", expiry: IN_A_WEEK });
+    await event("TriggerOrderCancelled", 25, { orderId: "2", owner: BOB });
+    await event("TriggerOrderExecuted", 24, { orderId: "3", owner: BOB, positionId: "2", executionPrice: "1" });
+
     const { buildServer } = await import("./server.js");
     app = buildServer();
   });
@@ -135,5 +146,15 @@ describe("analytics routes against PostgreSQL", { skip: url ? undefined : "TEST_
     assert.equal(orders[0]!.status, "OPEN");
     assert.equal(orders[0]!.triggerPrice, (180n * WAD).toString());
     assert.deepEqual((await app.inject({ url: `/v1/orders/${BOB}` })).json(), []);
+  });
+
+  test("open trigger orders skip cancelled, fired, expired and closed-position ones", async () => {
+    const orders = (await app.inject({ url: `/v1/trigger-orders/${BOB}` })).json() as Array<{ id: string; positionId: string; kind: number; status: string; triggerPrice: string }>;
+    assert.deepEqual(orders.map((o) => o.id), ["1"]);
+    assert.equal(orders[0]!.positionId, "2");
+    assert.equal(orders[0]!.kind, 1);
+    assert.equal(orders[0]!.status, "OPEN");
+    assert.equal(orders[0]!.triggerPrice, (170n * WAD).toString());
+    assert.deepEqual((await app.inject({ url: `/v1/trigger-orders/${ALICE}` })).json(), [], "position 1 is closed");
   });
 });
