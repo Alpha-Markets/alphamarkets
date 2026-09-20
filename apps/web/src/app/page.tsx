@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Footer } from "@/components/Footer";
+import { HeroMark } from "@/components/HeroMark";
 import { LandingMarkets } from "@/components/LandingMarkets";
 import { SilkBackdrop } from "@/components/SilkBackdrop";
 import { PAGE_FRAME } from "@/lib/frame";
@@ -18,6 +19,7 @@ export default function Landing() {
     <div className="flex min-h-full flex-col">
       <section className="relative h-dvh min-h-[34rem] shrink-0">
         <SilkBackdrop />
+        <HeroMark />
         <div className={`${PAGE_FRAME} relative flex h-full flex-col justify-end pb-24 lg:pb-32`}>
           <h1 className="max-w-5xl text-balance text-[2.75rem] font-light leading-[1.05] tracking-[-0.035em] sm:text-[4rem] lg:text-[5rem] xl:text-[5.75rem]">
             Derivatives for tokenized equities.
