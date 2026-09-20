@@ -11,7 +11,8 @@
     "test": "tsx --test src/*.test.ts",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "generate:abis": "node scripts/generate-abis.mjs",
-    "prepublishOnly": "pnpm build && pnpm test"
+    "prepublishOnly": "pnpm build && pnpm test",
+    "smoke:testnet": "tsx scripts/testnet-smoke.ts"
   },
   "dependencies": {
     "viem": "^2.21.0"
