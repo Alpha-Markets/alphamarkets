@@ -6,9 +6,13 @@
 # Uses --guess-constructor-args so forge reads the real deployment tx from chain and decodes
 # constructor args itself — no manual ABI encoding needed.
 #
-# Robinhood's explorer intermittently serves an expired (or unrelated) TLS certificate, so a failed
-# request is usually bad luck, not a problem with the contract. Each contract is retried
-# (VERIFY_ATTEMPTS, default 3); the script is safe to re-run.
+# A failed request with an expired or unrelated TLS certificate usually means the network blocks the
+# explorer: some Indonesian ISPs redirect it to a block page ("internetpositif"), even for 1.1.1.1.
+# Resolve the real address over DNS-over-HTTPS and pin it in /etc/hosts while this runs, or use a VPN
+# (steps in DEVELOPMENT_STEPS.md, Hosting). Each contract is retried (VERIFY_ATTEMPTS, default 3).
+# --skip-is-verified-check makes forge submit even when Blockscout lists a look-alike contract as
+# already verified (same bytecode from an older deployment), which is not a real verification.
+# The script is safe to re-run.
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
@@ -28,6 +32,7 @@ verify() {
       --verifier-url "$EXPLORER_VERIFY_URL" \
       --guess-constructor-args \
       --rpc-url "$ROBINHOOD_TESTNET_RPC_URL" \
+      --skip-is-verified-check \
       --watch; then
       return 0
     fi
@@ -53,6 +58,11 @@ verify "$(addr perpPositionManager)" src/perps/PerpPositionManager.sol:PerpPosit
 verify "$(addr fundingManager)" src/perps/FundingManager.sol:FundingManager
 verify "$(addr perpsEngine)" src/perps/PerpsEngine.sol:PerpsEngine
 verify "$(addr liquidationEngine)" src/perps/LiquidationEngine.sol:LiquidationEngine
+verify "$(addr perpOrderManager)" src/perps/PerpOrderManager.sol:PerpOrderManager
+verify "$(addr insuranceFund)" src/core/InsuranceFund.sol:InsuranceFund
+verify "$(addr crossMargin)" src/risk/CrossMarginManager.sol:CrossMarginManager
+verify "$(addr subaccountFactory)" src/accounts/SubaccountFactory.sol:SubaccountFactory
+verify "$(addr rfqManager)" src/perps/RFQManager.sol:RFQManager
 verify "$(addr settlementToken)" test/mocks/MockERC20.sol:MockERC20
 if [[ -n "${NVDA_TOKEN:-}" ]]; then verify "$NVDA_TOKEN" test/mocks/MockERC20.sol:MockERC20; fi
 if [[ -n "${NVDA_FEED:-}" ]]; then verify "$NVDA_FEED" src/oracle/MockPriceFeed.sol:MockPriceFeed; fi
