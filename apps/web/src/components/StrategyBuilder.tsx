@@ -157,8 +157,8 @@ export function StrategyBuilder() {
   const range = result && spot !== undefined ? chartRange(result.legs.flatMap((leg) => (leg.strike === undefined ? [] : [leg.strike])), result.breakEvens, spot) : undefined;
 
   return (
-    <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 p-6 lg:p-10">
-      <Panel title="Strategy builder">
+    <div className="flex flex-col gap-6">
+      <Panel>
         <div className="flex flex-col gap-4 p-3">
           <div className="flex flex-wrap items-end gap-3">
             <label className="flex flex-col gap-1 text-xs text-muted">
