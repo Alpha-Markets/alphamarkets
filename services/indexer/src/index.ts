@@ -8,6 +8,7 @@ import { and, eq, lt, sql as sqlOp } from "drizzle-orm";
 import { getDb, getSql } from "./db/client.js";
 import { events, indexerState, markets, priceTicks } from "./db/schema.js";
 import { allEventsAbi, contractNamesByAddress, watchedAddresses } from "./events.js";
+import { blockBeforeFirstIndexed } from "./startBlock.js";
 import { serializeArgs } from "./serialize.js";
 
 const POLL_INTERVAL_MS = Number(process.env.INDEXER_POLL_INTERVAL_MS ?? 5000);
@@ -36,12 +37,9 @@ async function lastIndexedBlock(): Promise<bigint> {
   const [row] = await db.select().from(indexerState).where(eq(indexerState.id, 1));
   if (row) return row.lastIndexedBlock;
 
-  // First run: start from one block before the deploy block would be ideal, but that isn't
-  // recorded anywhere the indexer can read — starting from the current head means history
-  // before this indexer's first run is not backfilled. Acceptable for MVP; a real backfill
-  // would take a deploy block number as a one-time env var.
+  // First run: start at the chain head, or replay from INDEXER_START_BLOCK (the deploy block).
   const currentBlock = await publicClient.getBlockNumber();
-  const startBlock = currentBlock > 0n ? currentBlock - 1n : 0n;
+  const startBlock = blockBeforeFirstIndexed(currentBlock, process.env.INDEXER_START_BLOCK);
   await db.insert(indexerState).values({ id: 1, lastIndexedBlock: startBlock });
   return startBlock;
 }
@@ -75,6 +73,16 @@ async function upsertMarket(marketId: `0x${string}`, blockNumber: bigint) {
         updatedAt: sqlOp`now()`,
       },
     });
+}
+
+/// Fills the `markets` table from the registry, the single source of truth for markets. Events keep
+/// it current afterwards, but an indexer that starts after a deployment never sees that
+/// deployment's `MarketAdded` events, and would serve an empty market list.
+async function syncMarkets() {
+  const head = await publicClient.getBlockNumber();
+  const listed = await orionis.markets.list();
+  for (const market of listed) await upsertMarket(market.marketId, head);
+  console.log(`indexer: ${listed.length} market(s) synced from the registry`);
 }
 
 async function indexRange(fromBlock: bigint, toBlock: bigint) {
@@ -147,6 +155,11 @@ async function sampleIndexPrices() {
 
 async function main() {
   console.log(`indexer: watching ${addressList.length} contracts on chain ${chainId}`);
+  try {
+    await syncMarkets();
+  } catch (error) {
+    console.error("indexer: could not sync markets from the registry", error);
+  }
   for (;;) {
     try {
       await tick();
