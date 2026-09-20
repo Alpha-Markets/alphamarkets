@@ -1,4 +1,4 @@
-import { requireEnv, ROBINHOOD_TESTNET_CHAIN_ID } from "@orionis/config";
+import { requireEnv, resolveChainId } from "@orionis/config";
 import { Orionis } from "@orionis/sdk";
 import websocket from "@fastify/websocket";
 import Fastify from "fastify";
@@ -17,7 +17,7 @@ import { registerTradeRoutes } from "./routes/trade.js";
 import { registerWebSocket } from "./ws.js";
 
 export function buildServer() {
-  const chainId = ROBINHOOD_TESTNET_CHAIN_ID;
+  const chainId = resolveChainId(process.env.CHAIN_ID);
   const orionis = new Orionis({ chainId, transport: http(requireEnv("RPC_URL")) });
 
   const app = Fastify({ logger: true });

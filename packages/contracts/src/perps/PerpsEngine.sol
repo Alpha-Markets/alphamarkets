@@ -53,6 +53,7 @@ contract PerpsEngine is IPerpsEngine, ReentrancyGuard {
     error LimitPriceNotReached(uint256 orderId, uint256 triggerPrice, uint256 markPrice);
     error TriggerPriceNotReached(uint256 orderId, uint256 triggerPrice, uint256 markPrice);
 
+    event RfqManagerSet(address indexed manager);
     event PerpPositionOpened(
         uint256 indexed positionId,
         address indexed owner,
@@ -125,6 +126,7 @@ contract PerpsEngine is IPerpsEngine, ReentrancyGuard {
         if (msg.sender != deployer) revert NotRfqManager();
         if (rfqManager != address(0)) revert RfqManagerAlreadySet();
         rfqManager = manager;
+        emit RfqManagerSet(manager);
     }
 
     /// @notice Opens a position for `trader` at a price the RFQ manager has verified (a maker's signed

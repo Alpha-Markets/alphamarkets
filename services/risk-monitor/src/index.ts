@@ -1,7 +1,7 @@
 import { loadDotEnv } from "@orionis/config";
 loadDotEnv();
 
-import { ROBINHOOD_TESTNET_CHAIN_ID, requireEnv } from "@orionis/config";
+import { requireEnv, resolveChainId } from "@orionis/config";
 import { Orionis } from "@orionis/sdk";
 import { createPublicClient, http } from "viem";
 import { getDb, getSql } from "./db/client.js";
@@ -19,7 +19,7 @@ const POLL_INTERVAL_MS = Number(process.env.RISK_MONITOR_POLL_INTERVAL_MS ?? 10_
 /// for whether a position is actually liquidatable.
 const CANDIDATE_BUFFER_BPS = BigInt(process.env.RISK_CANDIDATE_BUFFER_BPS ?? 200);
 
-const chainId = ROBINHOOD_TESTNET_CHAIN_ID;
+const chainId = resolveChainId(process.env.CHAIN_ID);
 const orionis = new Orionis({ chainId, transport: http(requireEnv("RPC_URL")) });
 const publicClient = createPublicClient({ transport: http(requireEnv("RPC_URL")) });
 const db = getDb();

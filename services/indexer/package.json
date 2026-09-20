@@ -11,7 +11,7 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx src/db/migrate.ts",
     "lint": "echo \"scaffold: services/indexer lint — Phase 2\" && exit 0",
-    "test": "echo \"scaffold: services/indexer test — Phase 2\" && exit 0",
+    "test": "tsx --test src/*.test.ts",
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {

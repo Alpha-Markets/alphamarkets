@@ -6,7 +6,8 @@
 ///   TEST_DATABASE_URL=postgres://postgres@127.0.0.1:5432/orionis_test pnpm --filter @orionis/api test
 import assert from "node:assert/strict";
 import { after, before, describe, test } from "node:test";
-import { resolveMarketId } from "@orionis/sdk";
+import { resolveMarketId, type Orionis } from "@orionis/sdk";
+import Fastify from "fastify";
 import postgres from "postgres";
 
 const url = process.env.TEST_DATABASE_URL;
@@ -52,11 +53,26 @@ describe("analytics routes against PostgreSQL", { skip: url ? undefined : "TEST_
     await event("FundingRateUpdated", 100, { marketId: NVDA, rateBps: "5", cumulativeIndex: "5" });
     await event("FundingRateUpdated", 40, { marketId: NVDA, rateBps: "-3", cumulativeIndex: "2" });
 
+    // Money events. Funding: position 1 (ALICE, long) paid 50 and 20, position 2 (BOB, short) received 40.
+    const TOKEN = `0x${"cc".repeat(20)}`;
+    await event("FundingPaid", 80, { positionId: "1", marketId: NVDA, amount: "-50", fundingIndex: "5" });
+    await event("FundingPaid", 45, { positionId: "1", marketId: NVDA, amount: "-20", fundingIndex: "2" });
+    await event("FundingPaid", 44, { positionId: "2", marketId: NVDA, amount: "40", fundingIndex: "2" });
+    await event("CollateralDeposited", 120, { user: ALICE, token: TOKEN, amount: "10000" });
+    await event("CollateralDeposited", 119, { user: BOB, token: TOKEN, amount: "777" });
+    await event("ProtocolFeeCollected", 88, { marketId: NVDA, payer: ALICE, token: TOKEN, amount: "25", feeType: `0x${"00".repeat(32)}` });
+
     // A call series with two positions; the first (10 contracts) was closed, the second (4) is open.
     const series = { marketId: NVDA, optionType: 0, strike: STRIKE, expiry: IN_A_WEEK, premium: "1" };
     await event("OptionPositionOpened", 200, { ...series, positionId: "10", owner: ALICE, contracts: "10" });
     await event("OptionPositionOpened", 30, { ...series, positionId: "11", owner: BOB, contracts: "4" });
     await event("OptionPositionClosed", 10, { positionId: "10", owner: ALICE, realizedPnl: "0" });
+    // BOB's position 11 settled for 500. Option and perp ids are separate counters, so a settlement of
+    // option 1 (nobody's) must not land on ALICE's perp position 1, and a funding payment on id 10 (a
+    // perp id nobody opened) must not land on ALICE's option position 10.
+    await event("OptionExercised", 5, { positionId: "11", intrinsicValue: "1", payout: "500" });
+    await event("OptionExercised", 5, { positionId: "1", intrinsicValue: "1", payout: "999" });
+    await event("FundingPaid", 46, { positionId: "10", marketId: NVDA, amount: "-888", fundingIndex: "1" });
 
     // Orders: 1 open, 2 cancelled, 3 executed, 4 open but expired.
     const order = { owner: ALICE, marketId: NVDA, isLong: true, collateral: "1000", leverage: "5", triggerPrice: (180n * WAD).toString() };
@@ -156,5 +172,75 @@ describe("analytics routes against PostgreSQL", { skip: url ? undefined : "TEST_
     assert.equal(orders[0]!.status, "OPEN");
     assert.equal(orders[0]!.triggerPrice, (170n * WAD).toString());
     assert.deepEqual((await app.inject({ url: `/v1/trigger-orders/${ALICE}` })).json(), [], "position 1 is closed");
+  });
+  test("funding analytics summarise the rates and split the payments by side", async () => {
+    // The route checks the market against the registry, which is a chain read; stand in for the one
+    // registry entry so that the SQL is the only thing under test.
+    const registry = { markets: { list: async () => [{ marketId: NVDA }] } } as unknown as Orionis;
+    const analytics = Fastify();
+    const { registerAdvancedRoutes } = await import("./routes/advanced.js");
+    registerAdvancedRoutes(analytics, registry);
+    after(() => analytics.close());
+
+    assert.equal((await analytics.inject({ url: "/v1/perps/TSLA/funding/analytics" })).statusCode, 404, "not in the registry");
+    const body = (await analytics.inject({ url: "/v1/perps/NVDA/funding/analytics" })).json() as Record<string, unknown>;
+    assert.equal(body.range, "7d");
+    assert.equal(body.marketId, NVDA);
+    assert.equal(body.intervals, 2);
+    assert.equal(body.latestRateBps, -3);
+    assert.equal(body.avgRateBps, 1);
+    assert.equal(body.minRateBps, -3);
+    assert.equal(body.maxRateBps, 5);
+    assert.equal(body.cumulativeRateBps, 2);
+    assert.equal(body.positiveShare, 0.5);
+    assert.ok(Math.abs((body.avgIntervalSeconds as number) - 3600) <= 2, "the two rates are an hour apart");
+    // ALICE's long paid 50 + 20 and BOB's short received 40. The payment on id 10 has no perp position
+    // behind it, so it counts in the totals but on neither side.
+    assert.equal(body.received, "40");
+    assert.equal(body.paid, "958");
+    assert.equal(body.longsNet, "-70");
+    assert.equal(body.shortsNet, "40");
+
+    const day = (await analytics.inject({ url: "/v1/perps/NVDA/funding/analytics?range=24h" })).json() as Record<string, unknown>;
+    assert.equal(day.range, "24h");
+    assert.equal(day.intervals, 2);
+  });
+
+  test("a wallet report holds that wallet's activity and totals, and nobody else's", async () => {
+    const report = (await app.inject({ url: `/v1/reports/${ALICE}` })).json() as {
+      rows: Array<{ type: string; amount: string; positionId: string }>;
+      totals: Record<string, unknown> & { counts: Record<string, number> };
+      truncated: boolean;
+    };
+    assert.equal(report.truncated, false);
+    assert.equal(report.totals.deposited, "10000", "BOB's 777 is not in it");
+    assert.equal(report.totals.fees, "25");
+    assert.equal(report.totals.funding, "-70", "the payments on her perp position 1 only");
+    assert.equal(report.totals.optionPremiumPaid, "1");
+    assert.equal(report.totals.optionSettlementPayouts, "0", "option 1's payout is not perp position 1's");
+    assert.equal(report.totals.counts.deposit, 1);
+    assert.equal(report.totals.counts.funding, 2);
+    assert.equal(report.totals.counts.order_placed, 4);
+    assert.equal(report.totals.counts.trigger_placed, 1, "only the trigger order she placed");
+    assert.ok(report.rows.every((row) => !["777", "999", "-888", "500"].includes(row.amount)), "no row of someone else's");
+  });
+
+  test("a report joins settlement and funding to the wallet through the position it opened", async () => {
+    const report = (await app.inject({ url: `/v1/reports/${BOB}` })).json() as { totals: Record<string, unknown> };
+    assert.equal(report.totals.optionSettlementPayouts, "500", "option position 11 settled for BOB");
+    assert.equal(report.totals.funding, "40", "perp position 2 received funding");
+    assert.equal(report.totals.deposited, "777");
+  });
+
+  test("a report honours its date range and its CSV format", async () => {
+    const future = String(Math.floor(Date.now() / 1000) + 86_400);
+    const empty = (await app.inject({ url: `/v1/reports/${ALICE}?from=${future}&to=${Number(future) + 60}` })).json() as { rows: unknown[] };
+    assert.deepEqual(empty.rows, []);
+
+    const csv = await app.inject({ url: `/v1/reports/${ALICE}?format=csv` });
+    assert.match(String(csv.headers["content-type"]), /^text\/csv/);
+    const lines = csv.body.trim().split("\r\n");
+    assert.equal(lines[0], "time,type,txHash,positionId,marketId,amount,detail");
+    assert.ok(lines.length > 5);
   });
 });

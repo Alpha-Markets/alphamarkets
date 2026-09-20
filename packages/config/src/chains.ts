@@ -18,3 +18,17 @@ export const robinhoodTestnet: Chain = {
 export const chains: Record<ChainId, Chain> = {
   [ROBINHOOD_TESTNET_CHAIN_ID]: robinhoodTestnet,
 };
+
+/// The chain a service or app runs against, from its `CHAIN_ID` (`NEXT_PUBLIC_CHAIN_ID` in the web
+/// app). Unset means the only chain with a recorded deployment today. A value with no entry in
+/// `chains` is an error, not a silent fallback: pointing at the wrong chain would send real
+/// transactions to the wrong network.
+export function resolveChainId(value?: string): ChainId {
+  if (value === undefined || value.trim() === "") return ROBINHOOD_TESTNET_CHAIN_ID;
+  const id = Number(value);
+  if (!Number.isInteger(id) || !(id in chains)) {
+    const supported = Object.keys(chains).join(", ");
+    throw new Error(`@orionis/config: chain ${value} has no deployment recorded (supported: ${supported})`);
+  }
+  return id as ChainId;
+}
