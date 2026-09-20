@@ -10,6 +10,9 @@ import { alphaMarketsRead } from "@/lib/alphamarkets";
 import { chain } from "@/lib/wagmi";
 import { ConnectButton } from "./ConnectButton";
 
+/// The header's own size: a 38px bubble with the same small uppercase type as the navigation.
+const bubble = "h-11! rounded-lg! px-4! text-[13px]! uppercase tracking-[0.04em] max-lg:h-10!";
+
 const item = cn(menuItem, "flex h-9 w-full items-center px-3 text-left text-sm");
 
 function explorerAddressUrl(address: `0x${string}`): string | undefined {
@@ -31,11 +34,11 @@ export function WalletButton() {
   const close = useCallback(() => setOpen(false), []);
   useDismiss(ref, open, close);
 
-  if (!isConnected || !address) return <ConnectButton size="sm" className="max-md:h-9" />;
+  if (!isConnected || !address) return <ConnectButton size="sm" className={bubble} />;
 
   if (chainId !== chain.id) {
     return (
-      <Button variant="down" size="sm" className="max-md:h-9" disabled={switching} onClick={() => switchChain({ chainId: chain.id })}>
+      <Button variant="down" size="sm" className={bubble} disabled={switching} onClick={() => switchChain({ chainId: chain.id })}>
         Switch to {chain.name}
       </Button>
     );
@@ -45,7 +48,7 @@ export function WalletButton() {
 
   return (
     <div ref={ref} className="relative">
-      <Button size="sm" className="max-md:h-9" aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen((value) => !value)}>
+      <Button size="sm" className={bubble} aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen((value) => !value)}>
         <span aria-hidden="true" className="size-1.5 rounded-full bg-up" />
         <span className="tabular-nums" title={address}>
           {shortHash(address)}

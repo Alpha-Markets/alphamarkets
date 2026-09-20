@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Geist } from "next/font/google";
+import { Geist, Newsreader } from "next/font/google";
 import { preconnect } from "react-dom";
 import type { ReactNode } from "react";
 import { AppShell } from "@/components/AppShell";
@@ -8,6 +8,8 @@ import { Providers } from "../providers";
 import "./globals.css";
 
 const geist = Geist({ subsets: ["latin"], variable: "--font-geist", display: "swap" });
+// The landing page's display face: light weights for the headline and statement, italic for the wordmark.
+const newsreader = Newsreader({ subsets: ["latin"], style: ["normal", "italic"], weight: ["300", "400"], variable: "--font-newsreader", display: "swap" });
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
 
@@ -45,7 +47,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
     if (target) preconnect(target, { crossOrigin: "anonymous" });
   }
   return (
-    <html lang="en" className={geist.variable}>
+    <html lang="en" className={`${geist.variable} ${newsreader.variable}`}>
       <body>
         <Providers>
           <AppShell>{children}</AppShell>

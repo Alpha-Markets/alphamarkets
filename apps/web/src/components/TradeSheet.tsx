@@ -51,7 +51,7 @@ export function TradeSheet({
       <div
         className={cn(
           "min-h-0 lg:block",
-          "max-lg:fixed max-lg:inset-x-0 max-lg:bottom-0 max-lg:top-12 max-lg:z-30 max-lg:flex max-lg:flex-col max-lg:bg-surface",
+          "max-lg:fixed max-lg:inset-x-0 max-lg:bottom-0 max-lg:top-16 max-lg:z-30 max-lg:flex max-lg:flex-col max-lg:bg-surface",
           open ? "" : "max-lg:hidden",
         )}
         role={open ? "dialog" : undefined}
