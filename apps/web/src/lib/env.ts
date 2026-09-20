@@ -100,6 +100,8 @@ export const env = {
   addresses: resolveAddresses(),
   /// Limit orders need a deployment that includes `PerpOrderManager`; the terminal hides them without one.
   limitOrders: Boolean(resolveAddresses().perpOrderManager),
+  /// Cross margin needs a deployment that includes `CrossMarginManager`; the ticket hides it without one.
+  crossMargin: Boolean(resolveAddresses().crossMargin),
   /// Option chain layout. The contract lists no strikes (a series is created on first use), so the
   /// terminal proposes a ladder around spot and a few upcoming expiries; these set its shape.
   options: {
