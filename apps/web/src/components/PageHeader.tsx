@@ -5,8 +5,8 @@ export function PageHeader({ title, children, actions }: { title: string; childr
   return (
     <div className="mb-8 flex flex-wrap items-end justify-between gap-x-6 gap-y-2">
       <div>
-        <h1 className="text-title font-light">{title}</h1>
-        {children ? <p className="mt-0.5 max-w-prose text-muted">{children}</p> : null}
+        <h1 className="text-[2rem] font-bold leading-10 tracking-[-0.03em]">{title}</h1>
+        {children ? <p className="mt-1 max-w-prose text-muted">{children}</p> : null}
       </div>
       {actions}
     </div>
