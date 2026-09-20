@@ -222,7 +222,7 @@ Run before any public deployment or handoff:
 - Contract labels: `AlphaMarketsVault`, EIP-712 domain `AlphaMarketsOptionsEngine`. Web title, README and metadata say AlphaMarkets.
 - Added `scripts/check-brand.sh` (`pnpm check:brand`) and a CI step, so a retired name cannot return unnoticed.
 - Added social preview: Open Graph and Twitter metadata plus a generated `opengraph-image` in the terminal palette. `NEXT_PUBLIC_SITE_URL` sets the absolute URL.
-- **Logo (2026-09-21):** the ribbon mark supplied by the product owner (`apps/web/src/assets/alphamarkets-logo-preview.png`, trimmed to `alphamarkets-mark.png`) is in the header and footer (`Logo.tsx`), the favicon and Apple icon (`icon.png`, `apple-icon.png`) and the social preview. It is the only teal on the site; the rest stays charcoal and off-white. **Open follow-up, not blocking:** explorer labels cannot be set from this repo (they depend on explorer verification, which is blocked).
+- **Logo (2026-09-21):** the ribbon mark supplied by the product owner. The master is `apps/web/src/assets/alpha-market-logo.svg` (a 2000 px raster and its alpha mask wrapped in an SVG, so 985 KB: too heavy to serve, and not scalable), from which `alphamarkets-mark.png` (480 px wide, trimmed, transparent) is cut. To change the mark, replace the SVG and regenerate the PNG and the favicons from it is in the header and footer (`Logo.tsx`), the favicon and Apple icon (`icon.png`, `apple-icon.png`) and the social preview. It is the only teal on the site; the rest stays charcoal and off-white. **Open follow-up, not blocking:** explorer labels cannot be set from this repo (they depend on explorer verification, which is blocked).
 
 ---
 
