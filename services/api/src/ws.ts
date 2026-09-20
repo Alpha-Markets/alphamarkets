@@ -61,5 +61,7 @@ export function registerWebSocket(app: FastifyInstance, orionis: Orionis) {
     }
   }
 
-  setInterval(() => void broadcastTick(), TICK_MS);
+  const timer = setInterval(() => void broadcastTick(), TICK_MS);
+  // Stop ticking when the server closes, so `app.close()` lets the process (or a test) exit.
+  app.addHook("onClose", async () => clearInterval(timer));
 }

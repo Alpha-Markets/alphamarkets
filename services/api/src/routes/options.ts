@@ -1,5 +1,5 @@
 import { resolveMarketId, type Orionis } from "@orionis/sdk";
-import type { FastifyInstance } from "fastify";
+import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { getSql } from "../db.js";
 
 /// "Chain" here means every option series someone has actually opened a position against
@@ -43,24 +43,32 @@ export function registerOptionRoutes(app: FastifyInstance, _orionis: Orionis) {
     },
   );
 
-  app.post<{ Body: unknown }>("/v1/options/quote", async (request, reply) => {
+  /// Forwards to `services/pricing`, which prices the order and (when the request carries a `user`
+  /// and pricing has a quoter key) signs the premium the chain will honour. The API adds nothing to
+  /// the price — it is only the browser-reachable, CORS-controlled front door.
+  async function proxyToPricing(path: string, request: FastifyRequest<{ Body: unknown }>, reply: FastifyReply) {
     const pricingUrl = process.env.PRICING_SERVICE_URL ?? "http://localhost:4100";
     const timeoutMs = Number(process.env.PRICING_REQUEST_TIMEOUT_MS ?? 10_000);
 
     let response: Response;
     try {
-      response = await fetch(`${pricingUrl}/quote`, {
+      response = await fetch(`${pricingUrl}${path}`, {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify(request.body),
         signal: AbortSignal.timeout(timeoutMs),
       });
     } catch (error) {
-      request.log.error({ error, pricingUrl }, "options.quote: pricing service unreachable or timed out");
+      request.log.error({ error, pricingUrl, path }, "options quote: pricing service unreachable or timed out");
       return reply.code(504).send({ error: "pricing service unreachable or timed out" });
     }
 
     const body = await response.json();
     return reply.code(response.status).send(body);
-  });
+  }
+
+  app.post<{ Body: unknown }>("/v1/options/quote", (request, reply) => proxyToPricing("/quote", request, reply));
+  app.post<{ Body: unknown }>("/v1/options/quote/close", (request, reply) =>
+    proxyToPricing("/quote/close", request, reply),
+  );
 }

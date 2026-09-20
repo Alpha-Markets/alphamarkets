@@ -1,13 +1,11 @@
-import { addressesForChain, ROBINHOOD_TESTNET_CHAIN_ID } from "@orionis/config";
 import type { Address, Orionis } from "@orionis/sdk";
 import type { FastifyInstance } from "fastify";
 import { getSql } from "../db.js";
 import { jsonSafe } from "../serialize.js";
 
-const settlementToken = addressesForChain(ROBINHOOD_TESTNET_CHAIN_ID).settlementToken;
-
 export function registerPortfolioRoutes(app: FastifyInstance, orionis: Orionis) {
   const sql = getSql();
+  const settlementToken = orionis.addresses.settlementToken;
 
   app.get<{ Params: { wallet: Address } }>("/v1/portfolio/:wallet", async (request) => {
     const { wallet } = request.params;
@@ -25,12 +23,6 @@ export function registerPortfolioRoutes(app: FastifyInstance, orionis: Orionis) 
     const positions = await orionis.portfolio.positions(request.params.wallet);
     return jsonSafe(positions);
   });
-
-  // No limit-order engine exists yet (DEVELOPMENT_STEPS.md Phase 7 / PROJECT_BRIEF.md
-  // Section 39) — every trade executes immediately via openPosition, so there is nothing
-  // "resting" to list. Kept as a real (stubbed) route rather than omitted, since
-  // PROJECT_BRIEF.md Section 33 lists it explicitly.
-  app.get("/v1/orders/:wallet", async () => []);
 
   app.get<{ Params: { wallet: Address }; Querystring: { limit?: string; cursor?: string } }>(
     "/v1/history/:wallet",

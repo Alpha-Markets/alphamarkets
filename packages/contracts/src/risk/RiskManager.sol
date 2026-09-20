@@ -62,6 +62,13 @@ contract RiskManager is IRiskManager, AccessControl {
         revert PositionLimitExceeded();
     }
 
+    /// @notice Reverts unless `size` is at most `collateral * maxLeverage`. Adding size to an open
+    /// position produces a leverage that is rarely one of the discrete tiers, so the ceiling (the
+    /// highest tier) is what applies. A position with no collateral cannot hold any size.
+    function checkResultingLeverage(bytes32 marketId, uint256 size, uint256 collateral) external view {
+        if (size > collateral * _riskConfigs[marketId].maxLeverage) revert PositionLimitExceeded();
+    }
+
     function checkPositionSize(bytes32 marketId, uint256 notional) external view {
         if (notional > _riskConfigs[marketId].maxPositionNotional) revert PositionLimitExceeded();
     }

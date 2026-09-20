@@ -5,7 +5,7 @@ import { convertDecimals, fromBaseUnits, PRICE_DECIMALS, toBaseUnits, type Amoun
 import type { OrionisClient } from "./client.js";
 import { NotImplementedError, OrionisError, type OrionisContractError } from "./errors.js";
 import type { FeesNamespace } from "./fees.js";
-import { applyBps, feeFromBps } from "./math.js";
+import { feeFromBps } from "./math.js";
 import type { MarketsNamespace } from "./markets.js";
 import { collectRiskViolations } from "./risk.js";
 import { executeTx, type TxOptions } from "./transactions.js";
@@ -14,9 +14,6 @@ import { defaultDeadline, resolveMarketId, toInteger, toUnixSeconds } from "./ut
 const WAD = 10n ** 18n;
 
 export type OptionSide = "CALL" | "PUT";
-
-/// Default slippage allowed between the previewed premium and the premium submitted.
-export const DEFAULT_PREMIUM_SLIPPAGE_BPS = 100;
 
 export interface OptionSeriesParams {
   /// Underlying symbol ("NVDA") or bytes32 market id.
@@ -31,10 +28,33 @@ export interface OptionSeriesParams {
 
 export type OptionsQuoteParams = OptionSeriesParams;
 
-/// Response of `POST /v1/options/quote` (PROJECT_BRIEF.md Section 10). Display/quoting only —
-/// these floats are never the source of settlement truth.
+/// A premium the pricing service has signed for one user and one order (EIP-712, checked by
+/// `OptionsEngine`). The contract only ever charges or pays a premium carried by one of these, so
+/// the caller cannot pick the price. A quote is single-use and expires at `validUntil`.
+export interface SignedQuote {
+  /// Total premium for the whole order, settlement-token base units.
+  premium: bigint;
+  /// Unix seconds.
+  validUntil: bigint;
+  nonce: bigint;
+  signature: Hex;
+}
+
+/// Response of `POST /v1/options/quote` (PROJECT_BRIEF.md Section 10). The analytics are
+/// display-only floats and never the source of settlement truth; `authorization` is present only
+/// when a `user` was supplied and the pricing service has a signing key.
 export interface OptionsQuoteResult {
+  /// The model's mark price per underlying unit.
   premium: number;
+  /// What closing receives, per underlying unit (`premium` less half the spread).
+  bid: number;
+  /// What opening pays, per underlying unit (`premium` plus half the spread). Equals `premium`
+  /// while no spread is configured.
+  ask: number;
+  /// Where the volatility behind this quote came from: measured from the indexed price history
+  /// (`realized`) or the flat assumption (`default`). It is not market-implied: options here are
+  /// bought from and sold back to the pool, so there is no market to imply it from.
+  ivSource?: "realized" | "default";
   iv: number;
   delta: number;
   gamma: number;
@@ -42,27 +62,37 @@ export interface OptionsQuoteResult {
   vega: number;
   breakEven: number;
   spot: number;
+  authorization?: SignedQuote;
+}
+
+/// Wire shape of `authorization` before bigints are restored.
+interface RawSignedQuote {
+  premium: string;
+  validUntil: string;
+  nonce: string;
+  signature: Hex;
 }
 
 export interface OpenOptionPositionParams extends OptionSeriesParams {
-  /// Total premium for the whole order in settlement-token units — take it from
-  /// {@link OptionsNamespace.previewOpen}. Decimal string or base-unit `bigint`.
-  premium: Amount;
-  /// Highest total premium accepted onchain. Defaults to `premium` plus `slippageBps`.
-  maxPremium?: Amount;
-  slippageBps?: number;
+  /// From `previewOpen({ ..., user })`. It fixes the premium; there is no separate premium or
+  /// slippage argument because the chain accepts only the signed price.
+  authorization: SignedQuote;
   deadline?: bigint | Date | string;
   tx?: TxOptions;
 }
 
 export interface CloseOptionPositionParams {
-  /// Total premium being received for the position, settlement-token units.
-  premium: Amount;
-  /// Lowest total premium accepted onchain. Defaults to `premium` less `slippageBps`.
-  minPremium?: Amount;
-  slippageBps?: number;
+  /// From {@link OptionsNamespace.quoteClose}. It fixes the premium received.
+  authorization: SignedQuote;
   deadline?: bigint | Date | string;
   tx?: TxOptions;
+}
+
+export interface CloseQuote {
+  /// Total premium received for closing, settlement-token base units.
+  premium: bigint;
+  quote: OptionsQuoteResult;
+  authorization: SignedQuote;
 }
 
 export interface OptionOpenPreview {
@@ -75,8 +105,11 @@ export interface OptionOpenPreview {
   /// Underlying units per contract, 18 decimals (OptionMarket).
   contractSize: bigint;
   quote: OptionsQuoteResult;
-  /// Total premium for the order, settlement-token units. Pass this to `openPosition`.
+  /// Total premium for the order, settlement-token units.
   premium: bigint;
+  /// Signed authorisation for `premium`, to pass to `openPosition`. Only present when `user` was
+  /// given and the pricing service can sign.
+  authorization?: SignedQuote;
   fee: bigint;
   feeBps: bigint;
   /// `premium + fee` — what must be available in the Vault.
@@ -100,7 +133,22 @@ export interface OptionSeries {
   optionType: OptionType;
 }
 
+/// Open interest and 24h volume for one option series, in contracts, from the indexer.
+export interface OptionSeriesStats {
+  expiry: bigint;
+  /// 18 decimals.
+  strike: bigint;
+  type: OptionSide;
+  /// Contracts opened and not closed, for a series that has not expired.
+  openInterest: bigint;
+  /// Contracts opened plus contracts closed in the last 24 hours.
+  volume24h: bigint;
+}
+
 export interface OptionsNamespace {
+  /// Open interest and 24h volume per series that has been traded, optionally for one expiry.
+  /// Requires `apiUrl`. Display data.
+  stats(underlying: string, expiry?: bigint | Date | string): Promise<OptionSeriesStats[]>;
   /// Expiries with at least one opened series, from `services/indexer` via the API. Requires
   /// `apiUrl`. This contract design has no pre-listed strike matrix — see `services/api`.
   expiries(underlying: string): Promise<bigint[]>;
@@ -109,7 +157,11 @@ export interface OptionsNamespace {
   /// `POST /v1/options/quote` — requires `apiUrl`. This SDK never computes analytics itself:
   /// offchain analytics must never become the source of settlement truth, so there is no
   /// client-side fallback pricing model.
-  quote(params: OptionsQuoteParams): Promise<OptionsQuoteResult>;
+  quote(params: OptionsQuoteParams & { user?: Address }): Promise<OptionsQuoteResult>;
+  /// Underlying units per contract, 18 decimals (OptionMarket).
+  contractSize(underlying: string): Promise<bigint>;
+  /// A signed price for closing an open position, valid for a short time. Requires `apiUrl`.
+  quoteClose(positionId: bigint, user: Address): Promise<CloseQuote>;
   /// Everything PROJECT_BRIEF.md Section 45 requires before signing an options order. Requires
   /// `apiUrl` (for the quote). Pass `user` to also check the Vault balance.
   previewOpen(params: OptionSeriesParams & { user?: Address }): Promise<OptionOpenPreview>;
@@ -133,6 +185,20 @@ export interface OptionsDeps {
 function optionTypeOf(type: OptionSide): OptionType {
   if (type !== "CALL" && type !== "PUT") throw new OrionisError(`Option type must be "CALL" or "PUT", received "${type}"`);
   return type === "CALL" ? OptionType.CALL : OptionType.PUT;
+}
+
+/// Total premium for an order from the pricing service's per-underlying-unit price: scale by the
+/// contract size and count at 18 decimals, then narrow to the settlement token's decimals. Shared
+/// by the pricing service (which signs this number) and previews (which display it) so the two
+/// cannot disagree.
+export function premiumForOrder(perUnit: number, contractSize: bigint, contracts: bigint, tokenDecimals: number): bigint {
+  const perUnitFixed = toBaseUnits(perUnit.toFixed(8), PRICE_DECIMALS);
+  return convertDecimals((perUnitFixed * contractSize * contracts) / WAD, PRICE_DECIMALS, tokenDecimals);
+}
+
+function parseAuthorization(raw: RawSignedQuote | undefined): SignedQuote | undefined {
+  if (!raw) return undefined;
+  return { premium: BigInt(raw.premium), validUntil: BigInt(raw.validUntil), nonce: BigInt(raw.nonce), signature: raw.signature };
 }
 
 export function createOptions(deps: OptionsDeps): OptionsNamespace {
@@ -162,39 +228,75 @@ export function createOptions(deps: OptionsDeps): OptionsNamespace {
   async function chain(underlying: string, expiry?: bigint | Date | string) {
     const query = expiry === undefined ? "" : `?expiry=${toUnixSeconds(expiry)}`;
     const rows = await getJson<
-      Array<{ series_id: Hex; expiry: string; strike: string; option_type: number }>
+      Array<{ seriesId: Hex; expiry: string; strike: string; optionType: number }>
     >("options.chain", `/v1/options/${underlying}/chain${query}`);
     return rows.map((row) => ({
-      seriesId: row.series_id,
+      seriesId: row.seriesId,
       expiry: BigInt(row.expiry),
       strike: BigInt(row.strike),
-      optionType: row.option_type as OptionType,
+      optionType: row.optionType as OptionType,
     }));
   }
 
-  async function quote(params: OptionsQuoteParams): Promise<OptionsQuoteResult> {
-    const base = requireApi("options.quote");
-    const strike = toBaseUnits(params.strike, PRICE_DECIMALS);
+  async function stats(underlying: string, expiry?: bigint | Date | string): Promise<OptionSeriesStats[]> {
+    const query = expiry === undefined ? "" : `?expiry=${toUnixSeconds(expiry)}`;
+    const rows = await getJson<Array<{ expiry: string; strike: string; optionType: number; openInterest: string; volume24h: string }>>(
+      "options.stats",
+      `/v1/options/${underlying}/stats${query}`,
+    );
+    return rows.map((row) => ({
+      expiry: BigInt(row.expiry),
+      strike: BigInt(row.strike),
+      type: row.optionType === OptionType.CALL ? "CALL" : "PUT",
+      openInterest: BigInt(row.openInterest.split(".")[0]!),
+      volume24h: BigInt(row.volume24h.split(".")[0]!),
+    }));
+  }
 
-    const response = await fetch(`${base}/v1/options/quote`, {
+  async function postJson<T>(method: string, path: string, body: unknown): Promise<T> {
+    const response = await fetch(`${requireApi(method)}${path}`, {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({
+      body: JSON.stringify(body),
+    });
+    const json = await response.json();
+    if (!response.ok) {
+      throw new OrionisError(`${method}: services/api returned ${response.status}: ${JSON.stringify(json)}`);
+    }
+    return json as T;
+  }
+
+  async function quote(params: OptionsQuoteParams & { user?: Address }): Promise<OptionsQuoteResult> {
+    requireApi("options.quote");
+    const strike = toBaseUnits(params.strike, PRICE_DECIMALS);
+
+    const raw = await postJson<Omit<OptionsQuoteResult, "authorization" | "bid" | "ask"> & { bid?: number; ask?: number; authorization?: RawSignedQuote }>(
+      "options.quote",
+      "/v1/options/quote",
+      {
         underlying: params.underlying,
-        // services/pricing takes a plain decimal strike (PROJECT_BRIEF.md Section 10's example:
-        // "strike": 190).
-        strike: Number(fromBaseUnits(strike, PRICE_DECIMALS)),
+        // A plain decimal strike (PROJECT_BRIEF.md Section 10's example: "strike": 190), sent as an
+        // exact string rather than a float so the strike the pricing service signs is bit-for-bit
+        // the strike the transaction submits.
+        strike: fromBaseUnits(strike, PRICE_DECIMALS),
         expiry: new Date(Number(toUnixSeconds(params.expiry)) * 1000).toISOString(),
         type: params.type,
         contracts: Number(toInteger(params.contracts, "contracts")),
-      }),
-    });
+        user: params.user,
+      },
+    );
+    // A pricing service that predates the spread returns no bid or ask: both are the mark.
+    return { ...raw, bid: raw.bid ?? raw.premium, ask: raw.ask ?? raw.premium, authorization: parseAuthorization(raw.authorization) };
+  }
 
-    const body = await response.json();
-    if (!response.ok) {
-      throw new OrionisError(`options.quote: services/api returned ${response.status}: ${JSON.stringify(body)}`);
-    }
-    return body as OptionsQuoteResult;
+  async function quoteClose(positionId: bigint, user: Address): Promise<CloseQuote> {
+    const raw = await postJson<Omit<OptionsQuoteResult, "authorization" | "bid" | "ask"> & { bid?: number; ask?: number; authorization: RawSignedQuote }>(
+      "options.quoteClose",
+      "/v1/options/quote/close",
+      { positionId: positionId.toString(), user },
+    );
+    const authorization = parseAuthorization(raw.authorization)!;
+    return { premium: authorization.premium, quote: { ...raw, bid: raw.bid ?? raw.premium, ask: raw.ask ?? raw.premium, authorization }, authorization };
   }
 
   async function contractSizeOf(marketId: Hex): Promise<bigint> {
@@ -220,10 +322,13 @@ export function createOptions(deps: OptionsDeps): OptionsNamespace {
       fees.get(marketId),
     ]);
 
-    // The quote is per underlying unit; fixed-point it at 18 decimals, then scale by contract
-    // size and count before narrowing to token decimals.
-    const premiumPerUnit = toBaseUnits(quoted.premium.toFixed(8), PRICE_DECIMALS);
-    const premium = convertDecimals((premiumPerUnit * contractSize * contracts) / WAD, PRICE_DECIMALS, tokenDecimals);
+    // The quote is per underlying unit. The total the chain will charge is the signed premium
+    // when there is one; otherwise (no `user`, so nothing to sign) it is the same calculation the
+    // pricing service would have signed, shown for display only.
+    // Opening pays the ask, so the per-unit price used for break-even and max profit is the ask.
+    const premiumPerUnit = toBaseUnits(quoted.ask.toFixed(8), PRICE_DECIMALS);
+    const premium =
+      quoted.authorization?.premium ?? premiumForOrder(quoted.ask, contractSize, contracts, tokenDecimals);
     const fee = feeFromBps(premium, feeInfo.optionOpenFee);
     const totalRequired = premium + fee;
 
@@ -237,8 +342,8 @@ export function createOptions(deps: OptionsDeps): OptionsNamespace {
         );
 
     // Same notional, in the same units, that OptionsEngine passes to RiskManager's size and
-    // open-interest checks.
-    const notional = ((contractSize * strike) / WAD) * contracts;
+    // open-interest checks: the 18-decimal product narrowed to the settlement token's base units.
+    const notional = convertDecimals(((contractSize * strike) / WAD) * contracts, PRICE_DECIMALS, tokenDecimals);
     const [violations, availableBalance] = await Promise.all([
       collectRiskViolations(client, addresses, markets, { marketId, isLong: isCall, notional, needs: "options" }),
       params.user
@@ -260,6 +365,7 @@ export function createOptions(deps: OptionsDeps): OptionsNamespace {
       contractSize,
       quote: quoted,
       premium,
+      authorization: quoted.authorization,
       fee,
       feeBps: feeInfo.optionOpenFee,
       totalRequired,
@@ -272,21 +378,24 @@ export function createOptions(deps: OptionsDeps): OptionsNamespace {
     };
   }
 
+  function toQuoteStruct(authorization: SignedQuote | undefined, method: string) {
+    if (!authorization) {
+      throw new OrionisError(
+        `${method}: a signed quote is required — call options.previewOpen (or quoteClose) with a \`user\` and pass its authorization`,
+      );
+    }
+    return { validUntil: authorization.validUntil, nonce: authorization.nonce, signature: authorization.signature };
+  }
+
   async function openPosition(params: OpenOptionPositionParams) {
-    const tokenDecimals = await decimals(addresses.settlementToken);
-    const premium = toBaseUnits(params.premium, tokenDecimals);
-    const maxPremium =
-      params.maxPremium === undefined
-        ? applyBps(premium, BigInt(params.slippageBps ?? DEFAULT_PREMIUM_SLIPPAGE_BPS))
-        : toBaseUnits(params.maxPremium, tokenDecimals);
+    const quoteStruct = toQuoteStruct(params.authorization, "options.openPosition");
     const args = {
       marketId: resolveMarketId(params.underlying),
       optionType: optionTypeOf(params.type),
       strike: toBaseUnits(params.strike, PRICE_DECIMALS),
       expiry: toUnixSeconds(params.expiry),
       contracts: toInteger(params.contracts, "contracts"),
-      premium,
-      maxPremium,
+      premium: params.authorization.premium,
       deadline: params.deadline === undefined ? defaultDeadline() : toUnixSeconds(params.deadline),
     };
 
@@ -297,7 +406,7 @@ export function createOptions(deps: OptionsDeps): OptionsNamespace {
           address: addresses.optionsEngine,
           abi: optionsEngineAbi,
           functionName: "openPosition",
-          args: [args],
+          args: [args, quoteStruct],
         }),
       params.tx,
     );
@@ -305,12 +414,7 @@ export function createOptions(deps: OptionsDeps): OptionsNamespace {
   }
 
   async function closePosition(positionId: bigint, params: CloseOptionPositionParams) {
-    const tokenDecimals = await decimals(addresses.settlementToken);
-    const premium = toBaseUnits(params.premium, tokenDecimals);
-    const minPremium =
-      params.minPremium === undefined
-        ? applyBps(premium, -BigInt(params.slippageBps ?? DEFAULT_PREMIUM_SLIPPAGE_BPS))
-        : toBaseUnits(params.minPremium, tokenDecimals);
+    const quoteStruct = toQuoteStruct(params.authorization, "options.closePosition");
     const deadline = params.deadline === undefined ? defaultDeadline() : toUnixSeconds(params.deadline);
 
     const { hash } = await executeTx(
@@ -320,7 +424,7 @@ export function createOptions(deps: OptionsDeps): OptionsNamespace {
           address: addresses.optionsEngine,
           abi: optionsEngineAbi,
           functionName: "closePosition",
-          args: [positionId, premium, minPremium, deadline],
+          args: [positionId, params.authorization.premium, deadline, quoteStruct],
         }),
       params.tx,
     );
@@ -342,5 +446,16 @@ export function createOptions(deps: OptionsDeps): OptionsNamespace {
     return hash;
   }
 
-  return { expiries, chain, quote, previewOpen, openPosition, closePosition, settle };
+  return {
+    stats,
+    expiries,
+    chain,
+    quote,
+    contractSize: (underlying) => contractSizeOf(resolveMarketId(underlying)),
+    quoteClose,
+    previewOpen,
+    openPosition,
+    closePosition,
+    settle,
+  };
 }

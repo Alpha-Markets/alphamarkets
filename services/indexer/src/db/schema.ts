@@ -1,4 +1,4 @@
-import { bigint, boolean, integer, jsonb, pgTable, serial, text, timestamp, unique } from "drizzle-orm/pg-core";
+import { bigint, boolean, index, integer, jsonb, pgTable, serial, text, timestamp, unique } from "drizzle-orm/pg-core";
 
 /// Materialized current-state view of MarketRegistry, kept in sync from `MarketAdded` /
 /// `MarketUpdated` events (DEVELOPMENT_STEPS.md Phase 2 item 1) — `services/api` serves
@@ -51,3 +51,19 @@ export const indexerState = pgTable("indexer_state", {
   id: integer("id").primaryKey(),
   lastIndexedBlock: bigint("last_indexed_block", { mode: "bigint" }).notNull(),
 });
+
+/// Index-price samples taken by the indexer on a fixed interval (`PRICE_SAMPLE_INTERVAL_MS`), so
+/// the API can serve a price history and 24h change — the chain only exposes the current price.
+/// `price` is the 18-decimal fixed-point index price as `text` (see `markets` for why not bigint).
+/// Rows older than `PRICE_TICK_RETENTION_DAYS` are pruned; this is display history, not an audit
+/// trail, and never feeds settlement or liquidation (those read the oracle onchain).
+export const priceTicks = pgTable(
+  "price_ticks",
+  {
+    id: serial("id").primaryKey(),
+    marketId: text("market_id").notNull(),
+    price: text("price").notNull(),
+    sampledAt: timestamp("sampled_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [index("price_ticks_market_sampled_idx").on(table.marketId, table.sampledAt)],
+);

@@ -24,6 +24,7 @@ const contracts = {
   OptionPositionManager: "optionPositionManagerAbi",
   PerpsEngine: "perpsEngineAbi",
   PerpPositionManager: "perpPositionManagerAbi",
+  PerpOrderManager: "perpOrderManagerAbi",
   FundingManager: "fundingManagerAbi",
   LiquidationEngine: "liquidationEngineAbi",
 };

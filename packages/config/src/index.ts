@@ -1,3 +1,3 @@
 export { ROBINHOOD_TESTNET_CHAIN_ID, robinhoodTestnet, chains, type ChainId } from "./chains.js";
-export { deployments, addressesForChain, type ContractAddresses } from "./deployments.js";
+export { deployments, addressesForChain, resolveAddresses, type ContractAddresses } from "./deployments.js";
 export { loadDotEnv, requireEnv } from "./env.js";

@@ -1,9 +1,10 @@
 import type { ContractAddresses } from "@orionis/config";
 import type { Address, Hex, MarketConfig } from "@orionis/types";
 import { perpPositionManagerAbi, perpsEngineAbi, vaultAbi } from "./abis.js";
+import { readOrder, readOrderRange, readUserOrders, requireOrderManager, type OpenOrder } from "./orders.js";
 import { PRICE_DECIMALS, toBaseUnits, type Amount } from "./amounts.js";
 import type { OrionisClient } from "./client.js";
-import { NotImplementedError, type OrionisContractError } from "./errors.js";
+import { OrionisError, type OrionisContractError } from "./errors.js";
 import type { FeesNamespace } from "./fees.js";
 import type { FundingInfo, FundingNamespace } from "./funding.js";
 import { applyBps, feeFromBps, liquidationPrice } from "./math.js";
@@ -14,9 +15,9 @@ import { executeTx, type TxOptions } from "./transactions.js";
 import { defaultDeadline, resolveMarketId, toInteger, toUnixSeconds } from "./utils.js";
 
 export type Side = "LONG" | "SHORT";
-/// `LIMIT` is part of the interface from the start (PROJECT_BRIEF.md Section 27) so callers do
-/// not break later, but resting limit orders ship in DEVELOPMENT_STEPS.md Phase 5 and are
-/// rejected until then. `MARKET` here still carries a slippage bound.
+/// `MARKET` fills at the current mark price within a slippage bound. `LIMIT` rests until the mark
+/// price reaches the trigger: {@link PerpsNamespace.placeLimitOrder} places one, and
+/// {@link PerpsNamespace.previewOpen} previews it when given `orderType: "LIMIT"` and `limitPrice`.
 export type OrderType = "MARKET" | "LIMIT";
 
 /// Default worst-case entry/exit slippage when the caller supplies neither `slippageBps` nor
@@ -43,6 +44,23 @@ export interface OpenPerpPositionParams extends PriceBound {
   /// against the per-market tiers in RiskManager, never in this SDK.
   leverage: number | bigint;
   orderType?: OrderType;
+  /// The trigger price of a `LIMIT` order (decimal string or 18-decimal `bigint`): a long fills at
+  /// or below it, a short at or above it. Required by `previewOpen` for `LIMIT`; ignored for
+  /// `MARKET`.
+  limitPrice?: Amount;
+}
+
+export interface PlaceLimitOrderParams {
+  market: string;
+  side: Side;
+  collateral: Amount;
+  leverage: number | bigint;
+  /// Trigger price: a long fills at or below it, a short at or above it.
+  limitPrice: Amount;
+  /// Unix seconds, `Date` or ISO string after which the order can no longer fill. Defaults to 24
+  /// hours from now.
+  expiry?: bigint | Date | string;
+  tx?: TxOptions;
 }
 
 export interface IncreasePerpPositionParams extends PriceBound {
@@ -105,6 +123,20 @@ export interface PerpsNamespace {
   /// the current mark price. Pass `user` to also check the Vault balance.
   previewOpen(params: OpenPerpPositionParams & { user?: Address }): Promise<PerpOpenPreview>;
   openPosition(params: OpenPerpPositionParams): Promise<{ hash: Hex; positionId: bigint }>;
+  /// Places a resting order to open a position once the mark price reaches `limitPrice`. Nothing is
+  /// reserved in the Vault: margin and the taker fee are taken when it fills, so it cannot fill if
+  /// the balance is gone by then. Anyone can fill it (`executeLimitOrder`), and its owner can
+  /// cancel it. Needs a deployment with a `PerpOrderManager`.
+  placeLimitOrder(params: PlaceLimitOrderParams): Promise<{ hash: Hex; orderId: bigint }>;
+  cancelLimitOrder(orderId: bigint, tx?: TxOptions): Promise<Hex>;
+  /// Fills an open order whose trigger has been reached (a keeper does this). Reverts with
+  /// `LimitPriceNotReachedError` before then.
+  executeLimitOrder(orderId: bigint, tx?: TxOptions): Promise<{ hash: Hex; positionId: bigint }>;
+  getOrder(orderId: bigint): Promise<OpenOrder>;
+  /// Every order the user placed, oldest first.
+  orders(user: Address): Promise<OpenOrder[]>;
+  /// Orders with ids from `fromId` up to the newest, for a keeper scanning the book.
+  scanOrders(fromId?: bigint): Promise<OpenOrder[]>;
   increasePosition(positionId: bigint, params: IncreasePerpPositionParams): Promise<Hex>;
   reducePosition(positionId: bigint, params: ReducePerpPositionParams): Promise<Hex>;
   closePosition(positionId: bigint, params: ClosePerpPositionParams): Promise<Hex>;
@@ -124,9 +156,11 @@ export interface PerpsDeps {
 export function createPerps(deps: PerpsDeps): PerpsNamespace {
   const { client, addresses, decimals, markets, oracle, risk, fees, funding } = deps;
 
+  /// `openPosition` opens at the current price; a resting order is a different call with a
+  /// different result (an order id, not a position id).
   function assertMarketOrder(orderType: OrderType | undefined, method: string) {
     if (orderType === "LIMIT") {
-      throw new NotImplementedError(method, "LIMIT orders are not supported yet (DEVELOPMENT_STEPS.md Phase 5)");
+      throw new OrionisError(`${method}: a LIMIT order rests until its trigger, so use perps.placeLimitOrder`);
     }
   }
 
@@ -175,7 +209,10 @@ export function createPerps(deps: PerpsDeps): PerpsNamespace {
   }
 
   async function previewOpen(params: OpenPerpPositionParams & { user?: Address }): Promise<PerpOpenPreview> {
-    assertMarketOrder(params.orderType, "perps.previewOpen");
+    const isLimit = params.orderType === "LIMIT";
+    if (isLimit && params.limitPrice === undefined) {
+      throw new OrionisError("perps.previewOpen: a LIMIT order needs a limitPrice");
+    }
 
     const marketId = resolveMarketId(params.market);
     const isLong = params.side === "LONG";
@@ -206,11 +243,14 @@ export function createPerps(deps: PerpsDeps): PerpsNamespace {
         : Promise.resolve(undefined),
     ]);
 
+    // A limit order's figures are worked out at its trigger, the price it fills at or better than.
+    const entryPrice = isLimit ? toBaseUnits(params.limitPrice!, PRICE_DECIMALS) : mark.price;
+
     return {
       marketId,
       side: params.side,
       indexPrice: index.price,
-      entryPrice: mark.price,
+      entryPrice,
       worstPrice,
       collateral,
       leverage,
@@ -219,7 +259,7 @@ export function createPerps(deps: PerpsDeps): PerpsNamespace {
       feeBps: feeInfo.takerFee,
       totalRequired,
       maintenanceMarginRateBps: riskInfo.maintenanceMarginRateBps,
-      liquidationPrice: liquidationPrice(isLong, mark.price, collateral, notional, riskInfo.maintenanceMarginRateBps),
+      liquidationPrice: liquidationPrice(isLong, entryPrice, collateral, notional, riskInfo.maintenanceMarginRateBps),
       fundingRateBps: fundingInfo.currentFundingRateBps,
       nextFundingTimestamp: fundingInfo.nextFundingTimestamp,
       availableBalance,
@@ -248,6 +288,46 @@ export function createPerps(deps: PerpsDeps): PerpsNamespace {
           args: [marketId, isLong, collateral, leverage, worstPrice, deadline],
         }),
       params.tx,
+    );
+    return { hash, positionId: result };
+  }
+
+  async function placeLimitOrder(params: PlaceLimitOrderParams) {
+    requireOrderManager(addresses, "perps.placeLimitOrder");
+    const marketId = resolveMarketId(params.market);
+    const collateral = toBaseUnits(params.collateral, await settlementDecimals());
+    const leverage = toInteger(params.leverage, "leverage");
+    const triggerPrice = toBaseUnits(params.limitPrice, PRICE_DECIMALS);
+    const expiry = params.expiry === undefined ? BigInt(Math.floor(Date.now() / 1000) + 86_400) : toUnixSeconds(params.expiry);
+
+    const { hash, result } = await executeTx(
+      client,
+      () =>
+        client.simulateContract({
+          address: addresses.perpsEngine,
+          abi: perpsEngineAbi,
+          functionName: "placeLimitOrder",
+          args: [marketId, params.side === "LONG", collateral, leverage, triggerPrice, expiry],
+        }),
+      params.tx,
+    );
+    return { hash, orderId: result };
+  }
+
+  async function cancelLimitOrder(orderId: bigint, tx?: TxOptions) {
+    const { hash } = await executeTx(
+      client,
+      () => client.simulateContract({ address: addresses.perpsEngine, abi: perpsEngineAbi, functionName: "cancelLimitOrder", args: [orderId] }),
+      tx,
+    );
+    return hash;
+  }
+
+  async function executeLimitOrder(orderId: bigint, tx?: TxOptions) {
+    const { hash, result } = await executeTx(
+      client,
+      () => client.simulateContract({ address: addresses.perpsEngine, abi: perpsEngineAbi, functionName: "executeLimitOrder", args: [orderId] }),
+      tx,
     );
     return { hash, positionId: result };
   }
@@ -329,6 +409,12 @@ export function createPerps(deps: PerpsDeps): PerpsNamespace {
     funding: (market) => funding.get(market),
     previewOpen,
     openPosition,
+    placeLimitOrder,
+    cancelLimitOrder,
+    executeLimitOrder,
+    getOrder: (orderId) => readOrder(client, addresses, orderId),
+    orders: (user) => readUserOrders(client, addresses, user),
+    scanOrders: (fromId = 1n) => readOrderRange(client, addresses, fromId),
     increasePosition,
     reducePosition,
     closePosition,

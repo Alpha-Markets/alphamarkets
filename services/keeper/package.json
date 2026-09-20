@@ -1,0 +1,20 @@
+{
+  "name": "@orionis/keeper",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "description": "Orionis Markets keeper: keeps the testnet mock price feeds fresh and fills limit orders whose trigger price is reached.",
+  "scripts": {
+    "build": "echo \"services/keeper runs from source (tsx)\" && exit 0",
+    "dev": "tsx watch src/index.ts",
+    "start": "tsx src/index.ts",
+    "lint": "echo \"scaffold: services/keeper lint\" && exit 0",
+    "test": "tsx --test src/*.test.ts",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "@orionis/config": "workspace:*",
+    "@orionis/sdk": "workspace:*",
+    "viem": "^2.21.0"
+  }
+}

@@ -8,7 +8,7 @@ Foundry + Solidity 0.8.26 + OpenZeppelin v5.1.0. Phase 1 (see `DEVELOPMENT_STEPS
 src/
 core/       MarketRegistry.sol, OrionisVault.sol, CollateralManager.sol, FeeManager.sol, BuybackModule.sol
 options/    OptionsEngine.sol, OptionMarket.sol, OptionSettlement.sol, OptionPositionManager.sol
-perps/      PerpsEngine.sol, PerpPositionManager.sol, FundingManager.sol, LiquidationEngine.sol
+perps/      PerpsEngine.sol, PerpPositionManager.sol, PerpOrderManager.sol, FundingManager.sol, LiquidationEngine.sol
 oracle/     OracleRouter.sol, PriceValidator.sol, MockPriceFeed.sol
 risk/       RiskManager.sol, MarginEngine.sol
 interfaces/ IOracle.sol, IMarketRegistry.sol, IOrionisVault.sol, IOptionsEngine.sol, IPerpsEngine.sol,

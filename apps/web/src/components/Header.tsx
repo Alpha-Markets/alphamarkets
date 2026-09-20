@@ -4,11 +4,11 @@ import { WalletButton } from "./WalletButton";
 /// PROJECT_BRIEF.md Section 22. Pages that are not built yet show as plain text rather than
 /// links that lead nowhere.
 const items = [
-  { label: "Markets", href: undefined },
-  { label: "Options", href: undefined },
+  { label: "Markets", href: "/markets" },
+  { label: "Options", href: "/options" },
   { label: "Perpetuals", href: "/perpetuals" },
-  { label: "Portfolio", href: undefined },
-  { label: "Activity", href: undefined },
+  { label: "Portfolio", href: "/portfolio" },
+  { label: "Activity", href: "/activity" },
 ];
 
 export function Header({ current }: { current?: string }) {

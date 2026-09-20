@@ -1,7 +1,6 @@
 {
   "name": "@orionis/sdk",
-  "private": true,
-  "version": "0.0.0",
+  "version": "0.1.0",
   "type": "module",
   "description": "Orionis Markets typed client \u2014 the only sanctioned way to talk to contracts/API from any frontend or integrator.",
   "main": "src/index.ts",
@@ -11,19 +10,22 @@
     "lint": "echo \"scaffold: packages/sdk lint \u2014 Phase 3\" && exit 0",
     "test": "tsx --test src/*.test.ts",
     "typecheck": "tsc --noEmit -p tsconfig.json",
-    "generate:abis": "node scripts/generate-abis.mjs"
+    "generate:abis": "node scripts/generate-abis.mjs",
+    "prepublishOnly": "pnpm build && pnpm test"
   },
   "dependencies": {
-    "@orionis/config": "workspace:*",
-    "@orionis/types": "workspace:*",
     "viem": "^2.21.0"
   },
   "devDependencies": {
-    "tsup": "^8"
+    "tsup": "^8",
+    "@orionis/config": "workspace:*",
+    "@orionis/types": "workspace:*"
   },
   "files": [
     "dist",
-    "README.md"
+    "README.md",
+    "LICENSE",
+    "CHANGELOG.md"
   ],
   "publishConfig": {
     "main": "./dist/index.cjs",
@@ -40,7 +42,31 @@
           "default": "./dist/index.cjs"
         }
       }
-    }
+    },
+    "access": "public"
   },
-  "sideEffects": false
+  "sideEffects": false,
+  "license": "MIT",
+  "author": "RubenDev",
+  "homepage": "https://github.com/rubengitdev/orionis/tree/main/packages/sdk#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/rubengitdev/orionis.git",
+    "directory": "packages/sdk"
+  },
+  "bugs": {
+    "url": "https://github.com/rubengitdev/orionis/issues"
+  },
+  "keywords": [
+    "orionis",
+    "derivatives",
+    "options",
+    "perpetuals",
+    "tokenized-equities",
+    "viem",
+    "robinhood-chain"
+  ],
+  "engines": {
+    "node": ">=20"
+  }
 }

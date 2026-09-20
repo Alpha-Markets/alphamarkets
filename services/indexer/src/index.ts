@@ -1,12 +1,12 @@
 import { loadDotEnv } from "@orionis/config";
 loadDotEnv();
 
-import { addressesForChain, requireEnv, ROBINHOOD_TESTNET_CHAIN_ID } from "@orionis/config";
+import { requireEnv, resolveAddresses, ROBINHOOD_TESTNET_CHAIN_ID } from "@orionis/config";
 import { Orionis } from "@orionis/sdk";
 import { createPublicClient, http, parseEventLogs } from "viem";
-import { eq, sql as sqlOp } from "drizzle-orm";
+import { and, eq, lt, sql as sqlOp } from "drizzle-orm";
 import { getDb, getSql } from "./db/client.js";
-import { events, indexerState, markets } from "./db/schema.js";
+import { events, indexerState, markets, priceTicks } from "./db/schema.js";
 import { allEventsAbi, contractNamesByAddress, watchedAddresses } from "./events.js";
 import { serializeArgs } from "./serialize.js";
 
@@ -19,8 +19,12 @@ if (MAX_BLOCK_RANGE < 1n) {
   throw new Error(`INDEXER_MAX_BLOCK_RANGE must be at least 1, got ${MAX_BLOCK_RANGE}`);
 }
 
+/// How often to record each active market's index price for history and 24h change.
+const PRICE_SAMPLE_INTERVAL_MS = Number(process.env.PRICE_SAMPLE_INTERVAL_MS ?? 60_000);
+const PRICE_TICK_RETENTION_DAYS = Number(process.env.PRICE_TICK_RETENTION_DAYS ?? 8);
+
 const chainId = ROBINHOOD_TESTNET_CHAIN_ID;
-const addresses = addressesForChain(chainId);
+const addresses = resolveAddresses(chainId);
 const contractNames = contractNamesByAddress(addresses);
 const addressList = watchedAddresses(addresses);
 
@@ -119,6 +123,28 @@ async function tick() {
   }
 }
 
+let lastSampleAt = 0;
+
+/// Records the index price of every active market. A market whose oracle is currently stale or
+/// paused is skipped for this round rather than failing the whole indexer tick.
+async function sampleIndexPrices() {
+  if (Date.now() - lastSampleAt < PRICE_SAMPLE_INTERVAL_MS) return;
+  lastSampleAt = Date.now();
+
+  const active = await db.select({ marketId: markets.marketId }).from(markets).where(eq(markets.active, true));
+  for (const { marketId } of active) {
+    try {
+      const { price } = await orionis.oracle.getIndexPrice(marketId);
+      await db.insert(priceTicks).values({ marketId, price: price.toString() });
+    } catch (error) {
+      console.warn(`indexer: could not sample index price for ${marketId}`, error);
+    }
+  }
+
+  const cutoff = new Date(Date.now() - PRICE_TICK_RETENTION_DAYS * 24 * 3600 * 1000);
+  await db.delete(priceTicks).where(and(lt(priceTicks.sampledAt, cutoff)));
+}
+
 async function main() {
   console.log(`indexer: watching ${addressList.length} contracts on chain ${chainId}`);
   for (;;) {
@@ -126,6 +152,11 @@ async function main() {
       await tick();
     } catch (error) {
       console.error("indexer: tick failed", error);
+    }
+    try {
+      await sampleIndexPrices();
+    } catch (error) {
+      console.error("indexer: price sampling failed", error);
     }
     await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL_MS));
   }

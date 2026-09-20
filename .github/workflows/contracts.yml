@@ -37,5 +37,9 @@ jobs:
       - name: Test
         run: forge test -vvv --fuzz-runs 10000
 
+      # Gate on the contracts (highest-risk surface). The thresholds sit a little under today's
+      # numbers (about 94% of lines, 62% of branches) so a PR cannot quietly erode coverage.
       - name: Coverage
-        run: forge coverage --report summary
+        run: |
+          forge coverage --report summary --no-match-coverage "(test|script|lib)" \
+            | python3 script/check-coverage.py 90 55

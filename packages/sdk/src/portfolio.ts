@@ -3,6 +3,8 @@ import type { Address, OptionPosition, PerpPosition } from "@orionis/types";
 import { optionPositionManagerAbi, perpPositionManagerAbi } from "./abis.js";
 import type { OrionisClient } from "./client.js";
 import { NotImplementedError, OrionisError } from "./errors.js";
+import { readUserOrders, type OpenOrder } from "./orders.js";
+import { createApiGet } from "./api.js";
 import { unrealizedPnl } from "./math.js";
 import type { OracleNamespace } from "./oracle.js";
 import type { VaultBalances, VaultNamespace } from "./vault.js";
@@ -37,15 +39,26 @@ export interface PortfolioSummary {
   realizedPnl: bigint;
 }
 
-/// A resting order. Always empty until limit orders ship (DEVELOPMENT_STEPS.md Phase 5).
-export interface OpenOrder {
-  id: string;
-  marketId: string;
+/// One funding payment on a perp position (PROJECT_BRIEF.md Section 15). Positive `amount` was
+/// received, negative was paid; settlement-token base units.
+export interface FundingPayment {
+  id: number;
+  txHash: string;
+  blockNumber: string;
+  createdAt: string;
+  positionId: bigint;
+  marketId: `0x${string}`;
+  amount: bigint;
 }
 
 export interface PortfolioNamespace {
+  /// Funding received or paid on the user's perp positions, from `services/indexer` via the API
+  /// (oldest first). Requires `apiUrl`.
+  funding(user: Address, options?: { limit?: number; cursor?: number }): Promise<FundingPayment[]>;
   summary(user: Address): Promise<PortfolioSummary>;
-  /// Resting orders from `services/api`. Requires `apiUrl`.
+  /// Every limit order the user placed, oldest first, read from the chain (no `apiUrl` needed).
+  /// Filter on `status === "OPEN"` for the ones still resting. Empty on a deployment that
+  /// predates limit orders.
   orders(user: Address): Promise<OpenOrder[]>;
   /// Reads open/closed/settled positions directly from the position-manager contracts.
   positions(user: Address): Promise<PortfolioPositions>;
@@ -71,6 +84,8 @@ export interface PortfolioDeps {
 }
 
 export function createPortfolio({ client, addresses, vault, oracle, apiUrl }: PortfolioDeps): PortfolioNamespace {
+  const apiGet = createApiGet(apiUrl);
+
   async function positions(user: Address): Promise<PortfolioPositions> {
     const [optionIds, perpIds] = await Promise.all([
       client.readContract({
@@ -176,17 +191,21 @@ export function createPortfolio({ client, addresses, vault, oracle, apiUrl }: Po
     return { balances, positions: allPositions, unrealizedPerpPnl, realizedPnl };
   }
 
-  async function orders(user: Address): Promise<OpenOrder[]> {
-    if (!apiUrl) {
-      throw new NotImplementedError(
-        "portfolio.orders",
-        "requires `apiUrl` in the Orionis constructor config, pointing at services/api",
-      );
-    }
-    const response = await fetch(`${apiUrl}/v1/orders/${user}`);
-    if (!response.ok) throw new OrionisError(`portfolio.orders: services/api returned ${response.status}`);
-    return (await response.json()) as OpenOrder[];
+  function orders(user: Address): Promise<OpenOrder[]> {
+    return readUserOrders(client, addresses, user);
   }
 
-  return { summary, orders, positions, getOptionPosition, getPerpPosition, history };
+  async function funding(user: Address, options?: { limit?: number; cursor?: number }): Promise<FundingPayment[]> {
+    const query = new URLSearchParams();
+    if (options?.limit) query.set("limit", String(options.limit));
+    if (options?.cursor) query.set("cursor", String(options.cursor));
+    const queryString = query.toString();
+    const rows = await apiGet<
+      Array<{ id: number; txHash: string; blockNumber: string; createdAt: string; positionId: string; marketId: `0x${string}`; amount: string }>
+    >("portfolio.funding", `/v1/funding/${user}${queryString ? `?${queryString}` : ""}`);
+    // The API camel-cases column names, so rows already have the SDK's field names.
+    return rows.map((row) => ({ ...row, positionId: BigInt(row.positionId), amount: BigInt(row.amount) }));
+  }
+
+  return { summary, orders, positions, funding, getOptionPosition, getPerpPosition, history };
 }

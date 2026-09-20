@@ -27,6 +27,12 @@ export default function Landing() {
             >
               Launch terminal
             </Link>
+            <Link
+              href="/markets"
+              className="inline-flex h-10 items-center rounded-[3px] border border-line px-5 text-sm font-medium hover:border-faint hover:bg-raised"
+            >
+              Explore markets
+            </Link>
           </div>
         </div>
         <dl className="grid gap-px border border-line bg-line sm:grid-cols-3">

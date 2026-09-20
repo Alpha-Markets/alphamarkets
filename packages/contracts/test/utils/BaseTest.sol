@@ -14,8 +14,10 @@ import {MockPriceFeed} from "../../src/oracle/MockPriceFeed.sol";
 import {RiskManager} from "../../src/risk/RiskManager.sol";
 import {OptionPositionManager} from "../../src/options/OptionPositionManager.sol";
 import {OptionMarket} from "../../src/options/OptionMarket.sol";
+import {IOptionsEngine} from "../../src/interfaces/IOptionsEngine.sol";
 import {OptionsEngine} from "../../src/options/OptionsEngine.sol";
 import {PerpPositionManager} from "../../src/perps/PerpPositionManager.sol";
+import {PerpOrderManager} from "../../src/perps/PerpOrderManager.sol";
 import {FundingManager} from "../../src/perps/FundingManager.sol";
 import {PerpsEngine} from "../../src/perps/PerpsEngine.sol";
 import {LiquidationEngine} from "../../src/perps/LiquidationEngine.sol";
@@ -30,6 +32,10 @@ contract BaseTest is Test {
     address internal alice = makeAddr("alice");
     address internal bob = makeAddr("bob");
     address internal keeper = makeAddr("keeper");
+    /// Signs option premium quotes, standing in for services/pricing.
+    uint256 internal quoterKey = uint256(keccak256("orionis.test.quoter"));
+    address internal quoter = vm.addr(quoterKey);
+    uint256 internal nextQuoteNonce = 1;
 
     bytes32 internal constant NVDA = bytes32("NVDA");
     uint256 internal constant WAD = 1e18;
@@ -49,14 +55,21 @@ contract BaseTest is Test {
     OptionMarket internal optionMarket;
     OptionsEngine internal optionsEngine;
     PerpPositionManager internal perpPositionManager;
+    PerpOrderManager internal perpOrderManager;
     FundingManager internal fundingManager;
     PerpsEngine internal perpsEngine;
     LiquidationEngine internal liquidationEngine;
 
+    /// @dev Decimals of the settlement token. A test overrides this to run the whole stack on a token
+    /// that is not 18 decimals, like the 6-decimal USDC-style token the testnet uses.
+    function _settlementDecimals() internal pure virtual returns (uint8) {
+        return 18;
+    }
+
     function setUp() public virtual {
         vm.startPrank(admin);
 
-        usdc = new MockERC20("USD Coin", "USDC", 18);
+        usdc = new MockERC20("USD Coin", "USDC", _settlementDecimals());
         priceFeed = new MockPriceFeed(admin, 18, 190e18);
 
         marketRegistry = new MarketRegistry(admin);
@@ -70,11 +83,13 @@ contract BaseTest is Test {
         optionPositionManager = new OptionPositionManager(admin);
         optionMarket = new OptionMarket(admin);
         perpPositionManager = new PerpPositionManager(admin);
+        perpOrderManager = new PerpOrderManager(admin);
         fundingManager = new FundingManager(
             admin, address(oracleRouter), address(perpPositionManager), address(vault), address(usdc)
         );
 
         optionsEngine = new OptionsEngine(
+            admin,
             address(marketRegistry),
             address(oracleRouter),
             address(vault),
@@ -92,6 +107,7 @@ contract BaseTest is Test {
             address(feeManager),
             address(riskManager),
             address(perpPositionManager),
+            address(perpOrderManager),
             address(fundingManager),
             address(usdc)
         );
@@ -135,6 +151,7 @@ contract BaseTest is Test {
         riskManager.grantRole(riskEngineRole, address(perpsEngine));
         riskManager.grantRole(riskEngineRole, address(liquidationEngine));
 
+        optionsEngine.grantRole(optionsEngine.QUOTER_ROLE(), quoter);
         optionPositionManager.grantRole(optionPositionManager.ENGINE_ROLE(), address(optionsEngine));
         optionMarket.grantRole(optionMarket.ENGINE_ROLE(), address(optionsEngine));
 
@@ -142,6 +159,7 @@ contract BaseTest is Test {
         perpPositionManager.grantRole(perpEngineRole, address(perpsEngine));
         perpPositionManager.grantRole(perpEngineRole, address(fundingManager));
         perpPositionManager.grantRole(perpEngineRole, address(liquidationEngine));
+        perpOrderManager.grantRole(perpOrderManager.ENGINE_ROLE(), address(perpsEngine));
 
         bytes32 fundingEngineRole = fundingManager.ENGINE_ROLE();
         fundingManager.grantRole(fundingEngineRole, address(perpsEngine));
@@ -202,5 +220,42 @@ contract BaseTest is Test {
     function _setPrice(uint256 price) internal {
         vm.prank(admin);
         priceFeed.setPrice(price);
+    }
+
+    // ---------------------------------------------------------------------
+    // Signed option quotes
+    // ---------------------------------------------------------------------
+
+    function _sign(uint256 key, bytes32 digest) internal pure returns (bytes memory) {
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(key, digest);
+        return abi.encodePacked(r, s, v);
+    }
+
+    function _openQuote(address user, IOptionsEngine.OpenPositionParams memory params)
+        internal
+        returns (IOptionsEngine.Quote memory)
+    {
+        return _openQuoteSignedBy(quoterKey, user, params, block.timestamp + 60);
+    }
+
+    function _openQuoteSignedBy(
+        uint256 key,
+        address user,
+        IOptionsEngine.OpenPositionParams memory params,
+        uint256 validUntil
+    ) internal returns (IOptionsEngine.Quote memory) {
+        uint256 nonce = nextQuoteNonce++;
+        bytes32 digest = optionsEngine.openQuoteDigest(user, params, validUntil, nonce);
+        return IOptionsEngine.Quote({validUntil: validUntil, nonce: nonce, signature: _sign(key, digest)});
+    }
+
+    function _closeQuote(address user, uint256 positionId, uint256 premium)
+        internal
+        returns (IOptionsEngine.Quote memory)
+    {
+        uint256 validUntil = block.timestamp + 60;
+        uint256 nonce = nextQuoteNonce++;
+        bytes32 digest = optionsEngine.closeQuoteDigest(user, positionId, premium, validUntil, nonce);
+        return IOptionsEngine.Quote({validUntil: validUntil, nonce: nonce, signature: _sign(quoterKey, digest)});
     }
 }

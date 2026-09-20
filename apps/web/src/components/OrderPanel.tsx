@@ -2,14 +2,16 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { Button, Panel, Row, Segmented, TextField } from "@orionis/ui";
-import { toBaseUnits, type Side } from "@orionis/sdk";
+import { toBaseUnits, type OrderType, type Side } from "@orionis/sdk";
 import { useState } from "react";
 import { useAccount, useConnect, useSwitchChain } from "wagmi";
 import { usePerpMarket, useSettlementDecimals, useVaultBalances } from "@/hooks/queries";
 import { useDebounced } from "@/hooks/useDebounced";
 import { useWalletOrionis } from "@/hooks/useOrionis";
 import { useTx } from "@/hooks/useTx";
+import { env } from "@/lib/env";
 import { fmtBps, fmtPrice, fmtUsd } from "@/lib/format";
+import { LIMIT_EXPIRIES, limitDirectionNote, limitExpirySeconds, parseLimitPrice, type LimitExpiry } from "@/lib/limit";
 import { orionisRead } from "@/lib/orionis";
 import { chain } from "@/lib/wagmi";
 import { errorMessage } from "@/stores/tx";
@@ -31,6 +33,9 @@ export function OrderPanel() {
   const { data: balances } = useVaultBalances();
 
   const [side, setSide] = useState<Side>("LONG");
+  const [orderType, setOrderType] = useState<OrderType>("MARKET");
+  const [limitPrice, setLimitPrice] = useState("");
+  const [expiry, setExpiry] = useState<LimitExpiry>("24h");
   const [collateral, setCollateral] = useState("");
   const [chosenLeverage, setChosenLeverage] = useState<bigint>();
   const [submitting, setSubmitting] = useState(false);
@@ -44,15 +49,27 @@ export function OrderPanel() {
     (debouncedCollateral.split(".")[1]?.length ?? 0) <= decimals &&
     Number(debouncedCollateral) > 0;
 
+  const isLimit = orderType === "LIMIT";
+  const debouncedLimit = useDebounced(limitPrice);
+  const trigger = parseLimitPrice(debouncedLimit);
+  const validLimit = !isLimit || trigger !== undefined;
+
   const preview = useQuery({
-    queryKey: ["preview", symbol, side, debouncedCollateral, String(leverage), address],
+    queryKey: ["preview", symbol, side, orderType, isLimit ? debouncedLimit : "", debouncedCollateral, String(leverage), address],
     queryFn: () =>
-      orionisRead.perps.previewOpen({ market: symbol, side, collateral: debouncedCollateral, leverage: Number(leverage), user: address }),
-    enabled: Boolean(symbol && leverage && validAmount),
+      orionisRead.perps.previewOpen({
+        market: symbol,
+        side,
+        collateral: debouncedCollateral,
+        leverage: Number(leverage),
+        user: address,
+        ...(isLimit ? { orderType, limitPrice: trigger } : {}),
+      }),
+    enabled: Boolean(symbol && leverage && validAmount && validLimit),
     refetchInterval: 4_000,
     placeholderData: (previous) => previous,
   });
-  const p = validAmount ? preview.data : undefined;
+  const p = validAmount && validLimit ? preview.data : undefined;
 
   // `problem` is something the person must fix; `waiting` just explains why the button is idle.
   const problem =
@@ -63,18 +80,42 @@ export function OrderPanel() {
         : p.sufficientCollateral === false
           ? "Not enough available collateral. Deposit first."
           : undefined;
-  const waiting = !isConnected || chainId !== chain.id ? undefined : !validAmount ? "Enter a collateral amount." : !p ? "Calculating…" : undefined;
+  const waiting =
+    !isConnected || chainId !== chain.id
+      ? undefined
+      : !validAmount
+        ? "Enter a collateral amount."
+        : !validLimit
+          ? "Enter a limit price."
+          : !p
+            ? "Calculating…"
+            : undefined;
   const blocker = problem ?? waiting;
 
   async function submit() {
     if (!wallet || !leverage || !p) return;
     setSubmitting(true);
-    const title = side === "LONG" ? "Open long" : "Open short";
+    const direction = side === "LONG" ? "long" : "short";
     const summary = `${symbol}-PERP · ${side === "LONG" ? "Long" : "Short"} · ${fmtUsd(p.notional, decimals, 0)} · ${leverage}x`;
-    const result = await run({ title, summary }, (tx) =>
-      wallet.perps.openPosition({ market: symbol, side, collateral: toBaseUnits(debouncedCollateral, decimals), leverage, tx }),
-    );
-    if (result.ok) setCollateral("");
+    const result = isLimit
+      ? await run({ title: `Place limit ${direction}`, summary: `${summary} · at ${fmtPrice(p.entryPrice)}` }, (tx) =>
+          wallet.perps.placeLimitOrder({
+            market: symbol,
+            side,
+            collateral: toBaseUnits(debouncedCollateral, decimals),
+            leverage,
+            limitPrice: p.entryPrice,
+            expiry: BigInt(Math.floor(Date.now() / 1000) + limitExpirySeconds(expiry)),
+            tx,
+          }),
+        )
+      : await run({ title: `Open ${direction}`, summary }, (tx) =>
+          wallet.perps.openPosition({ market: symbol, side, collateral: toBaseUnits(debouncedCollateral, decimals), leverage, tx }),
+        );
+    if (result.ok) {
+      setCollateral("");
+      setLimitPrice("");
+    }
     setSubmitting(false);
   }
 
@@ -93,7 +134,11 @@ export function OrderPanel() {
       disabled={Boolean(blocker) || submitting || !wallet}
       onClick={submit}
     >
-      {submitting ? "Opening…" : side === "LONG" ? "Open long" : "Open short"}
+      {submitting
+        ? isLimit
+          ? "Placing…"
+          : "Opening…"
+        : `${isLimit ? "Place limit" : "Open"} ${side === "LONG" ? "long" : "short"}`}
     </Button>
   );
 
@@ -114,13 +159,44 @@ export function OrderPanel() {
         />
         <Segmented
           label="Order type"
-          value="MARKET"
-          onChange={() => undefined}
+          value={orderType}
+          onChange={setOrderType}
           options={[
             { value: "MARKET", label: "Market" },
-            { value: "LIMIT", label: "Limit", disabled: true },
+            { value: "LIMIT", label: "Limit", disabled: !env.limitOrders },
           ]}
         />
+        {env.limitOrders ? null : (
+          <p className="text-xs leading-snug text-muted">Limit orders need the latest contracts, which are not deployed on this network yet.</p>
+        )}
+
+        {isLimit ? (
+          <>
+            <TextField
+              label="Limit price"
+              value={limitPrice}
+              onValueChange={setLimitPrice}
+              suffix="USD"
+              placeholder={market ? fmtPrice(market.markPrice).replace(/,/g, "") : "0.00"}
+              invalid={limitPrice !== "" && trigger === undefined}
+              hint={
+                market
+                  ? (limitDirectionNote(side === "LONG", trigger, market.markPrice) ??
+                    `${side === "LONG" ? "Fills at or below" : "Fills at or above"} this price. Mark ${fmtPrice(market.markPrice)}.`)
+                  : undefined
+              }
+            />
+            <div>
+              <p className="mb-1 text-xs text-muted">Expires in</p>
+              <Segmented
+                label="Expiry"
+                value={expiry}
+                onChange={setExpiry}
+                options={LIMIT_EXPIRIES.map((value) => ({ value, label: value }))}
+              />
+            </div>
+          </>
+        ) : null}
 
         <TextField
           label="Collateral"
@@ -152,16 +228,28 @@ export function OrderPanel() {
               <Row label="Side">{side === "LONG" ? "Long" : "Short"}</Row>
               <Row label="Size">{fmtUsd(p.notional, decimals)}</Row>
               <Row label="Leverage">{`${p.leverage}x`}</Row>
-              <Row label="Estimated entry">{fmtPrice(p.entryPrice)}</Row>
-              <Row label="Worst accepted price">{fmtPrice(p.worstPrice)}</Row>
+              {isLimit ? (
+                <Row label={side === "LONG" ? "Fills at or below" : "Fills at or above"}>{fmtPrice(p.entryPrice)}</Row>
+              ) : (
+                <>
+                  <Row label="Estimated entry">{fmtPrice(p.entryPrice)}</Row>
+                  <Row label="Worst accepted price">{fmtPrice(p.worstPrice)}</Row>
+                </>
+              )}
               <Row label="Margin">{fmtUsd(p.collateral, decimals)}</Row>
               <Row label="Liquidation price">{fmtPrice(p.liquidationPrice)}</Row>
               <Row label="Funding rate">{fmtBps(p.fundingRateBps)}</Row>
               <Row label={`Fee (${fmtBps(p.feeBps)})`}>{fmtUsd(p.fee, decimals)}</Row>
-              <Row label="Total from vault" className="border-t border-line font-medium">
+              <Row label={isLimit ? "Needed when it fills" : "Total from vault"} className="border-t border-line font-medium">
                 {fmtUsd(p.totalRequired, decimals)}
               </Row>
             </dl>
+            {isLimit ? (
+              <p className="text-xs leading-snug text-muted">
+                Nothing is reserved while the order waits. The margin and fee are taken from your vault balance when it fills, so keep
+                that balance available. Cancel it any time from Portfolio.
+              </p>
+            ) : null}
           </>
         ) : null}
 

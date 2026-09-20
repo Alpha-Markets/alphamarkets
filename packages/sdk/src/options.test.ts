@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { afterEach, test } from "node:test";
 import { OptionType } from "@orionis/types";
 import { NotImplementedError } from "./errors.js";
-import { createOptions } from "./options.js";
+import { createOptions, premiumForOrder, type SignedQuote } from "./options.js";
 import { activeMarket, addresses, fakeClient, NVDA, USER, WAD } from "./testing.js";
 
 const realFetch = globalThis.fetch;
@@ -10,17 +10,33 @@ afterEach(() => {
   globalThis.fetch = realFetch;
 });
 
-function mockQuote(premium: number) {
+const SIGNATURE = `0x${"11".repeat(65)}` as const;
+
+function mockQuote(premium: number, authorization?: Record<string, string>, extra: Record<string, unknown> = {}) {
   const requests: Array<{ url: string; body: Record<string, unknown> }> = [];
   globalThis.fetch = (async (url: string, init: { body: string }) => {
     requests.push({ url, body: JSON.parse(init.body) });
     return new Response(
-      JSON.stringify({ premium, iv: 0.412, delta: 0.58, gamma: 0.031, theta: -0.14, vega: 0.22, breakEven: 194.82, spot: 184.42 }),
+      JSON.stringify({
+        premium,
+        iv: 0.412,
+        delta: 0.58,
+        gamma: 0.031,
+        theta: -0.14,
+        vega: 0.22,
+        breakEven: 194.82,
+        spot: 184.42,
+        ...extra,
+        ...(authorization ? { authorization } : {}),
+      }),
       { status: 200 },
     );
   }) as typeof fetch;
   return requests;
 }
+
+const signed = (premium: bigint): SignedQuote => ({ premium, validUntil: 1_900_000_000n, nonce: 7n, signature: SIGNATURE });
+const rawSigned = (premium: string) => ({ premium, validUntil: "1900000000", nonce: "7", signature: SIGNATURE });
 
 function setup(apiUrl: string | null = "http://api.test") {
   const fake = fakeClient({ getContractSize: 100n * WAD, availableBalance: 10_000_000_000n });
@@ -28,7 +44,7 @@ function setup(apiUrl: string | null = "http://api.test") {
     client: fake.client,
     addresses,
     decimals: async () => 6,
-    markets: { list: async () => [activeMarket], get: async () => activeMarket },
+    markets: { list: async () => [activeMarket], get: async () => activeMarket, stats: async () => [] },
     fees: {
       get: async () => ({ makerFee: 0n, takerFee: 0n, optionOpenFee: 100n, optionCloseFee: 0n, settlementFee: 0n, liquidationFee: 0n }),
     },
@@ -47,10 +63,11 @@ test("previewOpen matches the brief's ticket: 10 contracts at $4.82 costs $4,820
   assert.equal(requests[0]!.url, "http://api.test/v1/options/quote");
   assert.deepEqual(requests[0]!.body, {
     underlying: "NVDA",
-    strike: 190,
+    strike: "190",
     expiry: "2026-09-25T00:00:00.000Z",
     type: "CALL",
     contracts: 10,
+    user: USER,
   });
   assert.equal(preview.premium, 4_820_000_000n);
   assert.equal(preview.fee, 48_200_000n);
@@ -79,9 +96,34 @@ test("quote-dependent methods require apiUrl", async () => {
   await assert.rejects(options.expiries("NVDA"), NotImplementedError);
 });
 
-test("openPosition submits the struct with default premium slippage", async () => {
+test("premiumForOrder scales by contract size and count, then narrows to token decimals", () => {
+  assert.equal(premiumForOrder(4.82, 100n * WAD, 10n, 6), 4_820_000_000n);
+  assert.equal(premiumForOrder(4.82, WAD, 1n, 18), 4_820_000_000_000_000_000n);
+  assert.equal(premiumForOrder(0, WAD, 10n, 6), 0n);
+});
+
+test("previewOpen returns the signed premium and quote when a user is given", async () => {
+  mockQuote(4.82, rawSigned("4820000000"));
+  const { options } = setup();
+  const preview = await options.previewOpen({ ...callParams, user: USER });
+
+  assert.equal(preview.premium, 4_820_000_000n);
+  assert.deepEqual(preview.authorization, signed(4_820_000_000n));
+});
+
+test("without a user there is nothing to sign, so previews carry no authorization", async () => {
+  const requests = mockQuote(4.82);
+  const { options } = setup();
+  const preview = await options.previewOpen(callParams);
+
+  assert.equal(requests[0]!.body.user, undefined);
+  assert.equal(preview.authorization, undefined);
+  assert.equal(preview.premium, 4_820_000_000n); // computed for display only
+});
+
+test("openPosition submits the params plus the signed quote; the premium comes from the quote", async () => {
   const { options, simulated } = setup();
-  await options.openPosition({ ...callParams, premium: "4820", deadline: 2_000_000_000n });
+  await options.openPosition({ ...callParams, authorization: signed(4_820_000_000n), deadline: 2_000_000_000n });
 
   const [call] = simulated();
   assert.equal(call!.functionName, "openPosition");
@@ -93,16 +135,42 @@ test("openPosition submits the struct with default premium slippage", async () =
       expiry: 1_790_294_400n,
       contracts: 10n,
       premium: 4_820_000_000n,
-      maxPremium: 4_868_200_000n, // +1%
       deadline: 2_000_000_000n,
     },
+    { validUntil: 1_900_000_000n, nonce: 7n, signature: SIGNATURE },
   ]);
 });
 
-test("closePosition bounds the received premium from below", async () => {
+test("opening or closing without a signed quote fails before any RPC call", async () => {
+  const { options, calls } = setup();
+  await assert.rejects(
+    options.openPosition({ ...callParams } as never),
+    /signed quote is required/,
+  );
+  await assert.rejects(options.closePosition(1n, {} as never), /signed quote is required/);
+  assert.equal(calls.length, 0);
+});
+
+test("closePosition submits the position, signed premium and quote", async () => {
   const { options, simulated } = setup();
-  await options.closePosition(9n, { premium: "1000", deadline: 2_000_000_000n });
-  assert.deepEqual(simulated()[0]!.args, [9n, 1_000_000_000n, 990_000_000n, 2_000_000_000n]);
+  await options.closePosition(9n, { authorization: signed(1_000_000_000n), deadline: 2_000_000_000n });
+  assert.deepEqual(simulated()[0]!.args, [
+    9n,
+    1_000_000_000n,
+    2_000_000_000n,
+    { validUntil: 1_900_000_000n, nonce: 7n, signature: SIGNATURE },
+  ]);
+});
+
+test("quoteClose asks the API for a signed close price", async () => {
+  const requests = mockQuote(3.1, rawSigned("310000000"));
+  const { options } = setup();
+  const closeQuote = await options.quoteClose(9n, USER);
+
+  assert.equal(requests[0]!.url, "http://api.test/v1/options/quote/close");
+  assert.deepEqual(requests[0]!.body, { positionId: "9", user: USER });
+  assert.equal(closeQuote.premium, 310_000_000n);
+  assert.deepEqual(closeQuote.authorization, signed(310_000_000n));
 });
 
 test("settle maps to settleExpired with a fixed-point strike", async () => {
@@ -118,7 +186,7 @@ test("chain and expiries parse the API rows", async () => {
       JSON.stringify(
         url.includes("expiries")
           ? ["1790294400"]
-          : [{ series_id: "0x01", expiry: "1790294400", strike: "190000000000000000000", option_type: 1 }],
+          : [{ seriesId: "0x01", expiry: "1790294400", strike: "190000000000000000000", optionType: 1 }],
       ),
     )) as typeof fetch;
   const { options } = setup();
@@ -126,4 +194,49 @@ test("chain and expiries parse the API rows", async () => {
   assert.deepEqual(await options.chain("NVDA"), [
     { seriesId: "0x01", expiry: 1_790_294_400n, strike: 190n * WAD, optionType: OptionType.PUT },
   ]);
+});
+
+test("an older pricing service without bid and ask still previews: both default to the mark", async () => {
+  mockQuote(4.82);
+  const { options } = setup();
+  const quote = await options.quote(callParams);
+  assert.equal(quote.bid, 4.82);
+  assert.equal(quote.ask, 4.82);
+});
+
+test("break-even and max profit follow the ask the buyer pays, not the mark", async () => {
+  mockQuote(4.82, undefined, { bid: 4.72, ask: 4.92 });
+  const { options } = setup();
+  const preview = await options.previewOpen(callParams);
+  assert.equal(preview.breakEven, 194_920_000_000_000_000_000n);
+  assert.equal(preview.premium, 4_920_000_000n, "unsigned display total is the ask");
+
+  const put = await options.previewOpen({ ...callParams, type: "PUT" });
+  assert.equal(put.breakEven, 185_080_000_000_000_000_000n);
+});
+
+test("options.stats parses contracts and series from the indexer", async () => {
+  let requested = "";
+  globalThis.fetch = (async (url: string) => {
+    requested = url;
+    return new Response(
+      JSON.stringify([
+        { expiry: "1790000000", strike: "190000000000000000000", optionType: 1, openInterest: "12", volume24h: "30.0000" },
+      ]),
+    );
+  }) as unknown as typeof fetch;
+  const { options } = setup();
+  const [row] = await options.stats("NVDA", 1_790_000_000n);
+  assert.equal(requested, "http://api.test/v1/options/NVDA/stats?expiry=1790000000");
+  assert.deepEqual(row, { expiry: 1_790_000_000n, strike: 190n * WAD, type: "PUT", openInterest: 12n, volume24h: 30n });
+});
+
+test("the risk checks see the option notional in settlement-token units, as OptionsEngine passes it", async () => {
+  mockQuote(4.82);
+  const { options, calls } = setup(); // 6-decimal token, contract size 100 units
+  await options.previewOpen(callParams);
+
+  // 10 contracts x 100 units x $190 = $190,000, in 6-decimal base units (not 18).
+  const size = calls.find((call) => call.functionName === "checkPositionSize");
+  assert.equal(size?.args?.[1], 190_000_000_000n);
 });

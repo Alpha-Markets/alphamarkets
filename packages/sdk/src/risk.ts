@@ -2,6 +2,7 @@ import type { ContractAddresses } from "@orionis/config";
 import type { Hex } from "@orionis/types";
 import { riskManagerAbi } from "./abis.js";
 import type { OrionisClient } from "./client.js";
+import { createApiGet } from "./api.js";
 import { MarketPausedError, mapError, OrionisContractError } from "./errors.js";
 import type { MarketsNamespace } from "./markets.js";
 import { resolveMarketId } from "./utils.js";
@@ -18,11 +19,35 @@ export interface RiskInfo {
   openInterestCap: bigint;
 }
 
-export interface RiskNamespace {
-  get(marketIdOrSymbol: string): Promise<RiskInfo>;
+export interface OpenInterest {
+  long: bigint;
+  short: bigint;
+  /// `long + short`, the figure RiskManager checks against `openInterestCap`.
+  total: bigint;
 }
 
-export function createRisk(client: OrionisClient, addresses: ContractAddresses): RiskNamespace {
+/// Open interest at one moment, rebuilt from the indexed position events.
+export interface OpenInterestPoint {
+  /// Unix seconds, the start of the bucket.
+  time: number;
+  long: bigint;
+  short: bigint;
+}
+
+export type OpenInterestRange = "24h" | "7d" | "30d";
+
+export interface RiskNamespace {
+  /// Long and short open interest over time, from `services/indexer` via the API. Requires
+  /// `apiUrl`. Display data; `openInterest` is what the chain enforces.
+  openInterestHistory(marketIdOrSymbol: string, range?: OpenInterestRange): Promise<OpenInterestPoint[]>;
+  get(marketIdOrSymbol: string): Promise<RiskInfo>;
+  /// Notional currently open on each side, read from RiskManager.
+  openInterest(marketIdOrSymbol: string): Promise<OpenInterest>;
+}
+
+export function createRisk(client: OrionisClient, addresses: ContractAddresses, apiUrl?: string): RiskNamespace {
+  const apiGet = createApiGet(apiUrl);
+
   async function get(marketIdOrSymbol: string): Promise<RiskInfo> {
     const config = await client.readContract({
       address: addresses.riskManager,
@@ -40,7 +65,24 @@ export function createRisk(client: OrionisClient, addresses: ContractAddresses):
     };
   }
 
-  return { get };
+  async function openInterest(marketIdOrSymbol: string): Promise<OpenInterest> {
+    const marketId = resolveMarketId(marketIdOrSymbol);
+    const [long, short] = await Promise.all([
+      client.readContract({ address: addresses.riskManager, abi: riskManagerAbi, functionName: "openInterestLong", args: [marketId] }),
+      client.readContract({ address: addresses.riskManager, abi: riskManagerAbi, functionName: "openInterestShort", args: [marketId] }),
+    ]);
+    return { long, short, total: long + short };
+  }
+
+  async function openInterestHistory(marketIdOrSymbol: string, range: OpenInterestRange = "7d"): Promise<OpenInterestPoint[]> {
+    const rows = await apiGet<Array<{ time: number; long: string; short: string }>>(
+      "risk.openInterestHistory",
+      `/v1/perps/${marketIdOrSymbol}/open-interest?range=${range}`,
+    );
+    return rows.map((row) => ({ time: row.time, long: BigInt(row.long), short: BigInt(row.short) }));
+  }
+
+  return { get, openInterest, openInterestHistory };
 }
 
 /// Runs RiskManager's own `check*` view functions (each reverts with a custom error when a rule

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { stringToHex } from "viem";
-import { fmt, fmtBps, fmtCountdown, fmtPrice, fmtSigned, fmtUsd, shortHash } from "./format.js";
+import { fmt, fmtBps, fmtCountdown, fmtPrice, fmtSigned, fmtUsd, shortHash, signTone } from "./format.js";
 import { perpLabel, symbolOf } from "./market.js";
 
 test("prices and money format from base units", () => {
@@ -31,4 +31,13 @@ test("market symbols come from the bytes32 id, so new markets need no code", () 
   assert.equal(symbolOf(nvda), "NVDA");
   assert.equal(perpLabel(nvda), "NVDA-PERP");
   assert.equal(shortHash("0x1234567890abcdef1234567890abcdef12345678"), "0x1234…5678");
+});
+
+test("a figure that rounds to zero shows no sign and no colour", () => {
+  assert.equal(fmtSigned(-4_000n, 6), "$0.00"); // -$0.004
+  assert.equal(signTone(-4_000n, 6), "neutral");
+  assert.equal(fmtSigned(-40_000n, 6), "−$0.04");
+  assert.equal(signTone(-40_000n, 6), "down");
+  assert.equal(signTone(40_000n, 6), "up");
+  assert.equal(signTone(undefined, 6), "muted");
 });
