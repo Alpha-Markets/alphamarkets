@@ -1,13 +1,13 @@
 import { loadDotEnv } from "@orionis/config";
 loadDotEnv();
 
-import { requireEnv, resolveAddresses, ROBINHOOD_TESTNET_CHAIN_ID } from "@orionis/config";
+import { requireEnv, resolveAddresses, resolveChainId } from "@orionis/config";
 import { Orionis } from "@orionis/sdk";
 import { http, type Hex } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { createHedger } from "./hedger.js";
 
-const chainId = ROBINHOOD_TESTNET_CHAIN_ID;
+const chainId = resolveChainId(process.env.CHAIN_ID);
 const account = privateKeyToAccount(requireEnv("HEDGER_PRIVATE_KEY") as Hex);
 const market = requireEnv("HEDGER_MARKET");
 const intervalMs = Number(process.env.HEDGER_INTERVAL_MS ?? 60_000);

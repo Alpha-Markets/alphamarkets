@@ -1,7 +1,7 @@
 import { loadDotEnv } from "@orionis/config";
 loadDotEnv();
 
-import { requireEnv, resolveAddresses, ROBINHOOD_TESTNET_CHAIN_ID } from "@orionis/config";
+import { requireEnv, resolveAddresses, resolveChainId } from "@orionis/config";
 import { Orionis } from "@orionis/sdk";
 import { createPublicClient, http, parseEventLogs } from "viem";
 import { and, eq, lt, sql as sqlOp } from "drizzle-orm";
@@ -23,7 +23,7 @@ if (MAX_BLOCK_RANGE < 1n) {
 const PRICE_SAMPLE_INTERVAL_MS = Number(process.env.PRICE_SAMPLE_INTERVAL_MS ?? 60_000);
 const PRICE_TICK_RETENTION_DAYS = Number(process.env.PRICE_TICK_RETENTION_DAYS ?? 8);
 
-const chainId = ROBINHOOD_TESTNET_CHAIN_ID;
+const chainId = resolveChainId(process.env.CHAIN_ID);
 const addresses = resolveAddresses(chainId);
 const contractNames = contractNamesByAddress(addresses);
 const addressList = watchedAddresses(addresses);

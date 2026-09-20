@@ -1,5 +1,5 @@
 import { randomBytes } from "node:crypto";
-import { requireEnv, ROBINHOOD_TESTNET_CHAIN_ID } from "@orionis/config";
+import { requireEnv, resolveChainId } from "@orionis/config";
 import {
   closeQuoteTypedData,
   fromBaseUnits,
@@ -114,7 +114,7 @@ function randomNonce(): bigint {
 }
 
 export function buildServer(options: PricingOptions = {}) {
-  const chainId = ROBINHOOD_TESTNET_CHAIN_ID;
+  const chainId = resolveChainId(process.env.CHAIN_ID);
   const orionis =
     options.orionis ?? new Orionis({ chainId, transport: http(requireEnv("RPC_URL")) });
   const account = options.account ?? quoterFromEnv();

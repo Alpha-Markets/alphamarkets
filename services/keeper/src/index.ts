@@ -1,14 +1,14 @@
 import { loadDotEnv } from "@orionis/config";
 loadDotEnv();
 
-import { requireEnv, resolveAddresses, ROBINHOOD_TESTNET_CHAIN_ID } from "@orionis/config";
+import { requireEnv, resolveAddresses, resolveChainId } from "@orionis/config";
 import { Orionis } from "@orionis/sdk";
 import { createPublicClient, createWalletClient, http, type Hex } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { chains } from "@orionis/config";
 import { createKeeper } from "./keeper.js";
 
-const chainId = ROBINHOOD_TESTNET_CHAIN_ID;
+const chainId = resolveChainId(process.env.CHAIN_ID);
 const account = privateKeyToAccount(requireEnv("KEEPER_PRIVATE_KEY") as Hex);
 const transport = http(requireEnv("RPC_URL"));
 

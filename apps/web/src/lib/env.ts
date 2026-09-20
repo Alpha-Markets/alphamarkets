@@ -1,4 +1,4 @@
-import { addressesForChain, ROBINHOOD_TESTNET_CHAIN_ID, type ChainId, type ContractAddresses } from "@orionis/config";
+import { addressesForChain, resolveChainId, type ChainId, type ContractAddresses } from "@orionis/config";
 import type { Address } from "@orionis/types";
 
 /// Every value the terminal needs from the environment (PROJECT_BRIEF.md Section 4). Next only
@@ -49,15 +49,7 @@ function wholeNumberList(value: string | undefined, fallback: number[], min: num
   return parsed.length > 0 ? [...new Set(parsed)].sort((a, b) => a - b) : fallback;
 }
 
-function supportedChainId(value: string | undefined): ChainId {
-  const id = Number(value ?? ROBINHOOD_TESTNET_CHAIN_ID);
-  if (id !== ROBINHOOD_TESTNET_CHAIN_ID) {
-    throw new Error(`NEXT_PUBLIC_CHAIN_ID=${value} has no deployment recorded in @orionis/config`);
-  }
-  return id;
-}
-
-const chainId = supportedChainId(raw.chainId);
+const chainId: ChainId = resolveChainId(raw.chainId);
 
 /// The recorded deployment for `chainId`, with any contract address set in the environment
 /// replacing the recorded one for that contract only.

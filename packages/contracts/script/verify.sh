@@ -23,7 +23,7 @@ verify() {
   echo "==> Verifying $contract at $address"
   for ((try = 1; try <= attempts; try++)); do
     if forge verify-contract "$address" "$contract" \
-      --chain-id 46630 \
+      --chain-id "${CHAIN_ID:-${NEXT_PUBLIC_CHAIN_ID:?set CHAIN_ID in .env}}" \
       --verifier blockscout \
       --verifier-url "$EXPLORER_VERIFY_URL" \
       --guess-constructor-args \
