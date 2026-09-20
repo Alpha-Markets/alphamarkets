@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useDismiss } from "@/hooks/useDismiss";
+import { PAGE_FRAME } from "@/lib/frame";
 import { cn } from "@orionis/ui";
 import { WalletButton } from "./WalletButton";
 
@@ -22,15 +23,36 @@ const isCurrent = (pathname: string, href: string) => pathname === href || pathn
 export function Header() {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
+  // On the landing page the header floats over the full-screen hero with no rule under it; once the
+  // page scrolls it takes the page colour so the content beneath does not show through the links.
+  const landing = pathname === "/";
+  const [scrolled, setScrolled] = useState(false);
   const ref = useRef<HTMLElement>(null);
   const close = useCallback(() => setOpen(false), []);
   useDismiss(ref, open, close);
   // A tap on a link changes the page; the sheet has done its job.
   useEffect(() => setOpen(false), [pathname]);
+  useEffect(() => {
+    const main = document.getElementById("main");
+    if (!landing || !main) {
+      setScrolled(false);
+      return;
+    }
+    const onScroll = () => setScrolled(main.scrollTop > 24);
+    onScroll();
+    main.addEventListener("scroll", onScroll, { passive: true });
+    return () => main.removeEventListener("scroll", onScroll);
+  }, [landing]);
 
   return (
-    <header ref={ref} className="relative z-40 shrink-0 border-b border-line bg-ground">
-      <div className="flex h-12 items-center justify-between gap-3 px-4">
+    <header
+      ref={ref}
+      className={cn(
+        "z-40 shrink-0 transition-colors duration-200",
+        landing ? cn("absolute inset-x-0 top-0", scrolled ? "bg-ground/90 backdrop-blur" : "bg-transparent") : "relative border-b border-line bg-ground",
+      )}
+    >
+      <div className={cn("flex h-12 items-center justify-between gap-3", landing ? PAGE_FRAME : "px-4")}>
         <div className="flex h-full items-center gap-8">
           <Link href="/" className="text-sm font-medium tracking-[0.32em]">
             ORIONIS

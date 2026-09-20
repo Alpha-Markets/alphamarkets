@@ -90,6 +90,58 @@ body {
   color: var(--color-ground);
 }
 
+/* Landing ribbons: each one sways a little in y and rotation on its own phase, so the stack reads as
+   cloth moving in a slow current. Lengths are in SVG user units (the backdrop's 1600-wide viewBox). */
+@keyframes silk-sway {
+  from {
+    transform: translate3d(-48px, -22px, 0) rotate(-0.9deg);
+  }
+  to {
+    transform: translate3d(48px, 22px, 0) rotate(0.9deg);
+  }
+}
+
+@keyframes silk-drift {
+  from {
+    transform: translate3d(-200px, 0, 0);
+  }
+  to {
+    transform: translate3d(200px, 0, 0);
+  }
+}
+
+.silk-ribbon {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: silk-sway 10s ease-in-out infinite alternate;
+  will-change: transform;
+}
+
+.silk-drift {
+  animation: silk-drift 22s ease-in-out infinite alternate;
+}
+
+/* The line under the landing hero draws down, holds, then fades: a cue that the page continues. */
+@keyframes silk-cue {
+  0% {
+    transform: scaleY(0);
+    opacity: 1;
+  }
+  60% {
+    transform: scaleY(1);
+    opacity: 1;
+  }
+  100% {
+    transform: scaleY(1);
+    opacity: 0;
+  }
+}
+
+.silk-cue {
+  transform-origin: top;
+  animation: silk-cue 2.4s ease-in-out infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
