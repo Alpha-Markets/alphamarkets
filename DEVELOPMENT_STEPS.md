@@ -22,7 +22,7 @@ Derived from PROJECT_BRIEF.md. Sequenced by MVP Priority 0 → 1 → 2, then pos
 | 3 SDK | Done. Package and docs are ready to publish (`0.1.0`); not published. |
 | 4 Frontend | Done. Accepted with a real wallet on `1.1.0-testnet` (Phase 4) and again on `1.2.0-testnet` (Phase 5: option chain with bid/ask and Greeks, candles, funding and open interest views, limit order placed and cancelled). |
 | 5 Polish | **Done** (2026-09-20): built, tested, deployed as `1.2.0-testnet`, merged into `main` (PR #1) and accepted on testnet. Open follow-ups, none blocking Phase 6: run the keeper continuously (the mock NVDA feed goes stale after 1 hour without it), publish the SDK, explorer verification, and the items marked "not done" in Phase 5. |
-| 6 Rebrand audit | Not started |
+| 6 Rebrand audit | **Done** (2026-09-20): audit clean, brand check added to CI, social preview added. Open follow-ups, none blocking Phase 7: a real logo (needs product input) and explorer labels (blocked by explorer verification). |
 | 7 Post-MVP | Not started |
 
 ---
@@ -214,6 +214,15 @@ Run before any public deployment or handoff:
 - Grep entire repo for `Citadelle`, `CTDL`, `citadelle` — must return zero hits in new code.
 - Confirm package name is `@orionis/sdk`, contract display labels say Orionis, repo/README/docs/metadata/social preview/logos/favicons all rebranded.
 - Do not rename already-deployed immutable contracts unless redeploying; new deployments use Orionis naming only.
+
+**Status: done (2026-09-20).** Audit results:
+
+- Zero hits for `Citadelle`, `CTDL`, `citadelle` in any tracked file name or content, except this file and `PROJECT_BRIEF.md`, which state the rule. Untracked files (`.env`, `deployments/`, `broadcast/`) are clean too.
+- All 11 package names use the `@orionis/` scope (root: `orionis`). The Railway project and the GitHub repository (`rubengitdev/orionis`) are named `orionis`.
+- Contract labels: `OrionisVault`, EIP-712 domain `OrionisOptionsEngine`. Web title, README and metadata say Orionis Markets.
+- Added `scripts/check-brand.sh` (`pnpm check:brand`) and a CI step, so a retired name cannot return unnoticed.
+- Added social preview: Open Graph and Twitter metadata plus a generated `opengraph-image` in the terminal palette. `NEXT_PUBLIC_SITE_URL` sets the absolute URL.
+- **Open follow-ups, not blocking:** a real logo, which needs product input. Only the ring favicon (`apps/web/src/app/icon.svg`) and the text wordmark exist; the social preview reuses them. Also, explorer labels cannot be set from this repo (they depend on explorer verification, which is blocked).
 
 ---
 
