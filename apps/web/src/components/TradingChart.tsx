@@ -24,7 +24,7 @@ export interface ChartLevel {
   token: string;
 }
 
-export type ChartData = { mode: "line"; points: SeriesPoint[] } | { mode: "candles"; candles: CandlePoint[] };
+type ChartData = { mode: "line"; points: SeriesPoint[] } | { mode: "candles"; candles: CandlePoint[] };
 
 interface TradingChartProps {
   data: ChartData;

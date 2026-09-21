@@ -1,15 +1,17 @@
 "use client";
 
+import { cn } from "@alphamarkets/ui";
 import { useMemo } from "react";
 import { useAllMarkets, useMarketOverviews, useMarketStats, usePerpMarkets, useSettlementDecimals } from "@/hooks/queries";
 import { fmtCompactUsd } from "@/lib/format";
+import { PAGE_FRAME } from "@/lib/frame";
 import { symbolOf } from "@/lib/market";
 
-function Figure({ label, children }: { label: string; children: string }) {
+function Figure({ label, className, children }: { label: string; className?: string; children: string }) {
   return (
-    <div className="flex min-w-0 flex-col-reverse justify-end gap-0.5 py-5">
-      <dt className="text-xs text-muted">{label}</dt>
-      <dd className="text-title tabular-nums">{children}</dd>
+    <div className={cn("flex min-w-0 flex-col-reverse justify-end gap-2 py-[21px] sm:py-[35px]", className)}>
+      <dt className="text-sm text-muted">{label}</dt>
+      <dd className="text-[2.25rem] font-light leading-none tracking-[-0.03em] tabular-nums sm:text-[3.25rem]">{children}</dd>
     </div>
   );
 }
@@ -31,11 +33,19 @@ export function LandingStats() {
     settled && decimals !== undefined ? overviews.reduce((sum, query) => sum + (query.data?.openInterest?.total ?? 0n), 0n) : undefined;
 
   return (
-    <dl className="grid grid-cols-2 gap-x-6 border-b border-line px-6 sm:grid-cols-4 sm:px-[68px]">
-      <Figure label="24h volume">{fmtCompactUsd(volume, decimals ?? 0)}</Figure>
-      <Figure label="Open interest">{fmtCompactUsd(openInterest, decimals ?? 0)}</Figure>
-      <Figure label="Perpetual markets">{markets ? String(markets.filter((market) => market.perpsEnabled).length) : "–"}</Figure>
-      <Figure label="Option markets">{markets ? String(markets.filter((market) => market.optionsEnabled).length) : "–"}</Figure>
+    <dl className="border-b border-line">
+      <div className={cn(PAGE_FRAME, "grid grid-cols-2 sm:grid-cols-4")}>
+        <Figure label="24h volume">{fmtCompactUsd(volume, decimals ?? 0)}</Figure>
+        <Figure label="Open interest" className="border-l border-line pl-4 sm:pl-6">
+          {fmtCompactUsd(openInterest, decimals ?? 0)}
+        </Figure>
+        <Figure label="Perpetual markets" className="max-sm:border-t max-sm:border-line sm:border-l sm:border-line sm:pl-6">
+          {markets ? String(markets.filter((market) => market.perpsEnabled).length) : "–"}
+        </Figure>
+        <Figure label="Option markets" className="border-l border-line pl-4 max-sm:border-t sm:pl-6">
+          {markets ? String(markets.filter((market) => market.optionsEnabled).length) : "–"}
+        </Figure>
+      </div>
     </dl>
   );
 }

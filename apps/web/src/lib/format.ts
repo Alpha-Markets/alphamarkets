@@ -65,9 +65,15 @@ export function shortHash(value: string): string {
   return `${value.slice(0, 6)}…${value.slice(-4)}`;
 }
 
+const compact = new Intl.NumberFormat("en-US", { notation: "compact", maximumFractionDigits: 1 });
+
+/// A large number in the fewest characters: 5_700_000 -> "5.7M".
+export function fmtCompact(value: number): string {
+  return compact.format(value);
+}
+
 /// A large figure in the fewest characters: 5_700_000 -> "$5.7M". For headline totals, not tables.
 export function fmtCompactUsd(value: bigint | undefined, decimals: number): string {
   if (value === undefined) return "–";
-  const compact = new Intl.NumberFormat("en-US", { notation: "compact", maximumFractionDigits: 1 });
-  return `$${compact.format(Number(formatUnits(value, decimals)))}`;
+  return `$${fmtCompact(Number(formatUnits(value, decimals)))}`;
 }

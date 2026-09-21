@@ -1,13 +1,12 @@
 import { chains } from "@alphamarkets/config";
 import Link from "next/link";
 import { env } from "@/lib/env";
+import { explorerAddressUrl } from "@/lib/explorer";
 import { PAGE_FRAME } from "@/lib/frame";
 import { X_URL } from "@/lib/social";
 import { listLink } from "@alphamarkets/ui";
 import { Logo } from "./Logo";
 import { XIcon } from "./XIcon";
-
-const explorerAddress = (address: string) => (env.explorerUrl ? `${env.explorerUrl.replace(/\/+$/, "")}/address/${address}` : undefined);
 
 const contracts = [
   { label: "Market registry", address: env.addresses.marketRegistry },
@@ -55,7 +54,7 @@ export function Footer() {
           <div className="flex flex-col gap-2">
             <p className="text-xs text-muted">Contracts</p>
             {contracts.map(({ label, address }) => {
-              const url = address ? explorerAddress(address) : undefined;
+              const url = address ? explorerAddressUrl(env.explorerUrl, address) : undefined;
               return url ? (
                 <a key={label} href={url} target="_blank" rel="noreferrer" className={listLink}>
                   {label}

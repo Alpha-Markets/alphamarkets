@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { PAGE_FRAME } from "@/lib/frame";
 
 /// PROJECT_BRIEF.md Sections 1, 7 and 47, said as plainly as the brief says them.
 const lines = [
@@ -32,7 +33,7 @@ export function StatementBand() {
 
   return (
     <section aria-label="About AlphaMarkets" className="statement-band text-[#eef4f2]">
-      <div className="mx-auto flex max-w-[820px] flex-col gap-10 px-6 py-24 sm:px-[68px] lg:gap-14 lg:py-40">
+      <div className={`${PAGE_FRAME} flex flex-col items-center gap-10 py-24 text-center lg:gap-14 lg:py-40`}>
         {lines.map((line, index) => (
           <p
             key={line}
@@ -40,7 +41,7 @@ export function StatementBand() {
               refs.current[index] = element;
             }}
             data-active={active === index}
-            className="statement-line max-w-[34ch] font-serif text-[1.75rem] font-light leading-[1.2] tracking-[-0.02em] sm:text-[2.25rem]"
+            className="statement-line max-w-[28ch] text-balance font-serif text-[1.75rem] font-light leading-[1.2] tracking-[-0.02em] sm:text-[2.25rem] lg:text-[3.25rem]"
           >
             {line}
           </p>

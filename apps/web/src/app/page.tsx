@@ -6,7 +6,9 @@ import { HeroTerminal } from "@/components/HeroTerminal";
 import { LandingMarkets } from "@/components/LandingMarkets";
 import { LandingStats } from "@/components/LandingStats";
 import { LandingTicker } from "@/components/LandingTicker";
+import { SectionHeader } from "@/components/SectionHeader";
 import { SilkBackdrop } from "@/components/SilkBackdrop";
+import { StackPyramid } from "@/components/StackPyramid";
 import { StatementBand } from "@/components/StatementBand";
 import { PAGE_FRAME } from "@/lib/frame";
 import { cn, interactive, rowLink } from "@alphamarkets/ui";
@@ -67,39 +69,37 @@ export default function Landing() {
 
       <div className="paper">
         <LandingTicker />
-        <div className="mx-auto max-w-[1280px] sm:border-x sm:border-line">
-          <div className="mx-auto max-w-[820px] sm:border-x sm:border-line">
-            <LandingStats />
-            <div className="pt-16 lg:pt-24">
-              <LandingMarkets />
-            </div>
-            <section aria-labelledby="landing-products" className="py-16 lg:py-24">
-              <h2 id="landing-products" className="px-6 pb-4 text-sm text-muted sm:px-[68px]">
-                Products
-              </h2>
-              <ul className="divide-y divide-line border-y border-line">
-                {blocks.map((block) => (
-                  <li key={block.title}>
-                    <Link
-                      href={block.href}
-                      className={cn(
-                        rowLink,
-                        "grid items-baseline gap-x-6 gap-y-1 px-6 py-5 sm:grid-cols-[8rem_1fr_auto] sm:px-[68px]",
-                      )}
-                    >
-                      <span className="text-title font-light">{block.title}</span>
-                      <span className="leading-relaxed text-muted">{block.body}</span>
-                      <span className="mt-2 inline-flex items-center gap-2 text-sm sm:mt-0">
-                        {block.cta}
-                        <ArrowIcon />
-                      </span>
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            </section>
-          </div>
+        <LandingStats />
+        <div className="pt-16 lg:pt-24">
+          <LandingMarkets />
         </div>
+        <section aria-labelledby="landing-products" className="py-16 lg:py-24">
+          <SectionHeader id="landing-products" title="Products" />
+          <ul className="divide-y divide-line border-y border-line">
+            {blocks.map((block) => (
+              <li key={block.title}>
+                <Link href={block.href} className={cn(rowLink, "block")}>
+                  <div className={`${PAGE_FRAME} grid items-baseline gap-x-8 gap-y-2 py-[21px] lg:grid-cols-[16rem_minmax(0,1fr)_auto] lg:py-[28px]`}>
+                    <span className="text-[1.5rem] font-light tracking-[-0.02em] sm:text-[1.75rem]">{block.title}</span>
+                    <span className="text-lg leading-relaxed text-muted">{block.body}</span>
+                    <span className="mt-2 inline-flex items-center gap-2 text-sm lg:mt-0">
+                      {block.cta}
+                      <ArrowIcon />
+                    </span>
+                  </div>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
+        <section aria-labelledby="landing-stack" className="pb-16 lg:pb-24">
+          <SectionHeader id="landing-stack" title="Tech stack">
+            <p className="mt-3 max-w-[52ch] text-lg leading-relaxed text-muted">Each layer stands on the one below it. Pick one to see what it is made of.</p>
+          </SectionHeader>
+          <div className={`${PAGE_FRAME} mt-4 lg:mt-6`}>
+            <StackPyramid />
+          </div>
+        </section>
         <StatementBand />
       </div>
       <Footer />

@@ -43,6 +43,9 @@
   --color-ink: #0f3733;
   --color-ink-soft: #4f6a65;
   --color-pill: #eaefed;
+  /* The mark's own teal, the bright end of the tech stack pyramid. `.paper` re-points the accent to a
+     deeper teal, so the pyramid reads this instead. */
+  --color-mark: #3adbd0;
 
   /* The root font size is 16px, so rem-based text sizes are the usual ones (xs 12, sm 14, base 16).
      The spacing unit stays 3.5px, which keeps every gap, height and padding the terminal was laid

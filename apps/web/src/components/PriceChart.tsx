@@ -8,7 +8,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useCandles, usePerpMarket, usePositions, usePriceHistory, useSettlementDecimals } from "@/hooks/queries";
 import { candleTimeLabel, mergeSeries, toCandlePoints, type CandlePoint } from "@/lib/chart";
 import { env } from "@/lib/env";
-import { PRICE_DECIMALS } from "@/lib/format";
+import { PRICE_DECIMALS, fmtCompact } from "@/lib/format";
 import { symbolOf } from "@/lib/market";
 import { useTerminal } from "@/stores/terminal";
 import { margin } from "@alphamarkets/sdk";
@@ -27,8 +27,6 @@ type Mode = "line" | "candles";
 const INTERVALS: CandleInterval[] = ["5m", "15m", "1h", "1d"];
 
 const toNumber = (value: bigint) => Number(formatUnits(value, PRICE_DECIMALS));
-
-const fmtCompact = (value: number) => new Intl.NumberFormat("en-US", { notation: "compact", maximumFractionDigits: 1 }).format(value);
 
 /// The open, high, low, close and volume of the candle under the cursor (the newest one when the
 /// cursor is elsewhere), laid over the top-left corner of the chart.
