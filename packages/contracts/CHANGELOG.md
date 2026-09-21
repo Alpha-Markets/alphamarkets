@@ -30,6 +30,49 @@ A redeploy used to create 20 new contracts and 20 new addresses, and every clien
 
 TSLA follows the brief's Section 19 example exactly. The brief gives no numbers for AAPL, META or HOOD: AAPL copies the NVDA numbers, META and HOOD copy TSLA's, and the mock prices are placeholders, not market data. The product owner still has to set real risk limits, fees and prices. The new tokens and feeds are not verified on the explorer yet.
 
+## [1.5.0-testnet] - 2026-09-21
+
+The first testnet deployment behind proxies (see the `[Unreleased]` proxy entry below, merged in PR #22), via `script/DeployAll.s.sol`, then `script/ConfigureMarkets.s.sol` and `script/AddMarket.s.sol` for TSLA, AAPL, META and HOOD, from the deployer `0xC804c6c50CE6F5B5dFB035378A3F84145914697F`. First block `122444455` (use it as `INDEXER_START_BLOCK`). It replaces `[1.4.0-testnet]`, which is abandoned: its contracts are not proxies and its state is not carried over.
+
+**These are the last addresses a redeploy changes.** The address column is the proxy, the one every client uses. A later contract change runs `script/UpgradeAll.s.sol`, which deploys new implementations and repoints the proxies; the proxy addresses and all state stay. The settlement token is unchanged (`0x70b0FDa35dEb7BA710C601Ed9c45b9F992027112`).
+
+| Contract | Proxy (use this) | Implementation |
+|---|---|---|
+| MarketRegistry | `0xb87fd9Caa50e13F9Be66e8B20E2E7ff6881978ea` | `0x6851A42B7725065edD994F11A60fa060d2746c4a` |
+| CollateralManager | `0x26F4E54735b608520441d481927E01bC5dD64F97` | `0x43d8dB1C941eB486f78994A7134dBEFeB4017A83` |
+| AlphaMarketsVault | `0x4d33A0A4B2b8d18Aadb1aEa325C46A4147b8f5cB` | `0xD971663C1B6Ab1706E9B432017a8b5F6f7008214` |
+| FeeManager | `0x91f32451000F9c506eBdFC9f20DcBd17fAF806CB` | `0x1133680aBfEf7bf77025c0341bb83eb535360152` |
+| BuybackModule | `0xccF3B81e6cc3A0B29B4b9BF2240979C2DD5f470e` | `0xa599a17CABf4257397EFeAdf1AF2F43c6bE90410` |
+| PriceValidator | `0x9192bA91C97293d93fbaa63c746Abe8085365E9d` | `0xCbf26f9Fb446766E8780cBd016D3Bf6C9Cb6E854` |
+| OracleRouter | `0xEC69d88bd7087599a42Bb66b5CF5E37103AE7a44` | `0x5531834Af5F6001004685f817b68c33f1188BC54` |
+| RiskManager | `0x2058eBA4B711282bAb82179F241dB04DdECc5FB3` | `0x064699e1c25B14DEA3D72566a145462CfdceEB30` |
+| OptionPositionManager | `0x42ee6631c48FAb50Cf6065Ad22D286cBf96E537d` | `0x080Cf32a84F71C9c0904960307E904a649F2482e` |
+| OptionMarket | `0x61Ad7EcC224088dC6d3c7e78D83aB5bf71dba8Ee` | `0x8Dd85B2438e51aeFAb2A3a445C442E5BEfb4FBeD` |
+| OptionsEngine | `0xceb57470bac989Db605f73C608fCAd4A6420C576` | `0x19c53c2E1E8f164711A8AB52ceE39371B7773E39` |
+| PerpPositionManager | `0xC3805D46fF734B65DfBd1117770D058188778315` | `0x6a05cCD58E0063bfd232d6CD78d69a0D90a4fAFf` |
+| PerpOrderManager | `0xd6FD86e71FDE619516601729C441D3d015fF5247` | `0x0Dcb629d30d4B3c20b2C89FAf7354224C3633D2a` |
+| FundingManager | `0x51d889e99751046112C3e9B548E653aa04A3a5b9` | `0x68289EcB9Ff90Cd4DD7E561DEd4253f36313C389` |
+| PerpsEngine | `0x8d80Ab71A773B516E3b5CEb51de99717c0F1C5a1` | `0x2100A761A0551a4a0F96045c6e7B3c129e94Aa44` |
+| LiquidationEngine | `0x725d8b6d2d8522D8F218B1f6B1482D403fB80b07` | `0xE704d925625E5916A1AeFE75C512Bf3AdE445388` |
+| InsuranceFund | `0xE25f898a55090BC91b9C5ed119Da11D211181e31` | `0x414D82B374432565ae3FA5637dC55a7e7b267212` |
+| CrossMarginManager | `0xE328D674734D69c47c1e0b1dC78CB78e5c42d29A` | `0x9beC8787b34DdD73B14360efe10f092E41764808` |
+| SubaccountFactory | `0x0E4Df209df0A09898f0Ee8cb7E45EF5952C1e289` | `0x48F1bCB15aa3516CceA717eD38576727cF78b50B` |
+| RFQManager | `0x98DfBF62399819A508ECFD0E4b605F015970A19e` | `0x708759D32B4391D1157c07C67B0B4fe801576205` |
+
+The option quoter role (`QUOTER_ROLE` on `OptionsEngine`) sits with `QUOTER_ADDRESS` from the root `.env`, not the deployer: `DeployAll` granted it to the deployer by default, and it was moved right after. The RFQ maker role is still the deployer.
+
+Markets, each with a mock token and a mock price feed owned by the keeper (`PRICE_FEED_OWNER`):
+
+| Market | Mock price | Max leverage | Token | Feed |
+|---|---|---|---|---|
+| NVDA | $190 | 10x | `0xc73619F2A4aC5959fEBa7EcCaB320a7AEa1b6f75` | `0x0f3bc4aB34b1182a6548e065ECCf5095eB722001` |
+| TSLA | $350 | 5x | `0x05dc7e7A0D78535356cd458BdCd504e344599500` | `0x98F18355eE68b845145ad433ee01F2d7d7B26373` |
+| AAPL | $230 | 10x | `0xEd74c4E54D8436ff2E877Cfc58f39F6E7C7A9180` | `0x84E22D6139B94457816d47d57a1Ba5e53BF7bBbA` |
+| META | $700 | 5x | `0xa138feF0CB60eaae8B76565a311F47bA85d60054` | `0x8b2c91800fFCae690317819076fF38834FF4C030` |
+| HOOD | $100 | 5x | `0xaAdcF7be21C3724B318b753dcff3F72059d02bb5` | `0xE002C09ef2B6408F8d29Df140680FC77B072A1df` |
+
+Risk limits, fees and prices are the same placeholders as in `[1.4.0-testnet]`. The implementations and the new tokens and feeds are not verified on the explorer yet (`script/verify.sh` verifies the implementations). `packages/config` was synced with `pnpm --filter @alphamarkets/config sync:deployments`.
+
 ## [1.4.0-testnet] - 2026-09-21
 
 Full redeploy to Robinhood Chain testnet (chain ID 46630) via `script/DeployAll.s.sol` then `script/ConfigureMarkets.s.sol`, from the deployer `0xC804c6c50CE6F5B5dFB035378A3F84145914697F`, first block `122118624` (use it as `INDEXER_START_BLOCK`). It replaces `[1.3.0-testnet]`, which is abandoned. Same code as `[1.3.0-testnet]` plus the rebrand and the audit changes below.
