@@ -97,6 +97,7 @@ pnpm --filter @alphamarkets/simulator status   # each wallet's gas, vault balanc
 | `SIM_SEED_NUMBER` | random | Fixes the random choices, for a repeatable run |
 | `SIM_PRICE_KEY` | `KEEPER_PRIVATE_KEY` | Key that owns the mock feeds |
 | `SIM_FUNDER_PRIVATE_KEY` | `PRIVATE_KEY` | Wallet that pays for the bots' gas |
+| `SIM_RPC_PER_SECOND` | `15` | RPC reads a second the simulator may start (a transaction counts as 5); `0` for no limit |
 
 ## `HTTP request failed`
 
@@ -108,6 +109,8 @@ What uses the budget, and what to do:
 - **Other users of the same key.** The hosted indexer, API, pricing service and keeper use the same `RPC_URL`, and so does a second simulator or the test scripts. Set `SIM_RPC_URL` to a key of its own. Run one simulator only: two on the same wallets collide.
 - **A VPN or a slow connection** can add timeouts. Try without the VPN for the run itself.
 - The simulator already tries a rate-limited call again up to six times with a growing delay, and the liquidator checks only the positions the bots know about (one read each) instead of reading every wallet's portfolio each round.
+- **Bursts.** The simulator spaces its RPC calls out to 15 reads a second, and a transaction counts as five reads, so five price transactions at once no longer hit the plan's per-second limit together. Change the rate with `SIM_RPC_PER_SECOND` (`0` turns it off, for a paid key). A price step of one second needs a higher rate or none, or the steps queue up.
+- **Bots read only open positions.** A bot used to read every position its wallet ever had, closed ones too, so its calls grew with each trade. It now reads a closed position once and never again.
 
 To see it yourself, ask the RPC directly (do not paste the URL anywhere public):
 

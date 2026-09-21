@@ -1,10 +1,12 @@
 import type { AlphaMarkets } from "@alphamarkets/sdk";
-import type { Address, PublicClient, WalletClient } from "viem";
+import { parseAbi, type Address, type PublicClient, type WalletClient } from "viem";
 import { decide, nextDelayMs, type MarketView, type Persona, type PositionView } from "./personas.js";
 import { fromFeedPrice } from "./priceModel.js";
 import { between, type Rng } from "./prng.js";
 import { describe, dollars, symbolOf, usd } from "./format.js";
 import { ensureCollateral } from "./funds.js";
+
+const positionManagerAbi = parseAbi(["function getUserPositions(address user) view returns (uint256[])"]);
 
 export interface BotDeps {
   persona: Persona;
@@ -41,16 +43,23 @@ export function createBot(deps: BotDeps): Bot {
   /// When each position was first seen. A restart forgets the real time, which only shifts a hold.
   const seen = new Map<bigint, number>();
 
+  /// Position ids known to be closed. A closed position never opens again, so it is never read again.
+  /// `portfolio.positions` reads every position the wallet ever had, closed ones too, so its cost
+  /// grows with each trade: after some hours it was dozens of calls a bot a round.
+  const closed = new Set<bigint>();
+
   async function positions(now: number, markets: readonly MarketView[]): Promise<PositionView[]> {
-    const { perps } = await alphaMarkets.portfolio.positions(address);
+    const ids = await publicClient.readContract({ address: alphaMarkets.addresses.perpPositionManager, abi: positionManagerAbi, functionName: "getUserPositions", args: [address] });
+    const perps = await Promise.all(ids.filter((id) => !closed.has(id)).map((id) => alphaMarkets.portfolio.getPerpPosition(id)));
+    for (const position of perps) if (!position.open) closed.add(position.positionId);
     const open = perps.filter((position) => position.open);
-    const ids = new Set(open.map((position) => position.positionId));
-    for (const id of [...seen.keys()]) if (!ids.has(id)) seen.delete(id);
-    for (const id of [...mine]) if (!ids.has(id)) {
+    const openIds = new Set(open.map((position) => position.positionId));
+    for (const id of [...seen.keys()]) if (!openIds.has(id)) seen.delete(id);
+    for (const id of [...mine]) if (!openIds.has(id)) {
       mine.delete(id);
       book.delete(id);
     }
-    for (const id of ids) {
+    for (const id of openIds) {
       mine.add(id);
       book.add(id);
     }

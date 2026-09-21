@@ -16,6 +16,7 @@ import { appendNudge } from "./control.js";
 import { createPriceDriver } from "./driver.js";
 import { describe, dollars, stamp, symbolOf, usd } from "./format.js";
 import { ensureCollateral } from "./funds.js";
+import { createThrottledFetch } from "./throttle.js";
 import { generateHistory, historyRows, insertStatements, type TickRow } from "./history.js";
 import { createLiquidator } from "./liquidator.js";
 import { LIQUIDATOR, ROSTER, type MarketView } from "./personas.js";
@@ -36,7 +37,15 @@ const chain = chains[chainId];
 /// The simulator makes many RPC calls. `SIM_RPC_URL` lets it use its own key, so it does not use up the
 /// rate limit that the hosted services (indexer, API, keeper) share. A rate-limited call (HTTP 429) is
 /// tried again a few times, with a growing delay, before it counts as failed.
-const transport = http(process.env.SIM_RPC_URL ?? requireEnv("RPC_URL"), { retryCount: 6, retryDelay: 400, timeout: 20_000 });
+/// `SIM_RPC_PER_SECOND` spaces the calls out, so a burst does not pass the plan's limit (0 turns it off).
+const RPC_PER_SECOND = Number(process.env.SIM_RPC_PER_SECOND ?? 15);
+if (!Number.isFinite(RPC_PER_SECOND)) throw new Error("SIM_RPC_PER_SECOND must be a number (reads a second; 0 for no limit).");
+const transport = http(process.env.SIM_RPC_URL ?? requireEnv("RPC_URL"), {
+  retryCount: 6,
+  retryDelay: 400,
+  timeout: 20_000,
+  fetchFn: createThrottledFetch({ readsPerSecond: RPC_PER_SECOND }),
+});
 const addresses = resolveAddresses(chainId);
 const publicClient = createPublicClient({ chain, transport }) as PublicClient;
 const log = (message: string) => console.log(`${stamp()} ${message}`);
