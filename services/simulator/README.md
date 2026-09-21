@@ -46,7 +46,7 @@ pnpm --filter @alphamarkets/simulator nudge NVDA -6      # down 6%: the long deg
 pnpm --filter @alphamarkets/simulator nudge AAPL 6       # up 6%: the short degen is liquidated
 ```
 
-The move plays out over several price steps (a nudge never moves more than 1% a step), so allow one to two minutes. The liquidator then liquidates the position and the degen opens a new one a moment later. The price then drifts back toward its starting level over roughly an hour; nudge the other way to bring it back sooner.
+The move takes 90 seconds by default. Give the seconds as a third number to change it (`nudge NVDA -6 30`); a nudge never moves more than 1% a step, so a big one may take longer than asked. The liquidator then liquidates the position and the degen opens a new one a moment later. The price then drifts back toward its starting level over roughly an hour; nudge the other way to bring it back sooner.
 
 A nudge is written to `.simulator/nudges.jsonl` and read by the running process, because the price driver owns the feed owner's transaction nonce.
 
@@ -65,6 +65,19 @@ pnpm --filter @alphamarkets/simulator backfill undo   # take it out again
 
 It writes to the database, so it needs a connection: set `SIM_DATABASE_URL` to the public database URL, or the standard `PGHOST`, `PGPORT`, `PGUSER`, `PGPASSWORD` and `PGDATABASE` variables, and have `psql` installed. Pick the 5m or 15m candles in the terminal: the indexer records one price a minute, so 1m candles are flat lines.
 
+## A price line every second
+
+```bash
+SIM_TICK_MS=1000 SIM_VOLATILITY=3 pnpm --filter @alphamarkets/simulator start
+```
+
+The market moves the same amount per minute whatever the step, so a one second step gives smoother, finer moves, not wilder ones. Use `SIM_VOLATILITY` for that. What a fast step costs:
+
+- **Gas.** Each changed price is a transaction, up to five a second. That is roughly 0.005 ETH for 20 minutes at the testnet's gas price, so use it for the recording and not overnight. `bootstrap` sizes the price wallet's gas from `SIM_TICK_MS`: run it with the same setting (`SIM_TICK_MS=1000 pnpm --filter @alphamarkets/simulator bootstrap 1`).
+- **RPC load.** Five transactions a second plus the bots' reads may trip the rate limit of a free RPC key. If the log fills with `HTTP request failed`, use a longer step (2000 or 3000).
+- **What the chart shows.** The indexer still records one price a minute, so candles are the same as at a 15 second step. The one second moves show in the live price, not in the candles.
+- Prices that did not change by a cent are not sent, so the real number of transactions is lower.
+
 ## Other commands
 
 ```bash
@@ -76,7 +89,7 @@ pnpm --filter @alphamarkets/simulator status   # each wallet's gas, vault balanc
 | Variable | Default | Meaning |
 |---|---|---|
 | `SIM_MARKETS` | `NVDA,TSLA,AAPL,META,HOOD` | Markets to move and trade |
-| `SIM_TICK_MS` | `15000` | Time between price steps |
+| `SIM_TICK_MS` | `15000` | Time between price steps, at least 500. `1000` gives a price line every second (see below) |
 | `SIM_VOLATILITY` | `1` | Multiplies the size of the random moves (2 to 3 gives livelier charts) |
 | `SIM_DATABASE_URL` | none | Database URL for `backfill` (or use the `PG*` variables) |
 | `SIM_LIQUIDATE_WALLETS` | none | Extra wallets the liquidator watches |

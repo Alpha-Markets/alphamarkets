@@ -32,6 +32,10 @@ export interface Nudge {
 /// Largest move of one step (random or nudge), so no single push looks like a glitch.
 export const MAX_NUDGE_STEP = 0.01;
 
+/// The step length the model's numbers are written for. A shorter or longer step scales them, so the
+/// market moves the same amount per minute whatever the tick.
+export const BASE_TICK_SECONDS = 15;
+
 export const CALM_MARKET: ModelOptions = { correlation: 0.5, reversion: 0.004, maxStep: 0.004, maxDrift: 0.12 };
 
 /// Some stocks move more than others: a multiplier on the base volatility.
@@ -40,12 +44,13 @@ export const SYMBOL_VOLATILITY: Record<string, number> = { NVDA: 1.2, TSLA: 1.4,
 /// A sensible per-step volatility: about 0.04% per 15 seconds, roughly 0.7% over an hour.
 export const CALM_SIGMA = 0.0004;
 
-/// Plans a nudge of `pct` percent (negative for down) over at least `steps` steps, never moving more
-/// than `MAX_NUDGE_STEP` per step.
-export function planNudge(symbol: string, pct: number, steps: number): Nudge {
+/// Plans a nudge of `pct` percent (negative for down) over `seconds`, in steps of `tickSeconds`, and never
+/// moving more than `MAX_NUDGE_STEP` per step (so a big nudge may take longer than asked).
+export function planNudge(symbol: string, pct: number, seconds: number, tickSeconds = BASE_TICK_SECONDS): Nudge {
   if (!Number.isFinite(pct) || pct === 0) throw new Error("nudge: give a percentage other than 0");
+  if (!Number.isFinite(seconds) || seconds <= 0) throw new Error("nudge: give a duration in seconds above 0");
   const total = pct / 100;
-  const count = Math.max(1, Math.ceil(steps), Math.ceil(Math.abs(total) / MAX_NUDGE_STEP));
+  const count = Math.max(1, Math.ceil(seconds / tickSeconds), Math.ceil(Math.abs(total) / MAX_NUDGE_STEP));
   return { symbol, remainingSteps: count, stepFraction: total / count };
 }
 
@@ -58,22 +63,26 @@ export function toCents(price: number): number {
   return Math.round(price * 100) / 100;
 }
 
-/// One step of every market. Returns the new models and the nudges still running. Pure: the same
-/// inputs and random generator always give the same result.
+/// One step of every market, `tickSeconds` long. Returns the new models and the nudges still running.
+/// Pure: the same inputs and random generator always give the same result.
 export function stepMarkets(
   markets: readonly MarketModel[],
   nudges: readonly Nudge[],
   rng: Rng,
   options: ModelOptions = CALM_MARKET,
+  tickSeconds = BASE_TICK_SECONDS,
 ): { markets: MarketModel[]; nudges: Nudge[] } {
+  // Volatility grows with the square root of time, a pull back to the anchor with time itself.
+  const scale = tickSeconds / BASE_TICK_SECONDS;
+  const spread = Math.sqrt(scale);
   const common = gaussian(rng);
   const weightCommon = Math.sqrt(options.correlation);
   const weightOwn = Math.sqrt(1 - options.correlation);
 
   const next = markets.map((market) => {
     const shock = weightCommon * common + weightOwn * gaussian(rng);
-    const pull = (options.reversion * (market.anchor - market.price)) / market.anchor;
-    const random = clamp(market.sigma * shock + pull, -options.maxStep, options.maxStep);
+    const pull = (options.reversion * scale * (market.anchor - market.price)) / market.anchor;
+    const random = clamp(market.sigma * spread * shock + pull, -options.maxStep * spread, options.maxStep * spread);
     const nudge = nudges.find((n) => n.symbol === market.symbol && n.remainingSteps > 0);
     const move = random + (nudge?.stepFraction ?? 0);
     const price = clamp(
