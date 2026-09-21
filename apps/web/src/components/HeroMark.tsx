@@ -23,7 +23,9 @@ export function HeroMark() {
 
   useEffect(() => {
     const element = root.current;
-    if (!element) return;
+    // Hidden on a phone: nothing to animate, and the GSAP chunk is not worth loading for it. If the
+    // window is widened later, the CSS fade in globals.css shows the mark after 3 s.
+    if (!element || element.offsetParent === null) return;
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)");
     let stop: (() => void) | undefined;
     let cancelled = false;

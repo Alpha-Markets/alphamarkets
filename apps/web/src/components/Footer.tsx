@@ -32,7 +32,7 @@ export function Footer() {
       </div>
       <div className="bg-ink text-[#eef4f2]">
         <div className={`${PAGE_FRAME} grid gap-8 py-12 sm:grid-cols-[1fr_auto_auto] sm:gap-x-24`}>
-          <div>
+          <div className="flex flex-col items-center text-center sm:items-start sm:text-left">
             <Logo size="lg" />
             <p className="mt-2 max-w-xs text-muted">Derivatives for tokenized equities.</p>
             <p className="mt-4 flex w-fit items-center gap-2 rounded-md border border-line px-2 py-1 text-xs text-muted">
@@ -44,14 +44,14 @@ export function Footer() {
               Follow on X
             </a>
           </div>
-          <nav aria-label="Product" className="flex flex-col gap-2">
+          <nav aria-label="Product" className="flex flex-col items-center gap-2 sm:items-start">
             <p className="text-xs text-muted">Product</p>
             <Link href="/markets" className={listLink}>Markets</Link>
             <Link href="/options" className={listLink}>Options</Link>
             <Link href="/perpetuals" className={listLink}>Perpetuals</Link>
             <Link href="/portfolio" className={listLink}>Portfolio</Link>
           </nav>
-          <div className="flex flex-col gap-2">
+          <div className="flex flex-col items-center gap-2 sm:items-start">
             <p className="text-xs text-muted">Contracts</p>
             {contracts.map(({ label, address }) => {
               const url = address ? explorerAddressUrl(env.explorerUrl, address) : undefined;

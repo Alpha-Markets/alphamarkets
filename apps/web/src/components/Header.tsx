@@ -3,11 +3,13 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useAccount } from "wagmi";
 import { useDismiss } from "@/hooks/useDismiss";
 import { PAGE_FRAME } from "@/lib/frame";
 import { X_URL } from "@/lib/social";
 import { chip, cn, menuItem, pill } from "@alphamarkets/ui";
 import { Logo } from "./Logo";
+import { MenuIcon } from "./MenuIcon";
 import { WalletButton } from "./WalletButton";
 import { XIcon } from "./XIcon";
 
@@ -29,6 +31,7 @@ const isCurrent = (pathname: string, href: string) => pathname === href || pathn
 
 export function Header() {
   const pathname = usePathname();
+  const { isConnected } = useAccount();
   const [open, setOpen] = useState(false);
   // On the landing page the header floats over the hero, transparent, while the page is at the top. Its
   // bubbles carry their own fills. Once the page scrolls it takes a solid fill: text scrolling up under
@@ -89,24 +92,30 @@ export function Header() {
             target="_blank"
             rel="noreferrer"
             aria-label="AlphaMarkets on X"
-            className={cn(chip, "size-11 shrink-0 justify-center rounded-lg! max-lg:size-10 max-[359px]:hidden")}
+            className={cn(chip, "size-11 shrink-0 justify-center rounded-lg! max-lg:size-10")}
           >
             <XIcon />
           </a>
-          <WalletButton />
+          {/* On a phone the wallet button lives at the bottom of the menu, which leaves the bar to the logo, X and the menu button. */}
+          <div className="max-lg:hidden">
+            <WalletButton />
+          </div>
           <button
             type="button"
+            aria-label={open ? "Close menu" : "Open menu"}
             aria-expanded={open}
             aria-controls="mobile-nav"
             onClick={() => setOpen((value) => !value)}
-            className={cn(chip, "h-10 rounded-lg! px-4 text-[13px] font-medium uppercase tracking-[0.04em] lg:hidden")}
+            className={cn(chip, "relative size-10 justify-center rounded-lg! lg:hidden")}
           >
-            {open ? "Close" : "Menu"}
+            <MenuIcon open={open} />
+            {/* A connected wallet is out of sight in the menu, so the button says so. */}
+            {isConnected && !open ? <span aria-hidden="true" className="absolute right-1.5 top-1.5 size-2 rounded-full bg-up" /> : null}
           </button>
         </div>
       </div>
       {open ? (
-        <nav id="mobile-nav" aria-label="Primary mobile" className="absolute inset-x-0 top-full bg-ground lg:hidden">
+        <nav id="mobile-nav" aria-label="Primary mobile" className="absolute inset-x-0 top-full max-h-[calc(100dvh-4rem)] overflow-y-auto bg-ground lg:hidden">
           {items.map((item) => {
             const current = isCurrent(pathname, item.href);
             return (
@@ -123,16 +132,9 @@ export function Header() {
               </Link>
             );
           })}
-          {/* The header button hides on the narrowest phones, where the bar has no room for it. */}
-          <a
-            href={X_URL}
-            target="_blank"
-            rel="noreferrer"
-            className={cn("flex h-12 items-center gap-2 bg-raised px-4 text-base font-medium text-muted min-[360px]:hidden", menuItem)}
-          >
-            <XIcon />
-            AlphaMarkets on X
-          </a>
+          <div className="p-4">
+            <WalletButton className="h-12! rounded-lg! text-[13px]! uppercase tracking-[0.04em]" block menuAbove />
+          </div>
         </nav>
       ) : null}
     </header>

@@ -104,7 +104,8 @@ export function HeroTerminal() {
         aria-label="Terminal preview"
         className="relative overflow-hidden rounded-[14px] border border-line bg-surface shadow-[0_40px_90px_-30px_rgb(0_0_0/0.75)]"
       >
-        <div className="flex gap-1.5 overflow-x-auto border-b border-line p-3">
+        {/* Auto margins on the first and last tab centre the row on a phone yet still let it scroll when it overflows. */}
+        <div className="flex gap-1.5 overflow-x-auto border-b border-line p-3 max-sm:[&>:first-child]:ml-auto max-sm:[&>:last-child]:mr-auto">
           {symbols.map((item) => (
             <button
               key={item}
