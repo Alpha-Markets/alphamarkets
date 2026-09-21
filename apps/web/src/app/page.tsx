@@ -34,13 +34,16 @@ export default function Landing() {
       <section className="relative min-h-[calc(100dvh-4.5rem)] shrink-0 overflow-hidden">
         <SilkBackdrop />
         <div className={`${PAGE_FRAME} relative grid min-h-[calc(100dvh-4.5rem)] grid-cols-[minmax(0,1fr)] items-center gap-x-16 gap-y-12 pb-12 pt-24 lg:grid-cols-2 lg:pb-16`}>
-          <div className="flex flex-col items-start">
-            <HeroMark />
-            <h1 className="mt-8 max-w-[14ch] text-balance font-serif text-[2.5rem] font-light leading-[1.04] tracking-[-0.03em] sm:text-[3.75rem] lg:text-[clamp(3rem,4.5vw,4.5rem)]">
+          <div className="flex flex-col items-center text-center sm:items-start sm:text-left">
+            {/* On a phone the header already carries the mark, so the hero opens on the headline. */}
+            <div className="max-sm:hidden">
+              <HeroMark />
+            </div>
+            <h1 className="max-w-[14ch] sm:mt-8 text-balance font-serif text-[2.5rem] font-light leading-[1.04] tracking-[-0.03em] sm:text-[3.75rem] lg:text-[clamp(3rem,4.5vw,4.5rem)]">
               Derivatives for Tokenized Equities.
             </h1>
             <p className="mt-6 max-w-[40ch] text-lg leading-relaxed text-muted">Trade options and perpetual derivatives on tokenized markets.</p>
-            <div className="mt-10 flex flex-wrap gap-2">
+            <div className="mt-10 flex flex-wrap justify-center gap-2 sm:justify-start">
               <Link
                 href="/perpetuals"
                 className={cn(

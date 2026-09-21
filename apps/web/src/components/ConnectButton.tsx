@@ -21,7 +21,18 @@ function connectMessage(error: Error): string {
 
 /// One button for every place that needs a wallet. With one wallet available it connects straight
 /// away; with several it opens a list; when connecting fails it says why.
-export function ConnectButton({ variant = "primary", size = "md", className }: Pick<ButtonProps, "variant" | "size" | "className">) {
+export function ConnectButton({
+  variant = "primary",
+  size = "md",
+  className,
+  block = false,
+  menuAbove = false,
+}: Pick<ButtonProps, "variant" | "size" | "className"> & {
+  /// Fill the width of the parent, for the mobile menu.
+  block?: boolean;
+  /// Open the wallet list above the button, for a button at the bottom of a sheet.
+  menuAbove?: boolean;
+}) {
   const { connect, isPending, error, reset } = useConnect();
   const choices = useWalletChoices();
   const [open, setOpen] = useState(false);
@@ -42,12 +53,12 @@ export function ConnectButton({ variant = "primary", size = "md", className }: P
   }
 
   return (
-    <div ref={ref} className="relative">
-      <Button variant={variant} size={size} className={className} disabled={isPending} aria-haspopup={choices.length > 1 ? "menu" : undefined} aria-expanded={open} onClick={start}>
+    <div ref={ref} className={cn("relative", block && "w-full")}>
+      <Button variant={variant} size={size} className={cn(className, block && "w-full")} disabled={isPending} aria-haspopup={choices.length > 1 ? "menu" : undefined} aria-expanded={open} onClick={start}>
         {isPending ? "Connecting…" : "Connect wallet"}
       </Button>
       {open ? (
-        <div role="menu" className="absolute right-0 top-full z-50 mt-1 w-64 rounded-lg border border-line bg-raised p-1">
+        <div role="menu" className={cn("absolute right-0 z-50 w-64 max-w-full rounded-lg border border-line bg-raised p-1", menuAbove ? "bottom-full mb-1" : "top-full mt-1")}>
           {error ? (
             <p role="alert" className="p-2 text-xs leading-snug text-down">
               {connectMessage(error)}
