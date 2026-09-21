@@ -224,10 +224,13 @@ export function useOptionStats(symbol: string, expiry: bigint | undefined) {
   });
 }
 
+/// The most candles the API returns. The chart opens on the newest ones; the rest is one zoom-out away.
+const CANDLE_LIMIT = 500;
+
 export function useCandles(symbol: string, interval: CandleInterval) {
   return useQuery({
     queryKey: ["candles", symbol, interval],
-    queryFn: () => alphaMarketsRead.prices.candles(symbol, interval, 120),
+    queryFn: () => alphaMarketsRead.prices.candles(symbol, interval, CANDLE_LIMIT),
     enabled: Boolean(symbol && env.apiUrl),
     refetchInterval: 30_000,
     retry: false,
