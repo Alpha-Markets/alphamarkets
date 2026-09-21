@@ -34,6 +34,9 @@ export const MAX_NUDGE_STEP = 0.01;
 
 export const CALM_MARKET: ModelOptions = { correlation: 0.5, reversion: 0.004, maxStep: 0.004, maxDrift: 0.12 };
 
+/// Some stocks move more than others: a multiplier on the base volatility.
+export const SYMBOL_VOLATILITY: Record<string, number> = { NVDA: 1.2, TSLA: 1.4, AAPL: 0.8, META: 1.0, HOOD: 1.6 };
+
 /// A sensible per-step volatility: about 0.04% per 15 seconds, roughly 0.7% over an hour.
 export const CALM_SIGMA = 0.0004;
 

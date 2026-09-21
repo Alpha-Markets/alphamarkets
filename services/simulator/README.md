@@ -32,7 +32,10 @@ pnpm --filter @alphamarkets/simulator start
 
 Stop it with Ctrl+C. It logs every trade, every price step and every liquidation. Bots keep their positions open while it is stopped; they pick up again on the next start.
 
-**Start it two to three hours before you record.** Candles and the price history come from indexed price ticks, and the chain has no backfill, so a chart that has only just started looks empty.
+**A chart needs history.** Candles come from the price ticks the indexer records once a minute, and the chain has no backfill, so a chart of a market that has only just started looks empty. Two ways to fill it:
+
+- **Wait.** Start the simulator 15 to 20 minutes before you record, or longer for a fuller chart.
+- **Draw the history** with `backfill`, below, to have candles at once.
 
 ## Get a liquidation on camera
 
@@ -49,6 +52,19 @@ A nudge is written to `.simulator/nudges.jsonl` and read by the running process,
 
 To also liquidate positions of your own wallet (a position you open by hand while recording), set `SIM_LIQUIDATE_WALLETS` to a comma-separated list of addresses before `start`.
 
+## Have candles at once (`backfill`)
+
+```bash
+pnpm --filter @alphamarkets/simulator backfill 8      # eight hours of history
+pnpm --filter @alphamarkets/simulator backfill undo   # take it out again
+```
+
+`backfill` draws simulated prices for the hours before the first price the indexer recorded (one a minute per market, in moods that change every hour or two) and writes them to the indexer's `price_ticks` table. That table is a display cache for charts and the 24 hour change: it never feeds settlement or liquidation, which read the oracle on chain. The drawn prices end at the first real price, so they join it without a jump. Volume on those candles is 0, because no trades happened.
+
+**These candles are simulated, not recorded. Say so wherever you show them.** `undo` removes exactly the rows `backfill` added (it saves their time range in `.simulator/backfill.json`); run it before you want the chart to show only recorded prices.
+
+It writes to the database, so it needs a connection: set `SIM_DATABASE_URL` to the public database URL, or the standard `PGHOST`, `PGPORT`, `PGUSER`, `PGPASSWORD` and `PGDATABASE` variables, and have `psql` installed. Pick the 5m or 15m candles in the terminal: the indexer records one price a minute, so 1m candles are flat lines.
+
 ## Other commands
 
 ```bash
@@ -61,7 +77,8 @@ pnpm --filter @alphamarkets/simulator status   # each wallet's gas, vault balanc
 |---|---|---|
 | `SIM_MARKETS` | `NVDA,TSLA,AAPL,META,HOOD` | Markets to move and trade |
 | `SIM_TICK_MS` | `15000` | Time between price steps |
-| `SIM_VOLATILITY` | `1` | Multiplies the size of the random moves (2 gives livelier charts) |
+| `SIM_VOLATILITY` | `1` | Multiplies the size of the random moves (2 to 3 gives livelier charts) |
+| `SIM_DATABASE_URL` | none | Database URL for `backfill` (or use the `PG*` variables) |
 | `SIM_LIQUIDATE_WALLETS` | none | Extra wallets the liquidator watches |
 | `SIM_SEED_NUMBER` | random | Fixes the random choices, for a repeatable run |
 | `SIM_PRICE_KEY` | `KEEPER_PRIVATE_KEY` | Key that owns the mock feeds |
