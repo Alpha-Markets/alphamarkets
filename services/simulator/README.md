@@ -74,7 +74,7 @@ SIM_TICK_MS=1000 SIM_VOLATILITY=3 pnpm --filter @alphamarkets/simulator start
 The market moves the same amount per minute whatever the step, so a one second step gives smoother, finer moves, not wilder ones. Use `SIM_VOLATILITY` for that. What a fast step costs:
 
 - **Gas.** Each changed price is a transaction, up to five a second. That is roughly 0.005 ETH for 20 minutes at the testnet's gas price, so use it for the recording and not overnight. `bootstrap` sizes the price wallet's gas from `SIM_TICK_MS`: run it with the same setting (`SIM_TICK_MS=1000 pnpm --filter @alphamarkets/simulator bootstrap 1`).
-- **RPC load.** Five transactions a second plus the bots' reads may trip the rate limit of a free RPC key. If the log fills with `HTTP request failed`, use a longer step (2000 or 3000).
+- **RPC load.** Sending a transaction costs an RPC provider far more than a read, and five a second is more than a free plan allows. Below 5000 ms the simulator warns at start. On a free key use 5000 or more; for one second, use a paid key in `SIM_RPC_URL`.
 - **What the chart shows.** The indexer still records one price a minute, so candles are the same as at a 15 second step. The one second moves show in the live price, not in the candles.
 - Prices that did not change by a cent are not sent, so the real number of transactions is lower.
 
@@ -89,6 +89,7 @@ pnpm --filter @alphamarkets/simulator status   # each wallet's gas, vault balanc
 | Variable | Default | Meaning |
 |---|---|---|
 | `SIM_MARKETS` | `NVDA,TSLA,AAPL,META,HOOD` | Markets to move and trade |
+| `SIM_RPC_URL` | `RPC_URL` | RPC endpoint for the simulator only. Give it its own key, so it does not use up the rate limit the hosted services share |
 | `SIM_TICK_MS` | `15000` | Time between price steps, at least 500. `1000` gives a price line every second (see below) |
 | `SIM_VOLATILITY` | `1` | Multiplies the size of the random moves (2 to 3 gives livelier charts) |
 | `SIM_DATABASE_URL` | none | Database URL for `backfill` (or use the `PG*` variables) |
@@ -96,6 +97,25 @@ pnpm --filter @alphamarkets/simulator status   # each wallet's gas, vault balanc
 | `SIM_SEED_NUMBER` | random | Fixes the random choices, for a repeatable run |
 | `SIM_PRICE_KEY` | `KEEPER_PRIVATE_KEY` | Key that owns the mock feeds |
 | `SIM_FUNDER_PRIVATE_KEY` | `PRIVATE_KEY` | Wallet that pays for the bots' gas |
+
+## `HTTP request failed`
+
+The RPC provider is refusing calls, almost always with HTTP 429: too many requests for the plan (a free Alchemy key allows only a few hundred compute units a second, and a transaction costs the most). Symptoms: many `could not trade`, `could not push` and `could not read` lines at once. It is not a bug in the contracts or the chain.
+
+What uses the budget, and what to do:
+
+- **A short price step.** Every changed price is a transaction. Use the default `SIM_TICK_MS=15000`, or at least 5000.
+- **Other users of the same key.** The hosted indexer, API, pricing service and keeper use the same `RPC_URL`, and so does a second simulator or the test scripts. Set `SIM_RPC_URL` to a key of its own. Run one simulator only: two on the same wallets collide.
+- **A VPN or a slow connection** can add timeouts. Try without the VPN for the run itself.
+- The simulator already tries a rate-limited call again up to six times with a growing delay, and the liquidator checks only the positions the bots know about (one read each) instead of reading every wallet's portfolio each round.
+
+To see it yourself, ask the RPC directly (do not paste the URL anywhere public):
+
+```bash
+curl -s -w "\nhttp %{http_code}\n" -X POST -H 'content-type: application/json' --data '{"jsonrpc":"2.0","id":1,"method":"eth_blockNumber","params":[]}' "$RPC_URL"
+```
+
+`http 429` means throttled; `http 200` with a block number means the endpoint is fine at that moment.
 
 ## Things to know
 

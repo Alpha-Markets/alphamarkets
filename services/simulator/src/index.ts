@@ -33,7 +33,10 @@ const VOLATILITY = Number(process.env.SIM_VOLATILITY ?? 1);
 
 const chainId = resolveChainId(process.env.CHAIN_ID);
 const chain = chains[chainId];
-const transport = http(requireEnv("RPC_URL"));
+/// The simulator makes many RPC calls. `SIM_RPC_URL` lets it use its own key, so it does not use up the
+/// rate limit that the hosted services (indexer, API, keeper) share. A rate-limited call (HTTP 429) is
+/// tried again a few times, with a growing delay, before it counts as failed.
+const transport = http(process.env.SIM_RPC_URL ?? requireEnv("RPC_URL"), { retryCount: 6, retryDelay: 400, timeout: 20_000 });
 const addresses = resolveAddresses(chainId);
 const publicClient = createPublicClient({ chain, transport }) as PublicClient;
 const log = (message: string) => console.log(`${stamp()} ${message}`);
@@ -154,8 +157,9 @@ async function start() {
       return { symbol: m.symbol, price: m.price, returnPct: first === 0 ? 0 : ((m.price - first) / first) * 100, ...limits };
     });
 
+  const book = new Set<bigint>();
   const bots: Bot[] = traders.map(({ persona, account }) =>
-    createBot({ persona, alphaMarkets: sdkFor(account), publicClient, walletClient: walletFor(account), token, decimals, rng, markets: marketViews, log }),
+    createBot({ persona, alphaMarkets: sdkFor(account), publicClient, walletClient: walletFor(account), token, decimals, rng, markets: marketViews, book, log }),
   );
   const extra = (process.env.SIM_LIQUIDATE_WALLETS ?? "").split(",").map((s) => s.trim()).filter((s): s is Address => isAddress(s));
   const liquidator = createLiquidator({
@@ -163,7 +167,8 @@ async function start() {
     publicClient,
     walletClient: walletFor(liquidatorAccount),
     engine: addresses.liquidationEngine,
-    watch: () => [...bots.map((b) => b.address), ...extra],
+    book,
+    wallets: () => extra,
     log,
   });
 
@@ -189,6 +194,7 @@ async function start() {
     }
   };
 
+  if (TICK_MS < 5_000) log(`warning: a price step of ${TICK_MS / 1000}s sends up to ${marketIds.length} transactions a step. A free RPC plan rate-limits that (you will see "HTTP request failed"); use SIM_TICK_MS=5000 or more, or a paid key in SIM_RPC_URL.`);
   log(`simulator: ${marketIds.map((m) => m.symbol).join(", ")}; ${bots.length} traders, 1 liquidator; prices every ${TICK_MS / 1000}s. Ctrl+C to stop.`);
   await Promise.all([
     every(TICK_MS, 0, async () => {
