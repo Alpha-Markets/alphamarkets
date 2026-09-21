@@ -15,6 +15,8 @@ export interface BotDeps {
   decimals: number;
   rng: Rng;
   markets: () => MarketView[];
+  /// Every bot's open position ids, shared with the liquidator so it need not read portfolios.
+  book: Set<bigint>;
   log: (message: string) => void;
 }
 
@@ -31,6 +33,9 @@ export function createBot(deps: BotDeps): Bot {
   if (!account) throw new Error(`${persona.id}: the wallet client needs an account`);
   const address = account.address;
   const say = (message: string) => log(`${persona.id}: ${message}`);
+  const book = deps.book;
+  /// This bot's own open ids, to take out of the shared book the ones that closed.
+  const mine = new Set<bigint>();
 
   let nextAt = 0;
   /// When each position was first seen. A restart forgets the real time, which only shifts a hold.
@@ -41,6 +46,14 @@ export function createBot(deps: BotDeps): Bot {
     const open = perps.filter((position) => position.open);
     const ids = new Set(open.map((position) => position.positionId));
     for (const id of [...seen.keys()]) if (!ids.has(id)) seen.delete(id);
+    for (const id of [...mine]) if (!ids.has(id)) {
+      mine.delete(id);
+      book.delete(id);
+    }
+    for (const id of ids) {
+      mine.add(id);
+      book.add(id);
+    }
 
     return open.flatMap((position) => {
       const symbol = symbolOf(position.marketId);
@@ -80,11 +93,15 @@ export function createBot(deps: BotDeps): Bot {
           tx: { wait: true },
         });
         seen.set(positionId, now);
+        mine.add(positionId);
+        book.add(positionId);
         say(`opened ${action.side} ${action.symbol} ${usd(action.collateral * action.leverage)} at ${action.leverage}x (#${positionId})`);
       } else if (action.kind === "close") {
         const position = open.find((p) => p.id === action.id);
         await alphaMarkets.perps.closePosition(action.id, { tx: { wait: true } });
         seen.delete(action.id);
+        mine.delete(action.id);
+        book.delete(action.id);
         say(`closed ${position?.side ?? ""} ${position?.symbol ?? ""} #${action.id} (${action.reason}, ${position ? position.pnlPct.toFixed(1) : "?"}% on margin)`.replace(/\s+/g, " "));
       }
     } catch (error) {
