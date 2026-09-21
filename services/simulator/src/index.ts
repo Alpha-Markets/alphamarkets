@@ -26,8 +26,9 @@ import { deriveAccount, loadSeed } from "./wallets.js";
 const STATE_DIR = fileURLToPath(new URL("../../../.simulator", import.meta.url));
 const SYMBOLS = (process.env.SIM_MARKETS ?? "NVDA,TSLA,AAPL,META,HOOD").split(",").map((s) => s.trim().toUpperCase());
 const TICK_MS = Number(process.env.SIM_TICK_MS ?? 15_000);
-/// Window of the "recent move" that trend and reverter bots react to.
-const HISTORY_TICKS = 20;
+if (!Number.isFinite(TICK_MS) || TICK_MS < 500) throw new Error("SIM_TICK_MS must be at least 500 (half a second).");
+/// Window of the "recent move" that trend and reverter bots react to: about five minutes of steps.
+const HISTORY_TICKS = Math.min(600, Math.max(20, Math.ceil(300_000 / TICK_MS)));
 const VOLATILITY = Number(process.env.SIM_VOLATILITY ?? 1);
 
 const chainId = resolveChainId(process.env.CHAIN_ID);
@@ -133,7 +134,7 @@ async function start() {
     risk.set(symbol, { maxLeverage: Number(info.risk.maxLeverage), maxNotional: dollars(info.risk.maxPositionNotional, decimals) });
   }
 
-  const driver = await createPriceDriver({ publicClient, walletClient: walletFor(owner), router: addresses.oracleRouter, marketIds, stateDir: STATE_DIR, rng, volatility: VOLATILITY, log });
+  const driver = await createPriceDriver({ publicClient, walletClient: walletFor(owner), router: addresses.oracleRouter, marketIds, stateDir: STATE_DIR, rng, volatility: VOLATILITY, tickMs: TICK_MS, log });
 
   const history = new Map<string, number[]>();
   const record = () => {
@@ -184,7 +185,7 @@ async function start() {
       } catch (error) {
         log(`error: ${describe(error)}`);
       }
-      await sleep(Math.max(1_000, ms - (Date.now() - began)));
+      await sleep(Math.max(Math.min(1_000, ms), ms - (Date.now() - began)));
     }
   };
 
@@ -290,12 +291,12 @@ try {
   else if (command === "status") await status();
   else if (command === "backfill") await backfill(args[0]);
   else if (command === "nudge") {
-    const [symbol, pct, steps] = args;
-    if (!symbol || pct === undefined || !Number.isFinite(Number(pct))) throw new Error("Usage: nudge <SYMBOL> <percent> [steps], e.g. nudge NVDA -6");
-    appendNudge(STATE_DIR, { symbol: symbol.toUpperCase(), pct: Number(pct), steps: Number(steps ?? 6) });
+    const [symbol, pct, seconds] = args;
+    if (!symbol || pct === undefined || !Number.isFinite(Number(pct))) throw new Error("Usage: nudge <SYMBOL> <percent> [seconds], e.g. nudge NVDA -6 90");
+    appendNudge(STATE_DIR, { symbol: symbol.toUpperCase(), pct: Number(pct), seconds: Number(seconds ?? 90) });
     console.log(`Asked the running simulator to move ${symbol.toUpperCase()} by ${pct}%. It plays out over the next ticks.`);
   } else {
-    console.log("Commands: bootstrap [hours] | start | status | nudge <SYMBOL> <percent> [steps] | backfill [hours|undo]");
+    console.log("Commands: bootstrap [hours] | start | status | nudge <SYMBOL> <percent> [seconds] | backfill [hours|undo]");
     process.exit(command ? 1 : 0);
   }
 } catch (error) {

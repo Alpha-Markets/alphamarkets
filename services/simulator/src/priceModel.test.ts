@@ -49,7 +49,7 @@ test("prices are quoted in whole cents", () => {
 });
 
 test("a nudge moves one market by about the asked percentage and leaves the other alone", () => {
-  const nudge = planNudge("NVDA", -6, 6);
+  const nudge = planNudge("NVDA", -6, 90);
   const path = run(nudge.remainingSteps, 5, [nudge]);
   const last = path[path.length - 1]!;
   const nvda = last[0]!.price / 190 - 1;
@@ -59,7 +59,7 @@ test("a nudge moves one market by about the asked percentage and leaves the othe
 });
 
 test("a nudge plays out over several steps and then ends", () => {
-  const nudge = planNudge("NVDA", 5, 1);
+  const nudge = planNudge("NVDA", 5, 15);
   assert.ok(nudge.remainingSteps >= 5, "5% needs at least five steps of 1%");
   assert.ok(Math.abs(nudge.stepFraction) <= MAX_NUDGE_STEP + 1e-12);
   const rng = createRng(2);
@@ -76,11 +76,49 @@ test("a nudge cannot push a price past the drift limit", () => {
 });
 
 test("planNudge refuses a zero move", () => {
-  assert.throws(() => planNudge("NVDA", 0, 3), /other than 0/);
+  assert.throws(() => planNudge("NVDA", 0, 30), /other than 0/);
+  assert.throws(() => planNudge("NVDA", 3, 0), /above 0/);
 });
 
 test("feed prices round-trip through the 18 decimal integer", () => {
   assert.equal(toFeedPrice(190.25), 190_250_000_000_000_000_000n);
   assert.equal(fromFeedPrice(toFeedPrice(190.25)), 190.25);
   assert.equal(fromFeedPrice(190_000_000_000_000_000_000n), 190);
+});
+
+test("a nudge takes the same time whatever the step length", () => {
+  const slow = planNudge("NVDA", -6, 90, 15);
+  const fast = planNudge("NVDA", -6, 90, 1);
+  assert.equal(slow.remainingSteps, 6);
+  assert.equal(fast.remainingSteps, 90);
+  assert.ok(Math.abs(slow.stepFraction * slow.remainingSteps - fast.stepFraction * fast.remainingSteps) < 1e-12, "both nudges move the same total");
+  assert.ok(Math.abs(fast.stepFraction) < Math.abs(slow.stepFraction));
+});
+
+test("a one second step moves the market about as much per minute as a fifteen second step", () => {
+  const spread = (tickSeconds: number) => {
+    const moves: number[] = [];
+    for (let seed = 1; seed <= 200; seed++) {
+      const rng = createRng(seed);
+      let markets = start();
+      const steps = 600 / tickSeconds; // ten minutes
+      for (let i = 0; i < steps; i++) ({ markets } = stepMarkets(markets, [], rng, { ...CALM_MARKET, reversion: 0 }, tickSeconds));
+      moves.push(markets[0]!.price / 190 - 1);
+    }
+    const mean = moves.reduce((a, b) => a + b, 0) / moves.length;
+    return Math.sqrt(moves.reduce((a, b) => a + (b - mean) ** 2, 0) / moves.length);
+  };
+  const slow = spread(15);
+  const fast = spread(1);
+  assert.ok(fast / slow > 0.6 && fast / slow < 1.6, `ten minute spread: ${fast} against ${slow}`);
+});
+
+test("a one second step is small: no move like a glitch", () => {
+  const rng = createRng(12);
+  let markets = start();
+  for (let i = 0; i < 3_600; i++) {
+    const next = stepMarkets(markets, [], rng, CALM_MARKET, 1).markets;
+    assert.ok(Math.abs(next[0]!.price / markets[0]!.price - 1) < 0.002);
+    markets = next;
+  }
 });

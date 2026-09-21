@@ -7,7 +7,8 @@ import { join } from "node:path";
 export interface NudgeRequest {
   symbol: string;
   pct: number;
-  steps: number;
+  /// How long the move takes, in seconds.
+  seconds: number;
 }
 
 const FILE = "nudges.jsonl";
@@ -26,7 +27,7 @@ export function readNudges(dir: string, skip: number): { requests: NudgeRequest[
   for (const line of lines.slice(skip)) {
     try {
       const parsed = JSON.parse(line) as NudgeRequest;
-      if (typeof parsed.symbol === "string" && Number.isFinite(parsed.pct) && Number.isFinite(parsed.steps)) requests.push(parsed);
+      if (typeof parsed.symbol === "string" && Number.isFinite(parsed.pct) && Number.isFinite(parsed.seconds)) requests.push(parsed);
     } catch {
       // a half-written line: skip it
     }
