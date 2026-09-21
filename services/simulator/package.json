@@ -1,0 +1,22 @@
+{
+  "name": "@alphamarkets/simulator",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "description": "AlphaMarkets demo simulator: moves the testnet mock prices like a calm market, trades with a crowd of bot wallets, and liquidates positions that fall under maintenance margin, so a recorded demo shows a live market.",
+  "scripts": {
+    "build": "echo \"services/simulator runs from source (tsx)\" && exit 0",
+    "bootstrap": "tsx src/index.ts bootstrap",
+    "start": "tsx src/index.ts start",
+    "status": "tsx src/index.ts status",
+    "nudge": "tsx src/index.ts nudge",
+    "lint": "echo \"scaffold: services/simulator lint\" && exit 0",
+    "test": "tsx --test src/*.test.ts",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "@alphamarkets/config": "workspace:*",
+    "@alphamarkets/sdk": "workspace:*",
+    "viem": "^2.21.0"
+  }
+}
