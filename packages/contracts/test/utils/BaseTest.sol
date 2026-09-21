@@ -2,6 +2,7 @@
 pragma solidity 0.8.26;
 
 import {Test} from "forge-std/Test.sol";
+import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
 import {MarketRegistry} from "../../src/core/MarketRegistry.sol";
 import {CollateralManager} from "../../src/core/CollateralManager.sol";
@@ -26,11 +27,12 @@ import {PerpsEngine} from "../../src/perps/PerpsEngine.sol";
 import {LiquidationEngine} from "../../src/perps/LiquidationEngine.sol";
 import {MarketConfig} from "../../src/interfaces/DataTypes.sol";
 import {MockERC20} from "../mocks/MockERC20.sol";
+import {StackDeployer} from "../../script/utils/StackDeployer.sol";
 
 /// @notice Deploys the full AlphaMarkets Phase 1 contract stack, wires every
 /// AccessControl role, seeds one market ("NVDA"), and funds two test users with deposited
 /// collateral — shared setup for unit, fuzz, and integration tests.
-contract BaseTest is Test {
+contract BaseTest is Test, StackDeployer {
     address internal admin = makeAddr("admin");
     address internal alice = makeAddr("alice");
     address internal bob = makeAddr("bob");
@@ -42,6 +44,9 @@ contract BaseTest is Test {
 
     bytes32 internal constant NVDA = bytes32("NVDA");
     uint256 internal constant WAD = 1e18;
+
+    /// Proxy addresses of the deployed stack, for tests that upgrade it.
+    Stack internal stack;
 
     MockERC20 internal usdc;
     MockPriceFeed internal priceFeed;
@@ -78,73 +83,27 @@ contract BaseTest is Test {
         usdc = new MockERC20("USD Coin", "USDC", _settlementDecimals());
         priceFeed = new MockPriceFeed(admin, 18, 190e18);
 
-        marketRegistry = new MarketRegistry(admin);
-        collateralManager = new CollateralManager(admin);
-        vault = new AlphaMarketsVault(admin, address(collateralManager));
-        feeManager = new FeeManager(admin, address(vault));
-        buybackModule = new BuybackModule(admin);
-        priceValidator = new PriceValidator(admin);
-        oracleRouter = new OracleRouter(admin, address(priceValidator));
-        riskManager = new RiskManager(admin);
-        optionPositionManager = new OptionPositionManager(admin);
-        optionMarket = new OptionMarket(admin);
-        perpPositionManager = new PerpPositionManager(admin);
-        perpOrderManager = new PerpOrderManager(admin);
-        fundingManager = new FundingManager(
-            admin, address(oracleRouter), address(perpPositionManager), address(vault), address(usdc)
-        );
-
-        optionsEngine = new OptionsEngine(
-            admin,
-            address(marketRegistry),
-            address(oracleRouter),
-            address(vault),
-            address(feeManager),
-            address(riskManager),
-            address(optionPositionManager),
-            address(optionMarket),
-            address(usdc)
-        );
-
-        insuranceFund = new InsuranceFund(admin, address(vault), address(usdc));
-        crossMargin = new CrossMarginManager(
-            admin,
-            address(oracleRouter),
-            address(riskManager),
-            address(vault),
-            address(perpPositionManager),
-            address(optionPositionManager),
-            address(optionMarket),
-            address(usdc),
-            address(insuranceFund)
-        );
-
-        perpsEngine = new PerpsEngine(
-            address(marketRegistry),
-            address(oracleRouter),
-            address(vault),
-            address(feeManager),
-            address(riskManager),
-            address(perpPositionManager),
-            address(perpOrderManager),
-            address(fundingManager),
-            address(usdc),
-            address(crossMargin)
-        );
-
-        liquidationEngine = new LiquidationEngine(
-            address(oracleRouter),
-            address(vault),
-            address(feeManager),
-            address(riskManager),
-            address(perpPositionManager),
-            address(fundingManager),
-            address(usdc),
-            address(crossMargin),
-            address(insuranceFund)
-        );
-
-        rfqManager = new RFQManager(admin, address(perpsEngine), address(oracleRouter));
+        (Stack memory s,) = _deployStack(admin, address(usdc));
+        stack = s;
+        marketRegistry = MarketRegistry(s.marketRegistry);
+        collateralManager = CollateralManager(s.collateralManager);
+        vault = AlphaMarketsVault(s.vault);
+        feeManager = FeeManager(s.feeManager);
+        buybackModule = BuybackModule(s.buybackModule);
+        priceValidator = PriceValidator(s.priceValidator);
+        oracleRouter = OracleRouter(s.oracleRouter);
+        riskManager = RiskManager(s.riskManager);
+        optionPositionManager = OptionPositionManager(s.optionPositionManager);
+        optionMarket = OptionMarket(s.optionMarket);
+        optionsEngine = OptionsEngine(s.optionsEngine);
+        perpPositionManager = PerpPositionManager(s.perpPositionManager);
+        perpOrderManager = PerpOrderManager(s.perpOrderManager);
+        fundingManager = FundingManager(s.fundingManager);
+        insuranceFund = InsuranceFund(s.insuranceFund);
+        crossMargin = CrossMarginManager(s.crossMargin);
+        perpsEngine = PerpsEngine(s.perpsEngine);
+        liquidationEngine = LiquidationEngine(s.liquidationEngine);
+        rfqManager = RFQManager(s.rfqManager);
         perpsEngine.setRfqManager(address(rfqManager));
         rfqManager.grantRole(rfqManager.MAKER_ROLE(), quoter);
 
@@ -155,6 +114,12 @@ contract BaseTest is Test {
 
         _fundUser(alice);
         _fundUser(bob);
+    }
+
+    /// @dev A proxy on `impl`, initialized with `owner`, for tests that need a contract of their own
+    /// next to the shared stack.
+    function _proxyFor(address impl, address owner) internal returns (address) {
+        return address(new ERC1967Proxy(impl, abi.encodeWithSignature("initialize(address)", owner)));
     }
 
     function _wireRoles() internal {

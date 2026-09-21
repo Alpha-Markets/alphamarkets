@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.26;
 
-import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
-import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
+import {ReentrancyGuardUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
+import {UpgradeableBase} from "../proxy/UpgradeableBase.sol";
 import {EIP712} from "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
 import {ECDSA} from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import {IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
@@ -31,7 +31,7 @@ import {OracleRouter} from "../oracle/OracleRouter.sol";
 /// holder for that exact user, series, size and premium. Quotes expire and are single-use. The
 /// quoter key is therefore a critical secret (move it behind a multisig or HSM before mainnet —
 /// PROJECT_BRIEF.md Section 37); settlement itself never depends on it, only oracle prices do.
-contract OptionsEngine is IOptionsEngine, ReentrancyGuard, AccessControl, EIP712 {
+contract OptionsEngine is IOptionsEngine, ReentrancyGuardUpgradeable, UpgradeableBase, EIP712 {
     uint256 internal constant WAD = 1e18;
     uint256 internal constant BPS_DENOMINATOR = 10_000;
 
@@ -85,8 +85,8 @@ contract OptionsEngine is IOptionsEngine, ReentrancyGuard, AccessControl, EIP712
     event OptionExercised(uint256 indexed positionId, uint256 intrinsicValue, uint256 payout);
     event OptionSettled(bytes32 indexed seriesId, uint256 settlementPrice, uint256 timestamp);
 
+    /// @custom:oz-upgrades-unsafe-allow constructor
     constructor(
-        address admin_,
         address marketRegistry_,
         address oracleRouter_,
         address vault_,
@@ -96,7 +96,6 @@ contract OptionsEngine is IOptionsEngine, ReentrancyGuard, AccessControl, EIP712
         address optionMarket_,
         address settlementToken_
     ) EIP712("AlphaMarketsOptionsEngine", "1") {
-        _grantRole(DEFAULT_ADMIN_ROLE, admin_);
         marketRegistry = IMarketRegistry(marketRegistry_);
         oracleRouter = OracleRouter(oracleRouter_);
         vault = IAlphaMarketsVault(vault_);
@@ -106,6 +105,12 @@ contract OptionsEngine is IOptionsEngine, ReentrancyGuard, AccessControl, EIP712
         optionMarket = OptionMarket(optionMarket_);
         settlementToken = settlementToken_;
         settlementDecimals = IERC20Metadata(settlementToken_).decimals();
+        _disableInitializers();
+    }
+
+    function initialize(address admin_) external initializer {
+        __UpgradeableBase_init(admin_);
+        __ReentrancyGuard_init();
     }
 
     // ---------------------------------------------------------------------

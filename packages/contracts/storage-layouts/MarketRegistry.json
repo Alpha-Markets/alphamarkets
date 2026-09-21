@@ -1,0 +1,119 @@
+{
+  "storage": [
+    {
+      "label": "_markets",
+      "offset": 0,
+      "slot": "0",
+      "type": "t_mapping(t_bytes32,t_struct(MarketConfig)_storage)"
+    },
+    {
+      "label": "_exists",
+      "offset": 0,
+      "slot": "1",
+      "type": "t_mapping(t_bytes32,t_bool)"
+    },
+    {
+      "label": "_marketIds",
+      "offset": 0,
+      "slot": "2",
+      "type": "t_array(t_bytes32)dyn_storage"
+    }
+  ],
+  "types": {
+    "t_address": {
+      "encoding": "inplace",
+      "label": "address",
+      "numberOfBytes": "20"
+    },
+    "t_array(t_bytes32)dyn_storage": {
+      "base": "t_bytes32",
+      "encoding": "dynamic_array",
+      "label": "bytes32[]",
+      "numberOfBytes": "32"
+    },
+    "t_bool": {
+      "encoding": "inplace",
+      "label": "bool",
+      "numberOfBytes": "1"
+    },
+    "t_bytes32": {
+      "encoding": "inplace",
+      "label": "bytes32",
+      "numberOfBytes": "32"
+    },
+    "t_mapping(t_bytes32,t_bool)": {
+      "encoding": "mapping",
+      "key": "t_bytes32",
+      "label": "mapping(bytes32 => bool)",
+      "numberOfBytes": "32",
+      "value": "t_bool"
+    },
+    "t_mapping(t_bytes32,t_struct(MarketConfig)_storage)": {
+      "encoding": "mapping",
+      "key": "t_bytes32",
+      "label": "mapping(bytes32 => struct MarketConfig)",
+      "numberOfBytes": "32",
+      "value": "t_struct(MarketConfig)_storage"
+    },
+    "t_struct(MarketConfig)_storage": {
+      "encoding": "inplace",
+      "label": "struct MarketConfig",
+      "members": [
+        {
+          "label": "marketId",
+          "offset": 0,
+          "slot": "0",
+          "type": "t_bytes32"
+        },
+        {
+          "label": "underlyingToken",
+          "offset": 0,
+          "slot": "1",
+          "type": "t_address"
+        },
+        {
+          "label": "oracleId",
+          "offset": 0,
+          "slot": "2",
+          "type": "t_bytes32"
+        },
+        {
+          "label": "optionsEnabled",
+          "offset": 0,
+          "slot": "3",
+          "type": "t_bool"
+        },
+        {
+          "label": "perpsEnabled",
+          "offset": 1,
+          "slot": "3",
+          "type": "t_bool"
+        },
+        {
+          "label": "maxLeverage",
+          "offset": 0,
+          "slot": "4",
+          "type": "t_uint256"
+        },
+        {
+          "label": "openInterestCap",
+          "offset": 0,
+          "slot": "5",
+          "type": "t_uint256"
+        },
+        {
+          "label": "active",
+          "offset": 0,
+          "slot": "6",
+          "type": "t_bool"
+        }
+      ],
+      "numberOfBytes": "224"
+    },
+    "t_uint256": {
+      "encoding": "inplace",
+      "label": "uint256",
+      "numberOfBytes": "32"
+    }
+  }
+}

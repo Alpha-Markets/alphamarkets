@@ -1,0 +1,95 @@
+{
+  "storage": [
+    {
+      "label": "series",
+      "offset": 0,
+      "slot": "0",
+      "type": "t_mapping(t_bytes32,t_struct(OptionSeries)_storage)"
+    },
+    {
+      "label": "contractSize",
+      "offset": 0,
+      "slot": "1",
+      "type": "t_mapping(t_bytes32,t_uint256)"
+    }
+  ],
+  "types": {
+    "t_bool": {
+      "encoding": "inplace",
+      "label": "bool",
+      "numberOfBytes": "1"
+    },
+    "t_bytes32": {
+      "encoding": "inplace",
+      "label": "bytes32",
+      "numberOfBytes": "32"
+    },
+    "t_enum(OptionType)": {
+      "encoding": "inplace",
+      "label": "enum OptionType",
+      "numberOfBytes": "1"
+    },
+    "t_mapping(t_bytes32,t_struct(OptionSeries)_storage)": {
+      "encoding": "mapping",
+      "key": "t_bytes32",
+      "label": "mapping(bytes32 => struct OptionMarket.OptionSeries)",
+      "numberOfBytes": "32",
+      "value": "t_struct(OptionSeries)_storage"
+    },
+    "t_mapping(t_bytes32,t_uint256)": {
+      "encoding": "mapping",
+      "key": "t_bytes32",
+      "label": "mapping(bytes32 => uint256)",
+      "numberOfBytes": "32",
+      "value": "t_uint256"
+    },
+    "t_struct(OptionSeries)_storage": {
+      "encoding": "inplace",
+      "label": "struct OptionMarket.OptionSeries",
+      "members": [
+        {
+          "label": "underlyingMarketId",
+          "offset": 0,
+          "slot": "0",
+          "type": "t_bytes32"
+        },
+        {
+          "label": "expiry",
+          "offset": 0,
+          "slot": "1",
+          "type": "t_uint256"
+        },
+        {
+          "label": "strike",
+          "offset": 0,
+          "slot": "2",
+          "type": "t_uint256"
+        },
+        {
+          "label": "optionType",
+          "offset": 0,
+          "slot": "3",
+          "type": "t_enum(OptionType)"
+        },
+        {
+          "label": "openInterest",
+          "offset": 0,
+          "slot": "4",
+          "type": "t_uint256"
+        },
+        {
+          "label": "exists",
+          "offset": 0,
+          "slot": "5",
+          "type": "t_bool"
+        }
+      ],
+      "numberOfBytes": "192"
+    },
+    "t_uint256": {
+      "encoding": "inplace",
+      "label": "uint256",
+      "numberOfBytes": "32"
+    }
+  }
+}

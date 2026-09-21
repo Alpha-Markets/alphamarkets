@@ -14,7 +14,7 @@ risk/       RiskManager.sol, MarginEngine.sol
 interfaces/ IOracle.sol, IMarketRegistry.sol, IAlphaMarketsVault.sol, IOptionsEngine.sol, IPerpsEngine.sol,
             IRiskManager.sol, IFeeManager.sol, IPriceFeed.sol, DataTypes.sol, Errors.sol
 test/       unit + fuzz tests mirroring src/, plus test/integration/ and test/utils/BaseTest.sol
-script/     DeployAll.s.sol
+script/     DeployAll.s.sol, UpgradeAll.s.sol, HandOverAdmin.s.sol, check-storage-layout.py
 ```
 
 Not a pnpm package — intentionally excluded from the JS workspace graph.
@@ -22,7 +22,7 @@ Not a pnpm package — intentionally excluded from the JS workspace graph.
 ## Setup
 
 ```bash
-forge install foundry-rs/forge-std OpenZeppelin/openzeppelin-contracts@v5.1.0 --no-git
+forge install foundry-rs/forge-std OpenZeppelin/openzeppelin-contracts@v5.1.0 OpenZeppelin/openzeppelin-contracts-upgradeable@v5.1.0 --no-git
 forge build
 forge test
 ```
@@ -33,7 +33,7 @@ forge test
 
 - `OracleRouter.getMarkPrice` resolves identically to `getIndexPrice` (no independent onchain mark-price source in Phase 1), so `FundingManager.updateFundingRate`'s `(mark - index)/index` is always 0 — funding is structurally inert until a real mark-price mechanism lands.
 - Options are buy-only: the Vault's shared collateral pool is the implicit writer/counterparty for every option position (no explicit writer/seller role).
-- Non-upgradeable contracts; no protocol-wide pause switch (per-market pause via `MarketRegistry.setActive` / `OracleRouter.pauseMarket` only).
+- No protocol-wide pause switch (per-market pause via `MarketRegistry.setActive` / `OracleRouter.pauseMarket` only).
 
 ## Deploying
 
@@ -45,7 +45,25 @@ export NETWORK_NAME=robinhood_testnet
 forge script script/DeployAll.s.sol --rpc-url robinhood_testnet --broadcast --verify
 ```
 
-Writes addresses to `deployments/<NETWORK_NAME>.json` (checked into the repo as the canonical record) and prints a summary. Verified end-to-end with a local dry run (no `--rpc-url`, ephemeral in-memory EVM) — all 15 contracts deploy and every AccessControl role wires correctly.
+Writes the proxy addresses to `deployments/<NETWORK_NAME>.json` (checked into the repo as the canonical record) and the implementations to `deployments/<NETWORK_NAME>.implementations.json`, and prints a summary. Run it once per network.
+
+## Upgrading without changing an address
+
+Every contract is an ERC-1967 proxy (UUPS). The proxy address never changes and keeps all state; a code change is a new implementation that the proxy points at. To ship a change to a network that is already deployed:
+
+```bash
+export PRIVATE_KEY=0x... NETWORK_NAME=robinhood_testnet
+python3 script/check-storage-layout.py      # the change must only append state variables
+forge script script/UpgradeAll.s.sol --rpc-url robinhood_testnet --broadcast
+./script/verify.sh                          # verifies the new implementations
+```
+
+`packages/config` and every client keep working: the addresses are the same. The rules for a contract change:
+
+- Only append state variables. Never reorder, remove or retype one, or a proxy reads the wrong data after the upgrade. CI runs `script/check-storage-layout.py`; after a deliberate append run it with `--update` and commit `storage-layouts/`.
+- Give a new contract an `initialize` (with the `initializer` modifier) and call `__UpgradeableBase_init(admin)`. The constructor only sets `immutable` fields and calls `_disableInitializers()`. State variables need no inline initial value: it would never run behind a proxy.
+- The caller of `UpgradeAll` must hold `DEFAULT_ADMIN_ROLE`. After `HandOverAdmin.s.sol` that is the multisig or timelock, which then sends the `upgradeToAndCall` calls itself.
+- A change that cannot keep the layout needs a fresh `DeployAll` (new addresses and empty state).
 
 ## Handing admin to a multisig or timelock
 

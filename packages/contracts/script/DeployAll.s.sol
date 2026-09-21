@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.26;
 
-import {Script} from "forge-std/Script.sol";
 import {console} from "forge-std/console.sol";
+
+import {StackScript} from "./utils/StackScript.sol";
 
 import {MarketRegistry} from "../src/core/MarketRegistry.sol";
 import {CollateralManager} from "../src/core/CollateralManager.sol";
@@ -25,10 +26,14 @@ import {FundingManager} from "../src/perps/FundingManager.sol";
 import {PerpsEngine} from "../src/perps/PerpsEngine.sol";
 import {LiquidationEngine} from "../src/perps/LiquidationEngine.sol";
 
-/// @notice Deploys the full Phase 1 contract stack in dependency order, wires every
-/// AccessControl role, and writes deployed addresses to
-/// `deployments/<network>.json`. Reads the deployer key from `PRIVATE_KEY` and the
-/// settlement collateral token from `COLLATERAL_TOKEN` env vars.
+/// @notice Deploys the full Phase 1 contract stack behind ERC-1967 proxies, in dependency order, wires
+/// every AccessControl role, and writes the proxy addresses to `deployments/<network>.json` and the
+/// implementation addresses to `deployments/<network>.implementations.json`. Reads the deployer key
+/// from `PRIVATE_KEY` and the settlement collateral token from `COLLATERAL_TOKEN` env vars.
+///
+/// The proxy addresses are the ones every client uses, and they never change. This script is for the
+/// first deployment (or a deliberate fresh start). To ship a contract change without changing an
+/// address or losing state, run `UpgradeAll.s.sol` instead.
 ///
 /// Usage (testnet, once chain ID/RPC/deployer key are available):
 ///   forge script script/DeployAll.s.sol --rpc-url robinhood_testnet --broadcast --verify
@@ -36,119 +41,21 @@ import {LiquidationEngine} from "../src/perps/LiquidationEngine.sol";
 /// Usage (local dry run against Anvil, no env vars needed beyond Anvil's default key):
 ///   anvil &
 ///   forge script script/DeployAll.s.sol --rpc-url http://127.0.0.1:8545 --broadcast
-contract DeployAll is Script {
-    struct Deployment {
-        address marketRegistry;
-        address collateralManager;
-        address vault;
-        address feeManager;
-        address buybackModule;
-        address priceValidator;
-        address oracleRouter;
-        address riskManager;
-        address optionPositionManager;
-        address optionMarket;
-        address optionsEngine;
-        address perpPositionManager;
-        address perpOrderManager;
-        address fundingManager;
-        address perpsEngine;
-        address liquidationEngine;
-        address insuranceFund;
-        address crossMargin;
-        address subaccountFactory;
-        address rfqManager;
-        address settlementToken;
-    }
-
-    function run() external returns (Deployment memory d) {
+contract DeployAll is StackScript {
+    function run() external returns (Stack memory d) {
         uint256 deployerKey = vm.envOr("PRIVATE_KEY", uint256(0));
         address admin = deployerKey == 0 ? msg.sender : vm.addr(deployerKey);
         address settlementToken = vm.envOr("COLLATERAL_TOKEN", address(0));
+        require(settlementToken != address(0), "COLLATERAL_TOKEN env var not set");
 
         if (deployerKey == 0) vm.startBroadcast();
         else vm.startBroadcast(deployerKey);
 
-        require(settlementToken != address(0), "COLLATERAL_TOKEN env var not set");
-
-        d.settlementToken = settlementToken;
-        d.marketRegistry = address(new MarketRegistry(admin));
-        d.collateralManager = address(new CollateralManager(admin));
-        d.vault = address(new AlphaMarketsVault(admin, d.collateralManager));
-        d.feeManager = address(new FeeManager(admin, d.vault));
-        d.buybackModule = address(new BuybackModule(admin));
-        d.priceValidator = address(new PriceValidator(admin));
-        d.oracleRouter = address(new OracleRouter(admin, d.priceValidator));
-        d.riskManager = address(new RiskManager(admin));
-        d.optionPositionManager = address(new OptionPositionManager(admin));
-        d.optionMarket = address(new OptionMarket(admin));
-        d.perpPositionManager = address(new PerpPositionManager(admin));
-        d.perpOrderManager = address(new PerpOrderManager(admin));
-        d.fundingManager =
-            address(new FundingManager(admin, d.oracleRouter, d.perpPositionManager, d.vault, settlementToken));
-
-        d.optionsEngine = address(
-            new OptionsEngine(
-                admin,
-                d.marketRegistry,
-                d.oracleRouter,
-                d.vault,
-                d.feeManager,
-                d.riskManager,
-                d.optionPositionManager,
-                d.optionMarket,
-                settlementToken
-            )
-        );
-
-        d.insuranceFund = address(new InsuranceFund(admin, d.vault, settlementToken));
-        d.crossMargin = address(
-            new CrossMarginManager(
-                admin,
-                d.oracleRouter,
-                d.riskManager,
-                d.vault,
-                d.perpPositionManager,
-                d.optionPositionManager,
-                d.optionMarket,
-                settlementToken,
-                d.insuranceFund
-            )
-        );
-        d.subaccountFactory = address(new SubaccountFactory(admin, d.vault));
-
-        d.perpsEngine = address(
-            new PerpsEngine(
-                d.marketRegistry,
-                d.oracleRouter,
-                d.vault,
-                d.feeManager,
-                d.riskManager,
-                d.perpPositionManager,
-                d.perpOrderManager,
-                d.fundingManager,
-                settlementToken,
-                d.crossMargin
-            )
-        );
-
-        d.liquidationEngine = address(
-            new LiquidationEngine(
-                d.oracleRouter,
-                d.vault,
-                d.feeManager,
-                d.riskManager,
-                d.perpPositionManager,
-                d.fundingManager,
-                settlementToken,
-                d.crossMargin,
-                d.insuranceFund
-            )
-        );
+        Impls memory impls;
+        (d, impls) = _deployStack(admin, settlementToken);
 
         // RFQ and block trades: the engine only opens at a quoted price for this manager. The maker
         // role goes to the market maker's signing address (default: the deployer, for local runs).
-        d.rfqManager = address(new RFQManager(admin, d.perpsEngine, d.oracleRouter));
         PerpsEngine(d.perpsEngine).setRfqManager(d.rfqManager);
         RFQManager rfq = RFQManager(d.rfqManager);
         rfq.grantRole(rfq.MAKER_ROLE(), vm.envOr("MAKER_ADDRESS", admin));
@@ -166,17 +73,18 @@ contract DeployAll is Script {
         vm.stopBroadcast();
 
         _writeDeploymentFile(d);
+        _writeImplementationsFile(impls, _network("localhost"));
         _logSummary(d);
     }
 
-    function _wireRoles(Deployment memory d) internal {
+    function _wireRoles(Stack memory d) internal {
         _wireVaultAndCollateral(d);
         _wireFeesAndRisk(d);
         _wirePositionManagers(d);
         _wireFundingAndOracle(d);
     }
 
-    function _wireVaultAndCollateral(Deployment memory d) internal {
+    function _wireVaultAndCollateral(Stack memory d) internal {
         CollateralManager cm = CollateralManager(d.collateralManager);
         AlphaMarketsVault vault = AlphaMarketsVault(d.vault);
 
@@ -204,7 +112,7 @@ contract DeployAll is Script {
         factory.setTargetAllowed(d.optionsEngine, true);
     }
 
-    function _wireFeesAndRisk(Deployment memory d) internal {
+    function _wireFeesAndRisk(Stack memory d) internal {
         FeeManager feeManager = FeeManager(d.feeManager);
         BuybackModule buyback = BuybackModule(d.buybackModule);
         RiskManager riskManager = RiskManager(d.riskManager);
@@ -221,7 +129,7 @@ contract DeployAll is Script {
         riskManager.grantRole(riskEngineRole, d.liquidationEngine);
     }
 
-    function _wirePositionManagers(Deployment memory d) internal {
+    function _wirePositionManagers(Stack memory d) internal {
         OptionPositionManager opm = OptionPositionManager(d.optionPositionManager);
         OptionMarket om = OptionMarket(d.optionMarket);
         PerpPositionManager ppm = PerpPositionManager(d.perpPositionManager);
@@ -237,7 +145,7 @@ contract DeployAll is Script {
         pom.grantRole(pom.ENGINE_ROLE(), d.perpsEngine);
     }
 
-    function _wireFundingAndOracle(Deployment memory d) internal {
+    function _wireFundingAndOracle(Stack memory d) internal {
         FundingManager fundingManager = FundingManager(d.fundingManager);
         OracleRouter oracleRouter = OracleRouter(d.oracleRouter);
 
@@ -250,7 +158,7 @@ contract DeployAll is Script {
         oracleRouter.grantRole(oracleEngineRole, d.liquidationEngine);
     }
 
-    function _writeDeploymentFile(Deployment memory d) internal {
+    function _writeDeploymentFile(Stack memory d) internal {
         string memory json = "deployment";
         vm.serializeAddress(json, "marketRegistry", d.marketRegistry);
         vm.serializeAddress(json, "collateralManager", d.collateralManager);
@@ -279,7 +187,7 @@ contract DeployAll is Script {
         vm.writeJson(finalJson, path);
     }
 
-    function _logSummary(Deployment memory d) internal pure {
+    function _logSummary(Stack memory d) internal pure {
         console.log("MarketRegistry:        ", d.marketRegistry);
         console.log("CollateralManager:     ", d.collateralManager);
         console.log("AlphaMarketsVault:          ", d.vault);

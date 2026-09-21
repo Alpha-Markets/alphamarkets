@@ -129,6 +129,7 @@ describe("SDK against a local Anvil deployment", { skip: skipReason, timeout: 18
   after(() => {
     anvil?.kill();
     rmSync(resolve(contractsDir, `deployments/${NETWORK}.json`), { force: true });
+    rmSync(resolve(contractsDir, `deployments/${NETWORK}.implementations.json`), { force: true });
   });
 
   test("reads markets and prices from the deployed registry and oracle", async () => {

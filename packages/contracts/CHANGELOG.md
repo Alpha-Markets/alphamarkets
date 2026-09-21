@@ -5,6 +5,18 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Changed — every contract is an upgradeable proxy, so a testnet redeploy keeps its addresses
+
+A redeploy used to create 20 new contracts and 20 new addresses, and every client (web app, API, keeper, indexer, SDK) had to pick them up. All 20 contracts now sit behind an ERC-1967 proxy with the UUPS upgrade pattern. The proxy address is the contract's address for good: shipping a change means deploying a new implementation and pointing the proxy at it, and all state (balances, positions, roles) stays.
+
+- **Contracts.** Each one inherits `UpgradeableBase` (`src/proxy/UpgradeableBase.sol`): `AccessControlUpgradeable` plus `UUPSUpgradeable`, with `DEFAULT_ADMIN_ROLE` as the only role that may upgrade. The constructor now only sets the `immutable` dependencies (they live in the implementation's bytecode and point at the other proxies) and calls `_disableInitializers()`. Every storage write moved to `initialize(address admin)`: the role grants, `CrossMarginManager`'s default floor and price shocks, and `RFQManager`'s default deviation. The constructors of the contracts that took an `admin` argument lost it.
+- **`PerpsEngine` and `LiquidationEngine` gained an admin.** They had none. They now hold `DEFAULT_ADMIN_ROLE`, which only authorizes upgrades. `HandOverAdmin.s.sol` moves it with the others (20 targets, up from 18), so handing the protocol to a multisig also hands over the power to change any contract's code.
+- **Deployment.** `DeployAll.s.sol` builds the stack with `script/utils/StackDeployer.sol`, which the test base contract shares, so the tests run against exactly what is deployed. It first creates the 20 proxies on an empty `UpgradePlaceholder`, then the 20 implementations (which need the proxy addresses), then upgrades and initializes each proxy. It writes the proxy addresses to `deployments/<network>.json` and the implementations to `deployments/<network>.implementations.json`.
+- **Redeploying.** `UpgradeAll.s.sol` reads the proxy addresses, deploys new implementations and upgrades every proxy. Addresses in `deployments/<network>.json` and `packages/config` stay the same, so no client changes. `verify.sh` verifies the implementations.
+- **Storage layout guard.** `script/check-storage-layout.py` compares each contract's layout with `storage-layouts/` and fails when a variable is reordered, removed or retyped. CI runs it. Run it with `--update` after a deliberate append.
+- **Tests.** `test/proxy/Upgradeability.t.sol`: the address, state and roles survive an upgrade, only the admin can upgrade, no proxy or implementation can be initialized twice, and trading works after all 20 are upgraded.
+- **One-time cost.** The first proxy deployment makes new addresses, as any redeploy does. After that, `UpgradeAll` keeps them. A change that cannot keep the storage layout still needs `DeployAll` and new addresses.
+
 ### Added — four more testnet markets on `[1.4.0-testnet]` (2026-09-21)
 
 `script/AddMarket.s.sol` adds a market from environment variables (`SYMBOL`, `NAME`, `PRICE`, `MAX_LEVERAGE`, `MAINTENANCE_MARGIN_BPS`, `MAX_POSITION`, `OPEN_INTEREST_CAP`, optional `PRICE_FEED_OWNER`), so a new equity is configuration and not a redeploy (PROJECT_BRIEF.md Section 5). Like `ConfigureMarkets.s.sol` it deploys a mock token and a mock price feed owned by the keeper. Initial margin is 1 / max leverage; the leverage tiers are 1x, 2x, 3x, 5x, 10x up to the maximum; fees are the same placeholders as NVDA. It was run against a local Anvil chain first, then on testnet. No contract changed, and no frontend or service code changed: the API, keeper and web app picked the markets up from the registry.

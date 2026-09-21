@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.26;
 
-import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
+import {UpgradeableBase} from "../proxy/UpgradeableBase.sol";
 import {IOracle} from "../interfaces/IOracle.sol";
 import {IPriceFeed} from "../interfaces/IPriceFeed.sol";
 import {PriceValidator} from "./PriceValidator.sol";
@@ -14,7 +14,7 @@ import {PriceValidator} from "./PriceValidator.sol";
 ///
 /// MVP has no independent onchain source of a "mark" price distinct from the index feed
 /// (no onchain perp order book), so `getIndexPrice` and `getMarkPrice` resolve identically.
-contract OracleRouter is IOracle, AccessControl {
+contract OracleRouter is IOracle, UpgradeableBase {
     bytes32 public constant ORACLE_ADMIN_ROLE = keccak256("ORACLE_ADMIN_ROLE");
     bytes32 public constant ENGINE_ROLE = keccak256("ENGINE_ROLE");
     uint8 public constant CANONICAL_DECIMALS = 18;
@@ -42,11 +42,17 @@ contract OracleRouter is IOracle, AccessControl {
     event OracleMarketPaused(bytes32 indexed marketId, bool paused);
     event SettlementPriceRecorded(bytes32 indexed marketId, uint256 indexed expiry, uint256 price);
 
-    constructor(address admin, address priceValidator_) {
-        if (admin == address(0) || priceValidator_ == address(0)) revert ZeroAddress();
-        _grantRole(DEFAULT_ADMIN_ROLE, admin);
-        _grantRole(ORACLE_ADMIN_ROLE, admin);
+    /// @custom:oz-upgrades-unsafe-allow constructor
+    constructor(address priceValidator_) {
+        if (priceValidator_ == address(0)) revert ZeroAddress();
         priceValidator = PriceValidator(priceValidator_);
+        _disableInitializers();
+    }
+
+    function initialize(address admin) external initializer {
+        if (admin == address(0)) revert ZeroAddress();
+        __UpgradeableBase_init(admin);
+        _grantRole(ORACLE_ADMIN_ROLE, admin);
     }
 
     // ---------------------------------------------------------------------

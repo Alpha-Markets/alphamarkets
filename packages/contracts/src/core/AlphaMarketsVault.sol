@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.26;
 
-import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
-import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import {UpgradeableBase} from "../proxy/UpgradeableBase.sol";
+import {ReentrancyGuardUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {IAlphaMarketsVault} from "../interfaces/IAlphaMarketsVault.sol";
@@ -13,7 +13,7 @@ import {CollateralManager} from "./CollateralManager.sol";
 /// withdrawals, locked margin, available balance, PnL settlement, funding transfers, and
 /// fee transfers. Raw ledger balances live in CollateralManager; this contract holds actual
 /// token custody and enforces locking/withdrawal rules on top of that ledger.
-contract AlphaMarketsVault is IAlphaMarketsVault, AccessControl, ReentrancyGuard {
+contract AlphaMarketsVault is IAlphaMarketsVault, UpgradeableBase, ReentrancyGuardUpgradeable {
     using SafeERC20 for IERC20;
 
     /// @notice Granted to OptionsEngine, PerpsEngine, LiquidationEngine, FundingManager —
@@ -40,11 +40,18 @@ contract AlphaMarketsVault is IAlphaMarketsVault, AccessControl, ReentrancyGuard
     event CollateralDeposited(address indexed user, address indexed token, uint256 amount);
     event CollateralWithdrawn(address indexed user, address indexed token, uint256 amount);
 
-    constructor(address admin, address collateralManager_) {
-        if (admin == address(0) || collateralManager_ == address(0)) revert ZeroAddress();
-        _grantRole(DEFAULT_ADMIN_ROLE, admin);
-        _grantRole(VAULT_ADMIN_ROLE, admin);
+    /// @custom:oz-upgrades-unsafe-allow constructor
+    constructor(address collateralManager_) {
+        if (collateralManager_ == address(0)) revert ZeroAddress();
         collateralManager = CollateralManager(collateralManager_);
+        _disableInitializers();
+    }
+
+    function initialize(address admin) external initializer {
+        if (admin == address(0)) revert ZeroAddress();
+        __UpgradeableBase_init(admin);
+        __ReentrancyGuard_init();
+        _grantRole(VAULT_ADMIN_ROLE, admin);
     }
 
     // ---------------------------------------------------------------------

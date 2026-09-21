@@ -1,0 +1,97 @@
+{
+  "storage": [
+    {
+      "label": "_riskConfigs",
+      "offset": 0,
+      "slot": "0",
+      "type": "t_mapping(t_bytes32,t_struct(RiskConfig)_storage)"
+    },
+    {
+      "label": "openInterestLong",
+      "offset": 0,
+      "slot": "1",
+      "type": "t_mapping(t_bytes32,t_uint256)"
+    },
+    {
+      "label": "openInterestShort",
+      "offset": 0,
+      "slot": "2",
+      "type": "t_mapping(t_bytes32,t_uint256)"
+    }
+  ],
+  "types": {
+    "t_array(t_uint256)dyn_storage": {
+      "base": "t_uint256",
+      "encoding": "dynamic_array",
+      "label": "uint256[]",
+      "numberOfBytes": "32"
+    },
+    "t_bytes32": {
+      "encoding": "inplace",
+      "label": "bytes32",
+      "numberOfBytes": "32"
+    },
+    "t_mapping(t_bytes32,t_struct(RiskConfig)_storage)": {
+      "encoding": "mapping",
+      "key": "t_bytes32",
+      "label": "mapping(bytes32 => struct RiskManager.RiskConfig)",
+      "numberOfBytes": "32",
+      "value": "t_struct(RiskConfig)_storage"
+    },
+    "t_mapping(t_bytes32,t_uint256)": {
+      "encoding": "mapping",
+      "key": "t_bytes32",
+      "label": "mapping(bytes32 => uint256)",
+      "numberOfBytes": "32",
+      "value": "t_uint256"
+    },
+    "t_struct(RiskConfig)_storage": {
+      "encoding": "inplace",
+      "label": "struct RiskManager.RiskConfig",
+      "members": [
+        {
+          "label": "maxLeverage",
+          "offset": 0,
+          "slot": "0",
+          "type": "t_uint256"
+        },
+        {
+          "label": "allowedLeverageTiers",
+          "offset": 0,
+          "slot": "1",
+          "type": "t_array(t_uint256)dyn_storage"
+        },
+        {
+          "label": "initialMarginRateBps",
+          "offset": 0,
+          "slot": "2",
+          "type": "t_uint256"
+        },
+        {
+          "label": "maintenanceMarginRateBps",
+          "offset": 0,
+          "slot": "3",
+          "type": "t_uint256"
+        },
+        {
+          "label": "maxPositionNotional",
+          "offset": 0,
+          "slot": "4",
+          "type": "t_uint256"
+        },
+        {
+          "label": "openInterestCap",
+          "offset": 0,
+          "slot": "5",
+          "type": "t_uint256"
+        }
+      ],
+      "numberOfBytes": "192"
+    },
+    "t_uint256": {
+      "encoding": "inplace",
+      "label": "uint256",
+      "numberOfBytes": "32"
+    }
+  }
+}

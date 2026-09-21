@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.26;
 
-import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
+import {UpgradeableBase} from "../proxy/UpgradeableBase.sol";
 import {IRiskManager} from "../interfaces/IRiskManager.sol";
 
 /// @notice Per-market risk config and enforcement checks (PROJECT_BRIEF.md Section 19),
@@ -11,7 +11,7 @@ import {IRiskManager} from "../interfaces/IRiskManager.sol";
 /// `openInterestCap` here is the value actually enforced at runtime; MarketRegistry's
 /// `MarketConfig.openInterestCap` is the advertised value for frontend/indexer reads. The
 /// market admin is responsible for keeping the two in sync when configuring a market.
-contract RiskManager is IRiskManager, AccessControl {
+contract RiskManager is IRiskManager, UpgradeableBase {
     bytes32 public constant RISK_ADMIN_ROLE = keccak256("RISK_ADMIN_ROLE");
     /// @notice Granted to OptionsEngine, PerpsEngine, LiquidationEngine.
     bytes32 public constant ENGINE_ROLE = keccak256("ENGINE_ROLE");
@@ -36,8 +36,13 @@ contract RiskManager is IRiskManager, AccessControl {
     mapping(bytes32 => uint256) public openInterestLong;
     mapping(bytes32 => uint256) public openInterestShort;
 
-    constructor(address admin) {
-        _grantRole(DEFAULT_ADMIN_ROLE, admin);
+    /// @custom:oz-upgrades-unsafe-allow constructor
+    constructor() {
+        _disableInitializers();
+    }
+
+    function initialize(address admin) external initializer {
+        __UpgradeableBase_init(admin);
         _grantRole(RISK_ADMIN_ROLE, admin);
     }
 
