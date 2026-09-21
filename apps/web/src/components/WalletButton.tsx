@@ -11,7 +11,7 @@ import { chain } from "@/lib/wagmi";
 import { ConnectButton } from "./ConnectButton";
 
 /// The header's own size: a 38px bubble with the same small uppercase type as the navigation.
-const bubble = "h-11! rounded-lg! px-4! text-[13px]! uppercase tracking-[0.04em] max-lg:h-10!";
+const bubble = "h-11! rounded-lg! px-4! text-[13px]! uppercase tracking-[0.04em] max-lg:h-10! max-sm:px-3!";
 
 const item = cn(menuItem, "flex h-9 w-full items-center px-3 text-left text-sm");
 
