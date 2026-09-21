@@ -33,6 +33,8 @@ export function Header() {
   // On the landing page the header floats over the hero, transparent, while the page is at the top. Its
   // bubbles carry their own fills. Once the page scrolls it takes a solid fill: text scrolling up under
   // transparent buttons is unreadable, most of all on a phone where the bar spans the whole width.
+  // The header has no border of its own: a border with no colour set is drawn in the text colour, and
+  // one added on a page change faded out of off-white for 200 ms.
   const landing = pathname === "/";
   const [scrolled, setScrolled] = useState(false);
   const ref = useRef<HTMLElement>(null);
@@ -56,7 +58,7 @@ export function Header() {
       className={cn(
         "z-40 shrink-0 transition-colors duration-200",
         landing
-          ? cn("absolute inset-x-0 top-0 border-b", scrolled ? "border-line bg-ground" : "border-transparent bg-transparent")
+          ? cn("absolute inset-x-0 top-0", scrolled ? "bg-ground" : "bg-transparent")
           : "relative bg-ground",
       )}
     >
