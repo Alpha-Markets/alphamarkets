@@ -106,12 +106,8 @@ export const overviewQuery = (symbol: string) => ({
   refetchInterval: TICK_MS,
 });
 
-export function useMarketOverview(symbol: string) {
-  return useQuery(overviewQuery(symbol));
-}
-
-/// The same overview for several markets at once, in the order given, so a table can sort by it.
-/// Shares the cache with `useMarketOverview`.
+/// The overview for several markets at once, in the order given, so a table can sort by it. Each
+/// entry is `overviewQuery(symbol)`, so the cache is shared with anything else that reads it.
 export function useMarketOverviews(symbols: string[]) {
   return useQueries({ queries: symbols.map(overviewQuery) });
 }
