@@ -3,6 +3,9 @@ loadDotEnv();
 // The deployer key (the funder) lives with the contract scripts, not in the root .env.
 loadDotEnv("../../packages/contracts/.env");
 
+import { execFileSync } from "node:child_process";
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { chains, requireEnv, resolveAddresses, resolveChainId } from "@alphamarkets/config";
 import { AlphaMarkets } from "@alphamarkets/sdk";
@@ -13,8 +16,10 @@ import { appendNudge } from "./control.js";
 import { createPriceDriver } from "./driver.js";
 import { describe, dollars, stamp, symbolOf, usd } from "./format.js";
 import { ensureCollateral } from "./funds.js";
+import { generateHistory, historyRows, insertStatements, type TickRow } from "./history.js";
 import { createLiquidator } from "./liquidator.js";
 import { LIQUIDATOR, ROSTER, type MarketView } from "./personas.js";
+import { fromFeedPrice } from "./priceModel.js";
 import { createRng } from "./prng.js";
 import { deriveAccount, loadSeed } from "./wallets.js";
 
@@ -194,6 +199,69 @@ async function start() {
   ]);
 }
 
+/// Runs SQL on the indexer database with `psql`. The connection comes from `SIM_DATABASE_URL`, or from
+/// the standard PGHOST, PGPORT, PGUSER, PGPASSWORD and PGDATABASE variables.
+function sql(statement: string, options: { input?: string } = {}): string {
+  const target = process.env.SIM_DATABASE_URL ? [process.env.SIM_DATABASE_URL] : [];
+  return execFileSync("psql", [...target, "-v", "ON_ERROR_STOP=1", "-At", ...(options.input ? ["-1"] : ["-c", statement])], {
+    encoding: "utf8",
+    input: options.input,
+    maxBuffer: 64 * 1024 * 1024,
+  });
+}
+
+const BACKFILL_FILE = join(STATE_DIR, "backfill.json");
+
+/// Draws simulated price history for the hours before the first price the indexer recorded, so the chart
+/// has candles at once instead of after hours of running. The rows go in the indexer's `price_ticks`
+/// table, a display cache that never feeds settlement or liquidation, and they end at the first real
+/// price, so they join it without a jump. `backfill undo` removes exactly the rows it added.
+///
+/// These candles are simulated, not recorded: say so where you show them.
+async function backfill(argument: string | undefined) {
+  if (argument === "undo") {
+    if (!existsSync(BACKFILL_FILE)) throw new Error("Nothing to undo: no backfill was recorded on this machine.");
+    const saved = JSON.parse(readFileSync(BACKFILL_FILE, "utf8")) as { from: string; to: string };
+    const removed = sql(`WITH gone AS (DELETE FROM price_ticks WHERE sampled_at >= '${saved.from}' AND sampled_at <= '${saved.to}' RETURNING 1) SELECT count(*) FROM gone;`).trim();
+    rmSync(BACKFILL_FILE);
+    console.log(`Removed ${removed} simulated price ticks (${saved.from} to ${saved.to}).`);
+    return;
+  }
+  if (existsSync(BACKFILL_FILE)) throw new Error("A backfill is already in place (see .simulator/backfill.json). Run `backfill undo` first.");
+
+  const hours = Number(argument ?? 6);
+  if (!Number.isFinite(hours) || hours < 1 || hours > 72) throw new Error("Usage: backfill [hours from 1 to 72], e.g. backfill 6");
+  const minutes = Math.round(hours * 60);
+
+  const registry = await sdkFor(priceOwner()).markets.list();
+  const symbols = new Map(registry.map((m) => [m.marketId.toLowerCase(), symbolOf(m.marketId)]));
+  const firsts = sql(`SELECT market_id, to_char(min(sampled_at) AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'), (array_agg(price ORDER BY sampled_at))[1] FROM price_ticks GROUP BY market_id;`)
+    .trim()
+    .split("\n")
+    .filter(Boolean)
+    .map((line) => line.split("|") as [string, string, string]);
+  if (firsts.length === 0) throw new Error("The indexer has recorded no prices yet. Start the indexer and try again.");
+
+  const rng = createRng(Number(process.env.SIM_SEED_NUMBER ?? Date.now() % 2 ** 32));
+  const rows: TickRow[] = [];
+  for (const [marketId, firstAt, firstPrice] of firsts) {
+    const symbol = symbols.get(marketId.toLowerCase());
+    if (!symbol || !SYMBOLS.includes(symbol)) continue;
+    const prices = generateHistory({ symbol, endPrice: fromFeedPrice(BigInt(firstPrice)), minutes, rng });
+    rows.push(...historyRows(marketId, prices, new Date(firstAt)));
+  }
+  if (rows.length === 0) throw new Error("None of the simulated markets has a recorded price yet.");
+
+  const times = rows.map((row) => row.at.getTime());
+  const from = new Date(Math.min(...times)).toISOString();
+  const to = new Date(Math.max(...times)).toISOString();
+  sql("", { input: insertStatements(rows).join("\n") });
+  mkdirSync(STATE_DIR, { recursive: true });
+  writeFileSync(BACKFILL_FILE, JSON.stringify({ from, to, rows: rows.length }, null, 2));
+  console.log(`Added ${rows.length} simulated price ticks (${hours} hours, one a minute per market) from ${from} to ${to}.`);
+  console.log("Pick the 5m or 15m candles in the terminal. To remove them: pnpm --filter @alphamarkets/simulator backfill undo");
+}
+
 async function status() {
   const { traders, liquidator } = accounts();
   const owner = priceOwner();
@@ -220,13 +288,14 @@ try {
   if (command === "bootstrap") await bootstrap(Number(args[0] ?? 4));
   else if (command === "start") await start();
   else if (command === "status") await status();
+  else if (command === "backfill") await backfill(args[0]);
   else if (command === "nudge") {
     const [symbol, pct, steps] = args;
     if (!symbol || pct === undefined || !Number.isFinite(Number(pct))) throw new Error("Usage: nudge <SYMBOL> <percent> [steps], e.g. nudge NVDA -6");
     appendNudge(STATE_DIR, { symbol: symbol.toUpperCase(), pct: Number(pct), steps: Number(steps ?? 6) });
     console.log(`Asked the running simulator to move ${symbol.toUpperCase()} by ${pct}%. It plays out over the next ticks.`);
   } else {
-    console.log("Commands: bootstrap [hours] | start | status | nudge <SYMBOL> <percent> [steps]");
+    console.log("Commands: bootstrap [hours] | start | status | nudge <SYMBOL> <percent> [steps] | backfill [hours|undo]");
     process.exit(command ? 1 : 0);
   }
 } catch (error) {

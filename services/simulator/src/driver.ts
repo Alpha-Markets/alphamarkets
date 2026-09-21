@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { parseAbi, type Account, type Address, type PublicClient, type WalletClient } from "viem";
 import { readNudges } from "./control.js";
 import { describe } from "./format.js";
-import { CALM_MARKET, CALM_SIGMA, fromFeedPrice, planNudge, stepMarkets, toFeedPrice, type MarketModel, type ModelOptions, type Nudge } from "./priceModel.js";
+import { CALM_MARKET, CALM_SIGMA, SYMBOL_VOLATILITY, fromFeedPrice, planNudge, stepMarkets, toFeedPrice, type MarketModel, type ModelOptions, type Nudge } from "./priceModel.js";
 import type { Rng } from "./prng.js";
 
 const feedAbi = parseAbi([
@@ -12,9 +12,6 @@ const feedAbi = parseAbi([
   "function setPrice(uint256 price)",
 ]);
 const routerAbi = parseAbi(["function primarySource(bytes32 marketId) view returns (address)"]);
-
-/// Some stocks move more than others.
-const VOLATILITY: Record<string, number> = { NVDA: 1.2, TSLA: 1.4, AAPL: 0.8, META: 1.0, HOOD: 1.6 };
 
 export interface PriceDriver {
   /// The current simulated prices.
@@ -70,7 +67,7 @@ export async function createPriceDriver(options: {
     const [raw] = await publicClient.readContract({ address: feed, abi: feedAbi, functionName: "latestPrice" });
     const price = fromFeedPrice(raw);
     feeds.set(symbol, feed);
-    markets.push({ symbol, price, anchor: saved[symbol] ?? price, sigma: CALM_SIGMA * (VOLATILITY[symbol] ?? 1) * (options.volatility ?? 1) });
+    markets.push({ symbol, price, anchor: saved[symbol] ?? price, sigma: CALM_SIGMA * (SYMBOL_VOLATILITY[symbol] ?? 1) * (options.volatility ?? 1) });
   }
   mkdirSync(stateDir, { recursive: true });
   writeFileSync(join(stateDir, "state.json"), JSON.stringify({ anchors: Object.fromEntries(markets.map((m) => [m.symbol, m.anchor])) } satisfies SavedState, null, 2));
