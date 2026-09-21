@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.26;
 
-import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
-import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import {UpgradeableBase} from "../proxy/UpgradeableBase.sol";
+import {ReentrancyGuardUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {AlphaMarketsVault} from "./AlphaMarketsVault.sol";
@@ -16,7 +16,7 @@ import {AlphaMarketsVault} from "./AlphaMarketsVault.sol";
 /// plus any other collateral seized from an under-margined cross account (see CrossMarginManager).
 /// Anyone can top it up. Only FUND_ADMIN_ROLE takes money out, and it is meant to sit behind a
 /// multisig and a timelock before mainnet (Section 37).
-contract InsuranceFund is AccessControl, ReentrancyGuard {
+contract InsuranceFund is UpgradeableBase, ReentrancyGuardUpgradeable {
     using SafeERC20 for IERC20;
 
     bytes32 public constant FUND_ADMIN_ROLE = keccak256("FUND_ADMIN_ROLE");
@@ -30,11 +30,18 @@ contract InsuranceFund is AccessControl, ReentrancyGuard {
     event Deposited(address indexed from, address indexed token, uint256 amount);
     event Withdrawn(address indexed to, address indexed token, uint256 amount);
 
-    constructor(address admin, address vault_, address settlementToken_) {
-        if (admin == address(0) || vault_ == address(0) || settlementToken_ == address(0)) revert ZeroAddress();
+    /// @custom:oz-upgrades-unsafe-allow constructor
+    constructor(address vault_, address settlementToken_) {
+        if (vault_ == address(0) || settlementToken_ == address(0)) revert ZeroAddress();
         vault = AlphaMarketsVault(vault_);
         settlementToken = settlementToken_;
-        _grantRole(DEFAULT_ADMIN_ROLE, admin);
+        _disableInitializers();
+    }
+
+    function initialize(address admin) external initializer {
+        if (admin == address(0)) revert ZeroAddress();
+        __UpgradeableBase_init(admin);
+        __ReentrancyGuard_init();
         _grantRole(FUND_ADMIN_ROLE, admin);
     }
 

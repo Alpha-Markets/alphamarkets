@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.26;
 
-import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
+import {UpgradeableBase} from "../proxy/UpgradeableBase.sol";
 import {OptionType} from "../interfaces/DataTypes.sol";
 
 /// @notice Option identifier encoding (`UNDERLYING-EXPIRY-STRIKE-TYPE`, PROJECT_BRIEF.md
 /// Section 8) and per-series bookkeeping (open interest, contract size).
-contract OptionMarket is AccessControl {
+contract OptionMarket is UpgradeableBase {
     bytes32 public constant OPTIONS_ADMIN_ROLE = keccak256("OPTIONS_ADMIN_ROLE");
     /// @notice Granted to OptionsEngine.
     bytes32 public constant ENGINE_ROLE = keccak256("ENGINE_ROLE");
@@ -36,8 +36,13 @@ contract OptionMarket is AccessControl {
     );
     event ContractSizeUpdated(bytes32 indexed underlyingMarketId, uint256 contractSize);
 
-    constructor(address admin) {
-        _grantRole(DEFAULT_ADMIN_ROLE, admin);
+    /// @custom:oz-upgrades-unsafe-allow constructor
+    constructor() {
+        _disableInitializers();
+    }
+
+    function initialize(address admin) external initializer {
+        __UpgradeableBase_init(admin);
         _grantRole(OPTIONS_ADMIN_ROLE, admin);
     }
 

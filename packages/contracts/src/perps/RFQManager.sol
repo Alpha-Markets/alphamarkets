@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.26;
 
-import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
-import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import {UpgradeableBase} from "../proxy/UpgradeableBase.sol";
+import {ReentrancyGuardUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
 import {EIP712} from "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
 import {ECDSA} from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import {OracleRouter} from "../oracle/OracleRouter.sol";
@@ -23,7 +23,7 @@ import {PerpsEngine} from "./PerpsEngine.sol";
 ///
 /// A BLOCK TRADE is an RFQ whose notional is at least `blockMinNotional`: it may exceed the ordinary
 /// per-position cap, up to `blockMaxNotional`. The open-interest cap and leverage tiers still apply.
-contract RFQManager is AccessControl, EIP712, ReentrancyGuard {
+contract RFQManager is UpgradeableBase, EIP712, ReentrancyGuardUpgradeable {
     bytes32 public constant MAKER_ROLE = keccak256("MAKER_ROLE");
     bytes32 public constant RISK_ADMIN_ROLE = keccak256("RISK_ADMIN_ROLE");
 
@@ -36,7 +36,7 @@ contract RFQManager is AccessControl, EIP712, ReentrancyGuard {
     OracleRouter public immutable oracleRouter;
 
     /// @notice Widest gap between a quoted price and the mark price, in basis points of the mark.
-    uint256 public maxDeviationBps = 100;
+    uint256 public maxDeviationBps;
     /// @notice A trade of at least this notional is a block trade. Zero turns block trades off.
     uint256 public blockMinNotional;
     /// @notice Largest block trade, notional. Must be set with `blockMinNotional`.
@@ -71,12 +71,20 @@ contract RFQManager is AccessControl, EIP712, ReentrancyGuard {
     );
     event ParametersUpdated(uint256 maxDeviationBps, uint256 blockMinNotional, uint256 blockMaxNotional);
 
-    constructor(address admin, address perpsEngine_, address oracleRouter_) EIP712("AlphaMarketsRFQ", "1") {
-        if (admin == address(0) || perpsEngine_ == address(0) || oracleRouter_ == address(0)) revert ZeroAddress();
+    /// @custom:oz-upgrades-unsafe-allow constructor
+    constructor(address perpsEngine_, address oracleRouter_) EIP712("AlphaMarketsRFQ", "1") {
+        if (perpsEngine_ == address(0) || oracleRouter_ == address(0)) revert ZeroAddress();
         perpsEngine = PerpsEngine(perpsEngine_);
         oracleRouter = OracleRouter(oracleRouter_);
-        _grantRole(DEFAULT_ADMIN_ROLE, admin);
+        _disableInitializers();
+    }
+
+    function initialize(address admin) external initializer {
+        if (admin == address(0)) revert ZeroAddress();
+        __UpgradeableBase_init(admin);
+        __ReentrancyGuard_init();
         _grantRole(RISK_ADMIN_ROLE, admin);
+        maxDeviationBps = 100;
     }
 
     function setParameters(uint256 deviationBps, uint256 blockMin, uint256 blockMax)

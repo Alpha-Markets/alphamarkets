@@ -13,7 +13,10 @@ import {IAccessControl} from "@openzeppelin/contracts/access/IAccessControl.sol"
 /// not touch the operational roles: `ENGINE_ROLE`, `VAULT_ROLE`, `FEE_MANAGER_ROLE` and
 /// `LIQUIDATOR_ROLE` belong to contracts, and `QUOTER_ROLE` (OptionsEngine) and `MAKER_ROLE`
 /// (RFQManager) belong to service keys that the new admin rotates with `grantRole` / `revokeRole`.
-/// `PerpsEngine` has no admin: its deployer only wires the RFQ manager once, during deployment.
+/// `PerpsEngine` and `LiquidationEngine` hold only `DEFAULT_ADMIN_ROLE`, which authorizes their upgrades.
+///
+/// Every contract is an upgradeable proxy, and `DEFAULT_ADMIN_ROLE` is the role that may upgrade it, so
+/// the handover also moves the power to change any contract's code, not just its parameters.
 ///
 /// Two runs, on purpose. The first grants and keeps the deployer's roles, so nothing is lost if the
 /// new admin address is wrong:
@@ -34,7 +37,7 @@ contract HandOverAdmin is Script {
     error NewAdminMissingRole(address target, bytes32 role);
 
     /// @dev Keys of the AccessControl contracts in `deployments/<network>.json`.
-    function _targetKeys() internal pure returns (string[18] memory keys) {
+    function _targetKeys() internal pure returns (string[20] memory keys) {
         keys = [
             "marketRegistry",
             "collateralManager",
@@ -53,7 +56,9 @@ contract HandOverAdmin is Script {
             "insuranceFund",
             "crossMargin",
             "subaccountFactory",
-            "rfqManager"
+            "rfqManager",
+            "perpsEngine",
+            "liquidationEngine"
         ];
     }
 
@@ -81,7 +86,7 @@ contract HandOverAdmin is Script {
 
         string memory network = vm.envOr("NETWORK_NAME", string("robinhood_testnet"));
         string memory json = vm.readFile(string.concat("deployments/", network, ".json"));
-        string[18] memory keys = _targetKeys();
+        string[20] memory keys = _targetKeys();
         address[] memory targets = new address[](keys.length);
         for (uint256 i = 0; i < keys.length; i++) {
             targets[i] = vm.parseJsonAddress(json, string.concat(".", keys[i]));

@@ -1,0 +1,17 @@
+{
+  "storage": [
+    {
+      "label": "rfqManager",
+      "offset": 0,
+      "slot": "0",
+      "type": "t_address"
+    }
+  ],
+  "types": {
+    "t_address": {
+      "encoding": "inplace",
+      "label": "address",
+      "numberOfBytes": "20"
+    }
+  }
+}

@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.26;
 
-import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
+import {UpgradeableBase} from "../proxy/UpgradeableBase.sol";
 import {IMarketRegistry} from "../interfaces/IMarketRegistry.sol";
 import {MarketConfig} from "../interfaces/DataTypes.sol";
 
 /// @notice Single source of truth for which markets exist, their underlying token, oracle
 /// mapping, and which product types are enabled. Every other contract queries this instead
 /// of holding its own market list (PROJECT_BRIEF.md Section 18).
-contract MarketRegistry is IMarketRegistry, AccessControl {
+contract MarketRegistry is IMarketRegistry, UpgradeableBase {
     /// @notice Role permitted to add/update/pause markets. Intended to migrate to a
     /// TimelockController-held role without any contract change (Section 37).
     bytes32 public constant MARKET_ADMIN_ROLE = keccak256("MARKET_ADMIN_ROLE");
@@ -24,9 +24,14 @@ contract MarketRegistry is IMarketRegistry, AccessControl {
     mapping(bytes32 => bool) private _exists;
     bytes32[] private _marketIds;
 
-    constructor(address admin) {
+    /// @custom:oz-upgrades-unsafe-allow constructor
+    constructor() {
+        _disableInitializers();
+    }
+
+    function initialize(address admin) external initializer {
         if (admin == address(0)) revert ZeroAddress();
-        _grantRole(DEFAULT_ADMIN_ROLE, admin);
+        __UpgradeableBase_init(admin);
         _grantRole(MARKET_ADMIN_ROLE, admin);
     }
 

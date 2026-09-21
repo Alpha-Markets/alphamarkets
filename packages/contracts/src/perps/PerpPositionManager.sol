@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.26;
 
-import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
+import {UpgradeableBase} from "../proxy/UpgradeableBase.sol";
 
 /// @notice Perp position storage only (PROJECT_BRIEF.md Section 12) — no pricing, no risk
 /// math. Mark/index price, unrealized PnL, margin ratio, and liquidation price are derived
 /// on read by PerpsEngine/LiquidationEngine from live oracle data, not stored here, so they
 /// never go stale between updates.
-contract PerpPositionManager is AccessControl {
+contract PerpPositionManager is UpgradeableBase {
     /// @notice Granted to PerpsEngine, FundingManager, LiquidationEngine.
     bytes32 public constant ENGINE_ROLE = keccak256("ENGINE_ROLE");
 
@@ -32,8 +32,13 @@ contract PerpPositionManager is AccessControl {
     mapping(address => uint256[]) private _userPositions;
     uint256 public nextPositionId;
 
-    constructor(address admin) {
-        _grantRole(DEFAULT_ADMIN_ROLE, admin);
+    /// @custom:oz-upgrades-unsafe-allow constructor
+    constructor() {
+        _disableInitializers();
+    }
+
+    function initialize(address admin) external initializer {
+        __UpgradeableBase_init(admin);
     }
 
     function createPosition(PerpPosition calldata pos) external onlyRole(ENGINE_ROLE) returns (uint256 positionId) {

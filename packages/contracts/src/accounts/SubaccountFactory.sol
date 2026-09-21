@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.26;
 
-import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
+import {UpgradeableBase} from "../proxy/UpgradeableBase.sol";
 import {AlphaMarketsVault} from "../core/AlphaMarketsVault.sol";
 import {Subaccount} from "./Subaccount.sol";
 
@@ -9,7 +9,7 @@ import {Subaccount} from "./Subaccount.sol";
 /// the list of contracts a subaccount may call. That list is what stops a delegate, or a
 /// mistaken call, from touching the Vault or a token from inside a subaccount: only the trading
 /// engines belong on it.
-contract SubaccountFactory is AccessControl {
+contract SubaccountFactory is UpgradeableBase {
     bytes32 public constant TARGET_ADMIN_ROLE = keccak256("TARGET_ADMIN_ROLE");
 
     AlphaMarketsVault public immutable vault;
@@ -23,10 +23,16 @@ contract SubaccountFactory is AccessControl {
     event SubaccountCreated(address indexed owner, uint256 indexed index, address subaccount);
     event TargetAllowed(address indexed target, bool allowed);
 
-    constructor(address admin, address vault_) {
-        if (admin == address(0) || vault_ == address(0)) revert ZeroAddress();
+    /// @custom:oz-upgrades-unsafe-allow constructor
+    constructor(address vault_) {
+        if (vault_ == address(0)) revert ZeroAddress();
         vault = AlphaMarketsVault(vault_);
-        _grantRole(DEFAULT_ADMIN_ROLE, admin);
+        _disableInitializers();
+    }
+
+    function initialize(address admin) external initializer {
+        if (admin == address(0)) revert ZeroAddress();
+        __UpgradeableBase_init(admin);
         _grantRole(TARGET_ADMIN_ROLE, admin);
     }
 

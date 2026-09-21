@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.26;
 
-import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
+import {UpgradeableBase} from "../proxy/UpgradeableBase.sol";
 
 /// @notice Minimal stub: receives a configurable share of protocol fees from FeeManager and
 /// accrues it for a future buyback. The real swap/execution mechanism is deferred — this
@@ -10,7 +10,7 @@ import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
 ///
 /// `protocolToken` is env-driven (`NEXT_PUBLIC_PROTOCOL_TOKEN_ADDRESS`) and may be
 /// `address(0)` pre-TGE — the ticker/address must never be hardcoded.
-contract BuybackModule is AccessControl {
+contract BuybackModule is UpgradeableBase {
     bytes32 public constant FEE_MANAGER_ROLE = keccak256("FEE_MANAGER_ROLE");
     bytes32 public constant BUYBACK_ADMIN_ROLE = keccak256("BUYBACK_ADMIN_ROLE");
 
@@ -24,9 +24,14 @@ contract BuybackModule is AccessControl {
     event BuybackExecuted(address indexed token, uint256 amountIn, uint256 amountOut);
     event ProtocolTokenUpdated(address indexed protocolToken);
 
-    constructor(address admin) {
+    /// @custom:oz-upgrades-unsafe-allow constructor
+    constructor() {
+        _disableInitializers();
+    }
+
+    function initialize(address admin) external initializer {
         if (admin == address(0)) revert ZeroAddress();
-        _grantRole(DEFAULT_ADMIN_ROLE, admin);
+        __UpgradeableBase_init(admin);
         _grantRole(BUYBACK_ADMIN_ROLE, admin);
     }
 

@@ -1,0 +1,135 @@
+{
+  "storage": [
+    {
+      "label": "primarySource",
+      "offset": 0,
+      "slot": "0",
+      "type": "t_mapping(t_bytes32,t_address)"
+    },
+    {
+      "label": "fallbackSource",
+      "offset": 0,
+      "slot": "1",
+      "type": "t_mapping(t_bytes32,t_address)"
+    },
+    {
+      "label": "primaryDecimals",
+      "offset": 0,
+      "slot": "2",
+      "type": "t_mapping(t_bytes32,t_uint8)"
+    },
+    {
+      "label": "fallbackDecimals",
+      "offset": 0,
+      "slot": "3",
+      "type": "t_mapping(t_bytes32,t_uint8)"
+    },
+    {
+      "label": "lastPrice",
+      "offset": 0,
+      "slot": "4",
+      "type": "t_mapping(t_bytes32,t_uint256)"
+    },
+    {
+      "label": "paused",
+      "offset": 0,
+      "slot": "5",
+      "type": "t_mapping(t_bytes32,t_bool)"
+    },
+    {
+      "label": "settlementPrice",
+      "offset": 0,
+      "slot": "6",
+      "type": "t_mapping(t_bytes32,t_mapping(t_uint256,t_uint256))"
+    },
+    {
+      "label": "settlementRecorded",
+      "offset": 0,
+      "slot": "7",
+      "type": "t_mapping(t_bytes32,t_mapping(t_uint256,t_bool))"
+    }
+  ],
+  "types": {
+    "t_address": {
+      "encoding": "inplace",
+      "label": "address",
+      "numberOfBytes": "20"
+    },
+    "t_bool": {
+      "encoding": "inplace",
+      "label": "bool",
+      "numberOfBytes": "1"
+    },
+    "t_bytes32": {
+      "encoding": "inplace",
+      "label": "bytes32",
+      "numberOfBytes": "32"
+    },
+    "t_mapping(t_bytes32,t_address)": {
+      "encoding": "mapping",
+      "key": "t_bytes32",
+      "label": "mapping(bytes32 => address)",
+      "numberOfBytes": "32",
+      "value": "t_address"
+    },
+    "t_mapping(t_bytes32,t_bool)": {
+      "encoding": "mapping",
+      "key": "t_bytes32",
+      "label": "mapping(bytes32 => bool)",
+      "numberOfBytes": "32",
+      "value": "t_bool"
+    },
+    "t_mapping(t_bytes32,t_mapping(t_uint256,t_bool))": {
+      "encoding": "mapping",
+      "key": "t_bytes32",
+      "label": "mapping(bytes32 => mapping(uint256 => bool))",
+      "numberOfBytes": "32",
+      "value": "t_mapping(t_uint256,t_bool)"
+    },
+    "t_mapping(t_bytes32,t_mapping(t_uint256,t_uint256))": {
+      "encoding": "mapping",
+      "key": "t_bytes32",
+      "label": "mapping(bytes32 => mapping(uint256 => uint256))",
+      "numberOfBytes": "32",
+      "value": "t_mapping(t_uint256,t_uint256)"
+    },
+    "t_mapping(t_bytes32,t_uint256)": {
+      "encoding": "mapping",
+      "key": "t_bytes32",
+      "label": "mapping(bytes32 => uint256)",
+      "numberOfBytes": "32",
+      "value": "t_uint256"
+    },
+    "t_mapping(t_bytes32,t_uint8)": {
+      "encoding": "mapping",
+      "key": "t_bytes32",
+      "label": "mapping(bytes32 => uint8)",
+      "numberOfBytes": "32",
+      "value": "t_uint8"
+    },
+    "t_mapping(t_uint256,t_bool)": {
+      "encoding": "mapping",
+      "key": "t_uint256",
+      "label": "mapping(uint256 => bool)",
+      "numberOfBytes": "32",
+      "value": "t_bool"
+    },
+    "t_mapping(t_uint256,t_uint256)": {
+      "encoding": "mapping",
+      "key": "t_uint256",
+      "label": "mapping(uint256 => uint256)",
+      "numberOfBytes": "32",
+      "value": "t_uint256"
+    },
+    "t_uint256": {
+      "encoding": "inplace",
+      "label": "uint256",
+      "numberOfBytes": "32"
+    },
+    "t_uint8": {
+      "encoding": "inplace",
+      "label": "uint8",
+      "numberOfBytes": "1"
+    }
+  }
+}
