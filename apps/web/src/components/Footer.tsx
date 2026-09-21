@@ -2,8 +2,10 @@ import { chains } from "@alphamarkets/config";
 import Link from "next/link";
 import { env } from "@/lib/env";
 import { PAGE_FRAME } from "@/lib/frame";
+import { X_URL } from "@/lib/social";
 import { listLink } from "@alphamarkets/ui";
 import { Logo } from "./Logo";
+import { XIcon } from "./XIcon";
 
 const explorerAddress = (address: string) => (env.explorerUrl ? `${env.explorerUrl.replace(/\/+$/, "")}/address/${address}` : undefined);
 
@@ -34,10 +36,14 @@ export function Footer() {
           <div>
             <Logo size="lg" />
             <p className="mt-2 max-w-xs text-muted">Derivatives for tokenized equities.</p>
-            <p className="mt-4 inline-flex items-center gap-2 rounded-md border border-line px-2 py-1 text-xs text-muted">
+            <p className="mt-4 flex w-fit items-center gap-2 rounded-md border border-line px-2 py-1 text-xs text-muted">
               <span aria-hidden="true" className="size-1.5 rounded-full bg-up" />
               {chains[env.chainId].name}
             </p>
+            <a href={X_URL} target="_blank" rel="noreferrer" className={`${listLink} mt-3 items-center gap-2`}>
+              <XIcon />
+              Follow on X
+            </a>
           </div>
           <nav aria-label="Product" className="flex flex-col gap-2">
             <p className="text-xs text-muted">Product</p>

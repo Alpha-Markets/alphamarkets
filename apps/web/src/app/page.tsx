@@ -31,7 +31,7 @@ export default function Landing() {
     <div className="flex min-h-full flex-col">
       <section className="relative min-h-[calc(100dvh-4.5rem)] shrink-0 overflow-hidden">
         <SilkBackdrop />
-        <div className={`${PAGE_FRAME} relative grid min-h-[calc(100dvh-4.5rem)] items-center gap-x-16 gap-y-12 pb-12 pt-24 lg:grid-cols-2 lg:pb-16`}>
+        <div className={`${PAGE_FRAME} relative grid min-h-[calc(100dvh-4.5rem)] grid-cols-[minmax(0,1fr)] items-center gap-x-16 gap-y-12 pb-12 pt-24 lg:grid-cols-2 lg:pb-16`}>
           <div className="flex flex-col items-start">
             <HeroMark />
             <h1 className="mt-8 max-w-[14ch] text-balance font-serif text-[2.5rem] font-light leading-[1.04] tracking-[-0.03em] sm:text-[3.75rem] lg:text-[clamp(3rem,4.5vw,4.5rem)]">
