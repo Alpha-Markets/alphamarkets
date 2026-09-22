@@ -30,6 +30,19 @@ A redeploy used to create 20 new contracts and 20 new addresses, and every clien
 
 TSLA follows the brief's Section 19 example exactly. The brief gives no numbers for AAPL, META or HOOD: AAPL copies the NVDA numbers, META and HOOD copy TSLA's, and the mock prices are placeholders, not market data. The product owner still has to set real risk limits, fees and prices. The new tokens and feeds are not verified on the explorer yet.
 
+### Added — four more testnet markets (2026-09-23)
+
+`script/AddMarket.s.sol` again, for AMZN, PLTR, NFLX and AMD, all copying TSLA's risk numbers like META and HOOD did. Same story: no contract, service or frontend code changed — `apps/web`'s market hooks read the registry live, and only `services/simulator`'s persona symbol list needed to learn the four new tickers so they get simulated volume.
+
+| Market | Mock price | Max leverage | Maintenance margin | Max position | Open interest cap | Token | Feed |
+|---|---|---|---|---|---|---|---|
+| AMZN | $220 | 5x | 7.5% | $250K | $3M | `0x8c7123b07370845314D85e50f87ACb3D9c230D89` | `0x1680D089A048f4f2159e64b7111763BEfC01DEd1` |
+| PLTR | $180 | 5x | 7.5% | $250K | $3M | `0xB1AA16B6ee8F5217aCc05c26C7E13c01640337C8` | `0xC9f6ee55b0E071fe8ea7D0825231E8676c04Bdb9` |
+| NFLX | $1,200 | 5x | 7.5% | $250K | $3M | `0x57a12DF9dd4BD3501AeD1Cf63fAf3F52fa25CE7e` | `0xcBfca79ee9C00102e9c1AA180C277892f9478877` |
+| AMD | $170 | 5x | 7.5% | $250K | $3M | `0x7f7d5D518449d5b138E31e549B1B3577C97a9332` | `0x0c9EcbFD7a891e900070032c0eA8dD04eb1F6bf5` |
+
+The first `AddMarket.s.sol` run for these four left `PRICE_FEED_OWNER` unset (defaulting to the deployer, not the keeper); since `MockPriceFeed.owner` is `immutable`, that couldn't be fixed in place. Each feed above is a replacement deployed with the keeper as owner and repointed via `OracleRouter.setPrimarySource`, so the addresses here are the ones actually live — not the ones the first run logged. The tokens are unaffected and unchanged. The mock prices are placeholders, not market data, same as the rest.
+
 ## [1.5.0-testnet] - 2026-09-21
 
 The first testnet deployment behind proxies (see the `[Unreleased]` proxy entry below, merged in PR #22), via `script/DeployAll.s.sol`, then `script/ConfigureMarkets.s.sol` and `script/AddMarket.s.sol` for TSLA, AAPL, META and HOOD, from the deployer `0xC804c6c50CE6F5B5dFB035378A3F84145914697F`. First block `122444455` (use it as `INDEXER_START_BLOCK`). It replaces `[1.4.0-testnet]`, which is abandoned: its contracts are not proxies and its state is not carried over.
