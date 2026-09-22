@@ -12,3 +12,9 @@ export const SECTION_TITLE =
 /// For verifiable data only — a contract address, a chain name, a tech-stack tag — never prices or
 /// tickers, which stay in the sans everywhere else so the landing page still matches the terminal.
 export const MONO = 'font-mono tabular-nums';
+
+/// A small tracked uppercase label, on a button or a chip-style link. One source instead of the same
+/// string re-typed in every caller — the tracked-caps treatment itself is a deliberate financial-
+/// terminal convention (PROJECT_BRIEF.md's "precise typography"), not the generic eyebrow-label tell;
+/// this only removes the duplication.
+export const CHIP_LABEL = 'text-[13px] font-medium uppercase tracking-[0.04em]';

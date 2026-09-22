@@ -85,7 +85,7 @@ export function PortfolioView() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="rounded-[10px] border border-line/70 bg-surface p-6">
+      <div className="rounded-panel border border-line/70 bg-surface p-6">
         <p className="text-xs text-muted">Portfolio value</p>
         <p className="mt-1 text-[2.5rem] font-light leading-tight tabular-nums">
           {isPending ? <Skeleton className="h-9 w-56" /> : fmtUsd(value, decimals)}
@@ -94,7 +94,7 @@ export function PortfolioView() {
           <div
             role="img"
             aria-label={`Available collateral ${fmtUsd(summary.balances.available, decimals)}, locked margin ${fmtUsd(summary.balances.lockedMargin, decimals)}`}
-            className="mt-4 flex h-1.5 max-w-md overflow-hidden rounded-[2px] bg-line"
+            className="mt-4 flex h-1.5 max-w-md overflow-hidden rounded-sharp bg-line"
           >
             <div className="bg-accent" style={{ width: `${lockedShare(summary.balances.available, summary.balances.lockedMargin).available}%` }} />
             <div className="bg-faint" style={{ width: `${lockedShare(summary.balances.available, summary.balances.lockedMargin).locked}%` }} />

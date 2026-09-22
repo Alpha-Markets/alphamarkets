@@ -34,7 +34,7 @@ export function LandingContracts() {
               "border-l border-line pl-4 max-sm:border-t sm:pl-6",
             ][index];
             return (
-              <div key={label} className={cn("flex min-w-0 flex-col gap-3 py-[21px] sm:py-[35px]", border)}>
+              <div key={label} className={cn("flex min-w-0 flex-col gap-3 py-6 sm:py-10", border)}>
                 <span className="flex items-center gap-2 text-sm text-muted">
                   <span aria-hidden="true" className={cn("size-1.5 shrink-0 rounded-full", url ? "bg-up" : "bg-faint")} />
                   {label}

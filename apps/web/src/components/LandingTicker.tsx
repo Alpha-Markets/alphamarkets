@@ -18,7 +18,7 @@ function Item({ symbol, hidden }: { symbol: string; hidden: boolean }) {
       <Link
         href={`/perpetuals?market=${symbol}`}
         tabIndex={hidden ? -1 : undefined}
-        className="flex h-11 items-center gap-3 rounded-lg px-3 transition-colors duration-150 hover:bg-accent-soft hover:text-accent active:bg-accent active:text-accent-ink"
+        className="flex h-11 items-center gap-3 rounded-control px-3 transition-colors duration-150 hover:bg-accent-soft hover:text-accent active:bg-accent active:text-accent-ink"
       >
         <span className="font-medium">{symbol}</span>
         {data ? <Num tone="muted">{`$${fmtPrice(data.markPrice)}`}</Num> : null}
