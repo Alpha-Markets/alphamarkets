@@ -1,16 +1,19 @@
+import { chains } from '@alphamarkets/config';
 import Link from 'next/link';
 import { ArrowIcon } from '@/components/ArrowIcon';
 import { Footer } from '@/components/Footer';
+import { HeroCardStack } from '@/components/HeroCardStack';
 import { HeroMark } from '@/components/HeroMark';
-import { HeroTerminal } from '@/components/HeroTerminal';
+import { LandingContracts } from '@/components/LandingContracts';
+import { LandingFaq } from '@/components/LandingFaq';
 import { LandingMarkets } from '@/components/LandingMarkets';
 import { LandingStats } from '@/components/LandingStats';
 import { LandingTicker } from '@/components/LandingTicker';
 import { SectionHeader } from '@/components/SectionHeader';
 import { SilkBackdrop } from '@/components/SilkBackdrop';
 import { StackPyramid } from '@/components/StackPyramid';
-import { StatementBand } from '@/components/StatementBand';
-import { PAGE_FRAME } from '@/lib/frame';
+import { env } from '@/lib/env';
+import { MONO, PAGE_FRAME } from '@/lib/frame';
 import { cn, interactive, rowLink } from '@alphamarkets/ui';
 
 const blocks = [
@@ -40,17 +43,17 @@ const button =
 
 /// PROJECT_BRIEF.md Section 23, kept short. The page opens dark, on the moving backdrop: the logo, the
 /// promise and the way in on the left, a live preview of the terminal on the right, both centred in the
-/// first screen. The ticker then hands over to a light
-/// "paper" region: the venue's totals, the markets and a line for each product, a statement band
-/// and the footer. The terminal stays the product, and stays dark. The header floats over the hero
-/// (see Header), so the hero and the ticker together are the whole first screen.
+/// first screen. The header floats over the hero (see Header), so the hero is the whole first screen.
+/// Below it, a light "paper" region carries the rest, in order: what you can trade (Products), the
+/// venue's own markets (ticker, totals, the market list), the contracts it runs on and the stack they
+/// sit on, then the FAQ, before the footer. The terminal stays the product, and stays dark.
 export default function Landing() {
     return (
         <div className="flex min-h-full flex-col">
-            <section className="relative min-h-[calc(100dvh-4.5rem)] shrink-0 overflow-hidden">
+            <section className="relative min-h-[calc(100dvh-4.375rem)] shrink-0 overflow-hidden">
                 <SilkBackdrop />
                 <div
-                    className={`${PAGE_FRAME} relative grid min-h-[calc(100dvh-4.5rem)] grid-cols-[minmax(0,1fr)] items-center gap-x-16 gap-y-12 pb-12 pt-24 lg:grid-cols-2 lg:pb-16`}
+                    className={`${PAGE_FRAME} relative grid min-h-[calc(100dvh-4.375rem)] grid-cols-[minmax(0,1fr)] items-center gap-x-16 gap-y-12 pb-12 pt-24 lg:grid-cols-2 lg:pb-16`}
                 >
                     <div className="flex flex-col items-center text-center sm:items-start sm:text-left">
                         {/* On a phone the header already carries the mark, so the hero opens on the headline. */}
@@ -58,11 +61,12 @@ export default function Landing() {
                             <HeroMark />
                         </div>
                         <h1 className="max-w-[14ch] sm:mt-8 text-balance font-serif text-[2.5rem] font-light leading-[1.04] tracking-[-0.03em] sm:text-[3.75rem] lg:text-[clamp(3rem,4.5vw,4.5rem)]">
-                            Derivatives for Tokenized Equities.
+                            Onchain Derivatives for Stock Tokens.
                         </h1>
                         <p className="mt-6 max-w-[45ch] text-lg leading-relaxed text-muted">
-                            Trade options and perpetual derivatives on tokenized
-                            markets.
+                            perpetuals and options on Stock Tokens with
+                            real-time market pricing and onchain settlement,
+                            built on Robinhood Chain.
                         </p>
                         <div className="mt-10 flex flex-wrap justify-center gap-2 sm:justify-start">
                             <Link
@@ -86,17 +90,18 @@ export default function Landing() {
                                 Explore markets
                             </Link>
                         </div>
+                        {/* A quiet "we're live" signal, not a competing headline — addresses live in the
+                            Smart Contracts section further down, so this doesn't duplicate them. */}
+                        <p className={cn(MONO, 'mt-6 flex items-center gap-2 text-sm text-muted')}>
+                            <span aria-hidden="true" className="size-1.5 rounded-full bg-up" />
+                            {chains[env.chainId].name}
+                        </p>
                     </div>
-                    <HeroTerminal />
+                    <HeroCardStack />
                 </div>
             </section>
 
             <div className="paper">
-                <LandingTicker />
-                <LandingStats />
-                <div className="pt-16 lg:pt-24">
-                    <LandingMarkets />
-                </div>
                 <section
                     aria-labelledby="landing-products"
                     className="py-16 lg:py-24"
@@ -128,6 +133,15 @@ export default function Landing() {
                         ))}
                     </ul>
                 </section>
+
+                <LandingTicker />
+                <LandingStats />
+                <div className="pt-16 lg:pt-24">
+                    <LandingMarkets />
+                </div>
+
+                <LandingContracts />
+
                 <section
                     aria-labelledby="landing-stack"
                     className="pb-16 lg:pb-24"
@@ -142,7 +156,8 @@ export default function Landing() {
                         <StackPyramid />
                     </div>
                 </section>
-                <StatementBand />
+
+                <LandingFaq />
             </div>
             <Footer />
         </div>

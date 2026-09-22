@@ -7,7 +7,7 @@ import { useAccount } from "wagmi";
 import { useDismiss } from "@/hooks/useDismiss";
 import { PAGE_FRAME } from "@/lib/frame";
 import { X_URL } from "@/lib/social";
-import { chip, cn, menuItem, pill } from "@alphamarkets/ui";
+import { chip, cn, interactive, menuItem } from "@alphamarkets/ui";
 import { Logo } from "./Logo";
 import { MenuIcon } from "./MenuIcon";
 import { WalletButton } from "./WalletButton";
@@ -23,9 +23,15 @@ const items = [
   { label: "Activity", href: "/activity" },
 ];
 
-/// Every header item is its own rounded bubble, as on the reference: small uppercase type in a
-/// 38px fill. The bubble supplies size and type; `pill` and `chip` supply the colour states.
-const bubble = "inline-flex h-11 items-center rounded-lg! text-[13px] font-medium uppercase tracking-[0.04em]";
+/// Primary nav is plain text on the header's own blur, not another row of boxes: full-brightness
+/// text, an accent hairline under the current page, accent text on hover. The hairline is the only
+/// thing that moves between states, so nothing shifts size or position when a page changes.
+const navLink = (current: boolean) =>
+  cn(
+    interactive,
+    "flex h-full items-center border-b-2 px-1 text-base font-medium",
+    current ? "border-accent text-accent" : "border-transparent text-text hover:text-accent",
+  );
 
 const isCurrent = (pathname: string, href: string) => pathname === href || pathname.startsWith(`${href}/`);
 
@@ -33,60 +39,42 @@ export function Header() {
   const pathname = usePathname();
   const { isConnected } = useAccount();
   const [open, setOpen] = useState(false);
-  // On the landing page the header floats over the hero, transparent, while the page is at the top. Its
-  // bubbles carry their own fills. Once the page scrolls it takes a solid fill: text scrolling up under
-  // transparent buttons is unreadable, most of all on a phone where the bar spans the whole width.
-  // The header has no border of its own: a border with no colour set is drawn in the text colour, and
-  // one added on a page change faded out of off-white for 200 ms.
+  // On the landing page the header floats over the hero, then over the light "paper" section once
+  // the page scrolls past it; on every other page it sits in the normal flow above (always dark)
+  // content. The nav text itself now carries no fill of its own, so the bar needs one soft, even
+  // scrim behind everything (not a box per item) to stay readable against either backdrop.
   const landing = pathname === "/";
-  const [scrolled, setScrolled] = useState(false);
   const ref = useRef<HTMLElement>(null);
   const close = useCallback(() => setOpen(false), []);
   useDismiss(ref, open, close);
   // A tap on a link changes the page; the sheet has done its job.
   useEffect(() => setOpen(false), [pathname]);
-  // The page scrolls inside `main`, not the window.
-  useEffect(() => {
-    const main = document.getElementById("main");
-    if (!main) return;
-    const update = () => setScrolled(main.scrollTop > 8);
-    update();
-    main.addEventListener("scroll", update, { passive: true });
-    return () => main.removeEventListener("scroll", update);
-  }, [pathname]);
 
   return (
     <header
       ref={ref}
       className={cn(
-        "z-40 shrink-0 transition-colors duration-200",
-        landing
-          ? cn("absolute inset-x-0 top-0", scrolled ? "bg-ground" : "bg-transparent")
-          : "relative bg-ground",
+        "z-40 shrink-0 bg-ground/70 backdrop-blur-md",
+        landing ? "absolute inset-x-0 top-0" : "relative",
       )}
     >
-      <div className={cn("flex h-16 items-center justify-between gap-3", landing ? PAGE_FRAME : "px-4")}>
-        <div className="flex h-full items-center gap-1.5">
-          <Link href="/" aria-label="AlphaMarkets home" className={cn(bubble, "mr-1.5 shrink-0 bg-raised px-2.5 hover:bg-accent-soft sm:px-3 active:bg-accent-soft/60")}>
+      <div className={cn("flex h-20 items-center justify-between gap-3", landing ? PAGE_FRAME : "px-4")}>
+        <div className="flex h-full items-center gap-6">
+          <Link href="/" aria-label="AlphaMarkets home" className="flex h-full shrink-0 items-center">
             <Logo />
           </Link>
-          <nav aria-label="Primary" className="hidden h-full items-center gap-1.5 lg:flex">
+          <nav aria-label="Primary" className="hidden h-full items-center gap-8 lg:flex">
             {items.map((item) => {
               const current = isCurrent(pathname, item.href);
               return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  aria-current={current ? "page" : undefined}
-                  className={cn(bubble, "self-center px-4", pill(current))}
-                >
+                <Link key={item.href} href={item.href} aria-current={current ? "page" : undefined} className={navLink(current)}>
                   {item.label}
                 </Link>
               );
             })}
           </nav>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-6">
           <a
             href={X_URL}
             target="_blank"
@@ -115,7 +103,7 @@ export function Header() {
         </div>
       </div>
       {open ? (
-        <nav id="mobile-nav" aria-label="Primary mobile" className="absolute inset-x-0 top-full max-h-[calc(100dvh-4rem)] overflow-y-auto bg-ground lg:hidden">
+        <nav id="mobile-nav" aria-label="Primary mobile" className="absolute inset-x-0 top-full max-h-[calc(100dvh-4.375rem)] overflow-y-auto bg-ground lg:hidden">
           {items.map((item) => {
             const current = isCurrent(pathname, item.href);
             return (

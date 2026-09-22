@@ -1,19 +1,13 @@
 import { chains } from "@alphamarkets/config";
 import Link from "next/link";
 import { env } from "@/lib/env";
+import { CONTRACTS } from "@/lib/contracts";
 import { explorerAddressUrl } from "@/lib/explorer";
 import { PAGE_FRAME } from "@/lib/frame";
 import { X_URL } from "@/lib/social";
 import { listLink } from "@alphamarkets/ui";
 import { Logo } from "./Logo";
 import { XIcon } from "./XIcon";
-
-const contracts = [
-  { label: "Market registry", address: env.addresses.marketRegistry },
-  { label: "Vault", address: env.addresses.vault },
-  { label: "Perps engine", address: env.addresses.perpsEngine },
-  { label: "Options engine", address: env.addresses.optionsEngine },
-];
 
 /// Where the product lives on chain: the network it runs on and the contracts that hold collateral
 /// and settle trades, each linked to the explorer when one is configured.
@@ -53,7 +47,7 @@ export function Footer() {
           </nav>
           <div className="flex flex-col items-center gap-2 sm:items-start">
             <p className="text-xs text-muted">Contracts</p>
-            {contracts.map(({ label, address }) => {
+            {CONTRACTS.map(({ label, address }) => {
               const url = address ? explorerAddressUrl(env.explorerUrl, address) : undefined;
               return url ? (
                 <a key={label} href={url} target="_blank" rel="noreferrer" className={listLink}>
