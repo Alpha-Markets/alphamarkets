@@ -35,6 +35,9 @@
   --color-down-press: #d95d56;
   --font-sans: var(--font-geist), ui-sans-serif, system-ui, sans-serif;
   --font-serif: var(--font-newsreader), ui-serif, Georgia, serif;
+  /* Verifiable data only — contract addresses, chain name, tech-stack tags — never prices/tickers,
+     which stay in the sans everywhere else in the app. */
+  --font-mono: var(--font-geist-mono), ui-monospace, "SF Mono", Menlo, monospace;
 
   /* The landing page below the hero is set on paper: an off-white ground with the mark's deep teal as
      ink. These are the paper's own colours (`.paper` below re-points the terminal tokens to them). */
@@ -235,6 +238,50 @@ body {
 
 .hero-chart {
   animation: hero-chart-reveal 1.4s cubic-bezier(0.22, 0.61, 0.36, 1) 0.4s both;
+}
+
+/* Hero card ring: a real 3D ring, not a per-frame JS simulation of one. Each card's own position
+   (.stock-slot) is fixed — spaced evenly around a circle by --i/--n, pushed out by a radius — and
+   the whole ring turns because .stock-stage itself spins via one CSS animation. Perspective on the
+   scene does the size/depth foreshortening; nothing is recomputed on the main thread each frame,
+   which is what made the previous per-card JS version stumble.
+   The radius and card size are sized to stay inside .stock-scene's own box: the hero's right column
+   sits flush against the page's right padding (see page.tsx's justify-self-end), so there is no
+   spare margin on that side for a 3D transform to bleed into. overflow: hidden is a second,
+   unconditional guarantee of the same thing — this component never draws outside its own bounds,
+   whatever viewport width it lands on. */
+.stock-scene {
+  perspective: 1400px;
+  overflow: hidden;
+}
+
+.stock-stage {
+  transform-style: preserve-3d;
+  animation: stock-orbit 34s linear infinite;
+}
+
+@keyframes stock-orbit {
+  to {
+    transform: rotateY(360deg);
+  }
+}
+
+.stock-slot {
+  width: clamp(120px, 20vw, 156px);
+  aspect-ratio: 0.8;
+  transform-style: preserve-3d;
+  transform: rotateY(calc(var(--i) * (360deg / var(--n)))) translateZ(clamp(64px, 11vw, 92px));
+}
+
+.stock-card {
+  transition: transform 0.2s ease, filter 0.2s ease;
+  backface-visibility: hidden;
+}
+
+.stock-card:hover,
+.stock-card:focus-visible {
+  transform: scale(1.06);
+  filter: brightness(1.08);
 }
 
 /* Markets ticker under the landing hero: two identical runs of items slide left by exactly one run, so

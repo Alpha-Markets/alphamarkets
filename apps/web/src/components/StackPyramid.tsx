@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import { env } from "@/lib/env";
 import { explorerAddressUrl } from "@/lib/explorer";
+import { MONO } from "@/lib/frame";
 import { pyramidGeometry, stackLayers, type Slice } from "@/lib/stack";
 import { ArrowIcon } from "./ArrowIcon";
 
@@ -47,7 +48,7 @@ export function StackPyramid() {
   // The base is the foundation, so it is where the pyramid opens.
   const [selected, setSelected] = useState(layers.length - 1);
   const layer = layers[selected]!;
-  const linkClass = cn(chip, "mt-6 h-10 gap-2 rounded-lg px-4 text-[13px] font-medium uppercase tracking-[0.04em]");
+  const linkClass = cn(chip, MONO, "mt-6 h-10 gap-2 rounded-lg px-4 text-[13px] font-medium uppercase tracking-[0.04em]");
 
   return (
     <div className="grid gap-x-16 gap-y-10 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)] lg:items-center">
@@ -75,8 +76,14 @@ export function StackPyramid() {
                 {ledge ? <polygon points={outline(ledge)} style={{ fill: `color-mix(in oklab, ${base} 62%, white)` }} /> : null}
                 <polygon
                   points={outline(face)}
-                  strokeLinejoin="round"
-                  style={{ fill: base, stroke: isSelected ? "var(--color-ink)" : "none", strokeWidth: 4, paintOrder: "stroke" }}
+                  strokeLinejoin="miter"
+                  style={{
+                    fill: base,
+                    stroke: isSelected ? "var(--color-ink)" : "none",
+                    strokeWidth: 4,
+                    paintOrder: "stroke",
+                    filter: isSelected ? "drop-shadow(0 0 6px var(--color-accent-line))" : "none",
+                  }}
                 />
                 <polygon points={leftHalf(face)} style={{ fill: "color-mix(in oklab, black 16%, transparent)" }} />
                 {apex ? (
@@ -138,7 +145,7 @@ export function StackPyramid() {
           <p className="mt-3 max-w-[48ch] text-lg leading-relaxed text-muted">{layer.role}</p>
           <ul className="mt-5 flex flex-wrap gap-2">
             {layer.tech.map((item) => (
-              <li key={item} className="rounded-md bg-raised px-3 py-1 text-sm">
+              <li key={item} className={cn(MONO, "rounded-md bg-raised px-3 py-1 text-sm")}>
                 {item}
               </li>
             ))}

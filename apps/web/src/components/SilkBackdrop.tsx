@@ -31,7 +31,13 @@ export function SilkBackdrop({ className }: { className?: string }) {
             <stop offset="0.6" stopColor="var(--color-ground)" stopOpacity="0.45" />
             <stop offset="1" stopColor="var(--color-ground)" stopOpacity="0" />
           </radialGradient>
+          <pattern id="silk-grid" width="64" height="64" patternUnits="userSpaceOnUse">
+            <path d="M64 0H0V64" fill="none" stroke="var(--color-accent)" strokeOpacity="0.05" strokeWidth="1" />
+          </pattern>
         </defs>
+        {/* A faint technical grid plate under the ribbons: a HUD base plate for the brand's own
+            organic ribbon shapes, not a replacement for them. */}
+        <rect width="1600" height="900" fill="url(#silk-grid)" />
         <path className="silk-drift" d={ribbons[6]} fill="none" stroke="var(--color-accent)" strokeOpacity="0.16" strokeWidth="110" filter="url(#silk-soft)" />
         <path
           className="silk-drift"
