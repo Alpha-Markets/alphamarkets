@@ -9,9 +9,9 @@ import { symbolOf } from "@/lib/market";
 
 function Figure({ label, className, children }: { label: string; className?: string; children: string }) {
   return (
-    <div className={cn("flex min-w-0 flex-col-reverse justify-end gap-2 py-[21px] sm:py-[35px]", className)}>
+    <div className={cn("flex min-w-0 flex-col-reverse justify-end gap-2 py-6 sm:py-10", className)}>
       <dt className="text-sm text-muted">{label}</dt>
-      <dd className="text-[2.25rem] font-light leading-none tracking-[-0.03em] tabular-nums sm:text-[3.25rem]">{children}</dd>
+      <dd className="font-serif text-[2.25rem] font-light leading-none tracking-[-0.03em] tabular-nums sm:text-[3.25rem]">{children}</dd>
     </div>
   );
 }

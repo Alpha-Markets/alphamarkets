@@ -32,7 +32,7 @@ export function StatementBand() {
   }, []);
 
   return (
-    <section aria-label="About AlphaMarkets" className="statement-band text-[#eef4f2]">
+    <section aria-label="About AlphaMarkets" className="statement-band text-text">
       <div className={`${PAGE_FRAME} flex flex-col items-center gap-10 py-24 text-center lg:gap-14 lg:py-40`}>
         {lines.map((line, index) => (
           <p

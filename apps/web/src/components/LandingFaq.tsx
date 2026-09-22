@@ -39,14 +39,14 @@ export function LandingFaq() {
         {faqs.map((item) => (
           <li key={item.q}>
             <details className="group">
-              <summary className={`${PAGE_FRAME} flex list-none items-center justify-between gap-4 py-[21px] text-lg font-medium marker:content-none lg:py-[28px]`}>
+              <summary className={`${PAGE_FRAME} flex list-none items-center justify-between gap-4 py-6 text-lg font-medium marker:content-none lg:py-8`}>
                 {item.q}
                 <span aria-hidden="true" className="relative size-3 shrink-0">
                   <span className="absolute inset-0 my-auto h-px bg-current" />
                   <span className="absolute inset-0 mx-auto h-full w-px bg-current transition-opacity duration-150 group-open:opacity-0" />
                 </span>
               </summary>
-              <p className={`${PAGE_FRAME} -mt-2 max-w-[65ch] pb-[21px] text-lg leading-relaxed text-muted lg:pb-[28px]`}>{item.a}</p>
+              <p className={`${PAGE_FRAME} -mt-2 max-w-[65ch] pb-6 text-lg leading-relaxed text-muted lg:pb-8`}>{item.a}</p>
             </details>
           </li>
         ))}

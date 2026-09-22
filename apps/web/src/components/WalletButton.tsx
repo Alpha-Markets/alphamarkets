@@ -11,7 +11,7 @@ import { chain } from "@/lib/wagmi";
 import { ConnectButton } from "./ConnectButton";
 
 /// The header's own size: a 38px bubble with the same small uppercase type as the navigation.
-const bubble = "h-11! rounded-lg! px-4! text-[13px]! uppercase tracking-[0.04em] max-lg:h-10! max-sm:px-3!";
+const bubble = "h-11! rounded-control! px-4! text-[13px]! uppercase tracking-[0.04em] max-lg:h-10! max-sm:px-3!";
 
 const item = cn(menuItem, "flex h-9 w-full items-center px-3 text-left text-sm");
 
@@ -57,7 +57,7 @@ export function WalletButton({ className = bubble, block = false, menuAbove = fa
         </span>
       </Button>
       {open ? (
-        <div role="menu" className={cn("absolute right-0 z-50 w-56 max-w-full overflow-hidden rounded-lg border border-line bg-raised py-1", menuAbove ? "bottom-full mb-1" : "top-full mt-1")}>
+        <div role="menu" className={cn("absolute right-0 z-50 w-56 max-w-full overflow-hidden rounded-panel border border-line bg-raised py-1", menuAbove ? "bottom-full mb-1" : "top-full mt-1")}>
           <p className="px-3 py-1.5 text-xs text-muted">Connected to {chain.name}</p>
           <button
             type="button"

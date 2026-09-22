@@ -5,9 +5,10 @@ import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useAccount } from "wagmi";
 import { useDismiss } from "@/hooks/useDismiss";
-import { PAGE_FRAME } from "@/lib/frame";
+import { CHIP_LABEL, PAGE_FRAME } from "@/lib/frame";
 import { X_URL } from "@/lib/social";
 import { chip, cn, interactive, menuItem } from "@alphamarkets/ui";
+import { ArrowIcon } from "./ArrowIcon";
 import { Logo } from "./Logo";
 import { MenuIcon } from "./MenuIcon";
 import { WalletButton } from "./WalletButton";
@@ -34,6 +35,11 @@ const navLink = (current: boolean) =>
   );
 
 const isCurrent = (pathname: string, href: string) => pathname === href || pathname.startsWith(`${href}/`);
+
+/// The header keeps one accent-filled action, not two: Connect wallet is it (the actual next step
+/// for a new visitor), so Trade takes the same secondary chip look as the X icon next to it, rather
+/// than competing for the same colour.
+const tradeLink = cn(chip, CHIP_LABEL, "h-11 shrink-0 gap-2 px-4");
 
 export function Header() {
   const pathname = usePathname();
@@ -80,12 +86,16 @@ export function Header() {
             target="_blank"
             rel="noreferrer"
             aria-label="AlphaMarkets on X"
-            className={cn(chip, "size-11 shrink-0 justify-center rounded-lg! max-lg:size-10")}
+            className={cn(chip, "size-11 shrink-0 justify-center rounded-control! max-lg:size-10")}
           >
             <XIcon />
           </a>
-          {/* On a phone the wallet button lives at the bottom of the menu, which leaves the bar to the logo, X and the menu button. */}
-          <div className="max-lg:hidden">
+          {/* On a phone the wallet button lives at the bottom of the menu, which leaves the bar to the logo, X and the menu button — Trade goes with it, since "Markets"/"Perpetuals" in the sheet already cover that entry point on mobile. */}
+          <div className="hidden items-center gap-6 lg:flex">
+            <Link href="/perpetuals" className={tradeLink}>
+              Trade
+              <ArrowIcon />
+            </Link>
             <WalletButton />
           </div>
           <button
@@ -94,7 +104,7 @@ export function Header() {
             aria-expanded={open}
             aria-controls="mobile-nav"
             onClick={() => setOpen((value) => !value)}
-            className={cn(chip, "relative size-10 justify-center rounded-lg! lg:hidden")}
+            className={cn(chip, "relative size-10 justify-center rounded-control! lg:hidden")}
           >
             <MenuIcon open={open} />
             {/* A connected wallet is out of sight in the menu, so the button says so. */}
@@ -121,7 +131,7 @@ export function Header() {
             );
           })}
           <div className="p-4">
-            <WalletButton className="h-12! rounded-lg! text-[13px]! uppercase tracking-[0.04em]" block menuAbove />
+            <WalletButton className="h-12! rounded-control! text-[13px]! uppercase tracking-[0.04em]" block menuAbove />
           </div>
         </nav>
       ) : null}

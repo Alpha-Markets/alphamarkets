@@ -2,18 +2,18 @@ import { chains } from '@alphamarkets/config';
 import Link from 'next/link';
 import { ArrowIcon } from '@/components/ArrowIcon';
 import { Footer } from '@/components/Footer';
-import { HeroCardStack } from '@/components/HeroCardStack';
-import { HeroMark } from '@/components/HeroMark';
+import { HeroAtmosphere } from '@/components/HeroAtmosphere';
+import { HeroMarketCarousel } from '@/components/HeroMarketCarousel';
 import { LandingContracts } from '@/components/LandingContracts';
 import { LandingFaq } from '@/components/LandingFaq';
 import { LandingMarkets } from '@/components/LandingMarkets';
 import { LandingStats } from '@/components/LandingStats';
 import { LandingTicker } from '@/components/LandingTicker';
 import { SectionHeader } from '@/components/SectionHeader';
-import { SilkBackdrop } from '@/components/SilkBackdrop';
 import { StackPyramid } from '@/components/StackPyramid';
+import { StatementBand } from '@/components/StatementBand';
 import { env } from '@/lib/env';
-import { MONO, PAGE_FRAME } from '@/lib/frame';
+import { CHIP_LABEL, MONO, PAGE_FRAME } from '@/lib/frame';
 import { cn, interactive, rowLink } from '@alphamarkets/ui';
 
 const blocks = [
@@ -38,68 +38,68 @@ const blocks = [
 ];
 
 /// Every button on the landing page: a 38px rounded fill with small uppercase type, as on the reference.
-const button =
-    'h-11 gap-2 rounded-lg px-4 text-[13px] font-medium uppercase tracking-[0.04em]';
+const button = `h-11 gap-2 rounded-control px-4 ${CHIP_LABEL}`;
 
-/// PROJECT_BRIEF.md Section 23, kept short. The page opens dark, on the moving backdrop: the logo, the
-/// promise and the way in on the left, a live preview of the terminal on the right, both centred in the
-/// first screen. The header floats over the hero (see Header), so the hero is the whole first screen.
-/// Below it, a light "paper" region carries the rest, in order: what you can trade (Products), the
-/// venue's own markets (ticker, totals, the market list), the contracts it runs on and the stack they
-/// sit on, then the FAQ, before the footer. The terminal stays the product, and stays dark.
+/// PROJECT_BRIEF.md Section 23, kept short. The page opens dark, on the animated backdrop (imitating
+/// openjev.sh's hero, in the mark's own teal): the live market carousel first — the most alive thing
+/// on the page, in real per-company colour, real prices — then the promise and the way in, all one
+/// centred column, top to bottom at every width (no breakpoint-dependent recomposition). The header
+/// floats over the hero (see Header), so the hero is the whole first screen. Still dark, the statement
+/// band says what AlphaMarkets is (PROJECT_BRIEF.md Sections 1, 7, 47) before the page turns to what
+/// it does. Below that, a light "paper" region carries the rest, in order: what you can trade
+/// (Products), the venue's own markets (ticker, totals, the market list), the contracts it runs on and
+/// the stack they sit on, then the FAQ, before the footer. The terminal stays the product, and stays dark.
 export default function Landing() {
     return (
         <div className="flex min-h-full flex-col">
-            <section className="relative min-h-[calc(100dvh-4.375rem)] shrink-0 overflow-hidden">
-                <SilkBackdrop />
+            <section className="relative min-h-dvh shrink-0 overflow-hidden">
+                <HeroAtmosphere />
                 <div
-                    className={`${PAGE_FRAME} relative grid min-h-[calc(100dvh-4.375rem)] grid-cols-[minmax(0,1fr)] items-center gap-x-16 gap-y-12 pb-12 pt-24 lg:grid-cols-2 lg:pb-16`}
+                    className={`${PAGE_FRAME} relative flex min-h-dvh flex-col items-center justify-center gap-10 py-24 text-center`}
                 >
-                    <div className="flex flex-col items-center text-center sm:items-start sm:text-left">
-                        {/* On a phone the header already carries the mark, so the hero opens on the headline. */}
-                        <div className="max-sm:hidden">
-                            <HeroMark />
-                        </div>
-                        <h1 className="max-w-[14ch] sm:mt-8 text-balance font-serif text-[2.5rem] font-light leading-[1.04] tracking-[-0.03em] sm:text-[3.75rem] lg:text-[clamp(3rem,4.5vw,4.5rem)]">
-                            Onchain Derivatives for Stock Tokens.
-                        </h1>
-                        <p className="mt-6 max-w-[45ch] text-lg leading-relaxed text-muted">
-                            perpetuals and options on Stock Tokens with
-                            real-time market pricing and onchain settlement,
-                            built on Robinhood Chain.
-                        </p>
-                        <div className="mt-10 flex flex-wrap justify-center gap-2 sm:justify-start">
-                            <Link
-                                href="/perpetuals"
-                                className={cn(
-                                    button,
-                                    'inline-flex items-center bg-accent text-accent-ink transition-[background-color,box-shadow] duration-150 hover:bg-accent-hover hover:shadow-[0_0_0_3px_var(--color-accent-line)] active:bg-accent-press active:shadow-none',
-                                )}
-                            >
-                                Trade
-                                <ArrowIcon />
-                            </Link>
-                            <Link
-                                href="/markets"
-                                className={cn(
-                                    button,
-                                    interactive,
-                                    'inline-flex items-center border border-text/30 text-text hover:border-accent hover:bg-accent-soft hover:text-accent active:border-accent active:bg-accent active:text-accent-ink',
-                                )}
-                            >
-                                Explore markets
-                            </Link>
-                        </div>
-                        {/* A quiet "we're live" signal, not a competing headline — addresses live in the
-                            Smart Contracts section further down, so this doesn't duplicate them. */}
-                        <p className={cn(MONO, 'mt-6 flex items-center gap-2 text-sm text-muted')}>
-                            <span aria-hidden="true" className="size-1.5 rounded-full bg-up" />
-                            {chains[env.chainId].name}
-                        </p>
+                    <div className="w-full max-w-xl">
+                        <HeroMarketCarousel />
                     </div>
-                    <HeroCardStack />
+                    <h1 className="max-w-[20ch] text-balance font-serif text-[2.75rem] font-light leading-[1.04] tracking-[-0.03em] sm:text-[4rem] lg:text-[clamp(3.5rem,6vw,6rem)]">
+                        Onchain Derivatives for Stock Tokens.
+                    </h1>
+                    <p className="max-w-[45ch] text-lg leading-relaxed text-muted">
+                        perpetuals and options on Stock Tokens with
+                        real-time market pricing and onchain settlement,
+                        built on Robinhood Chain.
+                    </p>
+                    <div className="flex flex-wrap justify-center gap-2">
+                        <Link
+                            href="/perpetuals"
+                            className={cn(
+                                button,
+                                'inline-flex items-center bg-accent text-accent-ink transition-[background-color,box-shadow] duration-150 hover:bg-accent-hover hover:shadow-[0_0_0_3px_var(--color-accent-line)] active:bg-accent-press active:shadow-none',
+                            )}
+                        >
+                            Trade
+                            <ArrowIcon />
+                        </Link>
+                        <Link
+                            href="/markets"
+                            className={cn(
+                                button,
+                                interactive,
+                                'inline-flex items-center border border-text/30 text-text hover:border-accent hover:bg-accent-soft hover:text-accent active:border-accent active:bg-accent active:text-accent-ink',
+                            )}
+                        >
+                            Explore markets
+                        </Link>
+                    </div>
+                    {/* A quiet "we're live" signal, not a competing headline — addresses live in the
+                        Smart Contracts section further down, so this doesn't duplicate them. */}
+                    <p className={cn(MONO, 'flex items-center gap-2 text-sm text-muted')}>
+                        <span aria-hidden="true" className="size-1.5 rounded-full bg-up" />
+                        {chains[env.chainId].name}
+                    </p>
                 </div>
             </section>
+
+            <StatementBand />
 
             <div className="paper">
                 <section
@@ -115,7 +115,7 @@ export default function Landing() {
                                     className={cn(rowLink, 'block')}
                                 >
                                     <div
-                                        className={`${PAGE_FRAME} grid items-baseline gap-x-8 gap-y-2 py-[21px] lg:grid-cols-[16rem_minmax(0,1fr)_auto] lg:py-[28px]`}
+                                        className={`${PAGE_FRAME} grid items-baseline gap-x-8 gap-y-2 py-6 lg:grid-cols-[16rem_minmax(0,1fr)_auto] lg:py-8`}
                                     >
                                         <span className="text-[1.5rem] font-light tracking-[-0.02em] sm:text-[1.75rem]">
                                             {block.title}

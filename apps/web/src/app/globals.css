@@ -12,6 +12,23 @@
    so text in them stays at or above 4.5:1 on ground, surface and raised; the accent and its ink pass
    too (accent on ground 11:1, ink on accent 10:1). */
 @theme {
+  /* Near-flat radius for cards that carry data (the hero's market ring, ticker-style surfaces) —
+     matches the reference hero's own card radius and replaces the one-off rounded-[2px] the audit
+     found with no home. Generates the `rounded-sharp` utility. */
+  --radius-sharp: 2px;
+  /* Radius as a hierarchy signal, replacing 5 uncoordinated ad-hoc values (rounded-lg/-md and three
+     different bracket radii) with named roles: control (buttons/inputs/small chips), panel (Panel
+     and anything reimplementing it), feature (the hero's few large marketing/stat cards), pill
+     (status/market badges). Each generates its matching `rounded-*` utility. */
+  --radius-control: 6px;
+  --radius-panel: 10px;
+  --radius-feature: 14px;
+  --radius-pill: 9999px;
+  /* A low-alpha halo built from the existing up/down colours (not new hues), imitating
+     orionisderivative.tech's glow on up/down emphasis without adopting its Binance-derived colours.
+     Used sparingly — one showcase spot, not applied across dense tables. */
+  --shadow-up-glow: 0 0 20px rgb(114 217 119 / 0.25);
+  --shadow-down-glow: 0 0 20px rgb(238 112 105 / 0.25);
   --color-ground: #0b1211;
   --color-surface: #121b1a;
   --color-raised: #1a2624;
@@ -34,7 +51,12 @@
   --color-down-hover: #f38c86;
   --color-down-press: #d95d56;
   --font-sans: var(--font-geist), ui-sans-serif, system-ui, sans-serif;
-  --font-serif: var(--font-newsreader), ui-serif, Georgia, serif;
+  /* Display face for the hero, section titles and big figures. Was Newsreader (a literary serif);
+     swapped for Tomorrow, a geometric technical sans, imitating orionisderivative.tech's own display
+     choice — moves the landing page's voice from editorial toward institutional/technical, closer to
+     PROJECT_BRIEF.md's "precise typography" / "financial-terminal aesthetic" line. Kept under the
+     `--font-serif` name so every `font-serif` utility in the app picks it up with no class renames. */
+  --font-serif: var(--font-tomorrow), ui-sans-serif, system-ui, sans-serif;
   /* Verifiable data only — contract addresses, chain name, tech-stack tags — never prices/tickers,
      which stay in the sans everywhere else in the app. */
   --font-mono: var(--font-geist-mono), ui-monospace, "SF Mono", Menlo, monospace;
@@ -148,84 +170,6 @@ body {
   outline-color: #0f3733;
 }
 
-/* Landing ribbons: each one sways a little in y and rotation on its own phase, so the stack reads as
-   cloth moving in a slow current. Lengths are in SVG user units (the backdrop's 1600-wide viewBox). */
-@keyframes silk-sway {
-  from {
-    transform: translate3d(-48px, -22px, 0) rotate(-0.9deg);
-  }
-  to {
-    transform: translate3d(48px, 22px, 0) rotate(0.9deg);
-  }
-}
-
-@keyframes silk-drift {
-  from {
-    transform: translate3d(-200px, 0, 0);
-  }
-  to {
-    transform: translate3d(200px, 0, 0);
-  }
-}
-
-.silk-ribbon {
-  transform-box: fill-box;
-  transform-origin: center;
-  animation: silk-sway 10s ease-in-out infinite alternate;
-  will-change: transform;
-}
-
-.silk-drift {
-  animation: silk-drift 22s ease-in-out infinite alternate;
-}
-
-/* Landing hero lockup (components/HeroMark.tsx). The animated parts start hidden and GSAP reveals them.
-   Without JavaScript, or when the GSAP chunk never loads, a CSS fade shows them after 3 s so the
-   logo is never lost; GSAP turns that fade off (`hero-js`) before it starts. With reduced motion (or
-   no script) the final state shows at once. `--reveal` and `--sheen` are percentages GSAP tweens:
-   a wide alpha mask slides across the mark to unfold it, and a highlight slides across the ribbon. */
-@keyframes hero-failsafe {
-  to {
-    opacity: 1;
-  }
-}
-
-.hero-anim {
-  opacity: 0;
-  animation: hero-failsafe 0.4s ease-out 3s forwards;
-}
-
-.hero-js .hero-anim {
-  animation: none;
-}
-
-.hero-mark {
-  --reveal: 0;
-  mask-image: linear-gradient(90deg, #000 40%, transparent 60%);
-  mask-size: 300% 100%;
-  mask-repeat: no-repeat;
-  mask-position: calc(var(--reveal) * 1%) 0;
-}
-
-.hero-sheen {
-  --sheen: 100;
-  position: absolute;
-  inset: 0;
-  background-image: linear-gradient(105deg, transparent 38%, rgb(255 255 255 / 0.6) 50%, transparent 62%);
-  background-size: 300% 100%;
-  background-repeat: no-repeat;
-  background-position: calc(var(--sheen) * 1%) 0;
-  mask-size: 100% 100%;
-  mask-repeat: no-repeat;
-}
-
-/* On a short landscape phone the mark would push the headline off the first screen, so it steps aside. */
-@media (max-height: 640px) and (max-width: 1023px) {
-  .hero-lockup {
-    display: none;
-  }
-}
-
 /* The hero preview's chart draws in from the left once, and again when the market changes. */
 @keyframes hero-chart-reveal {
   from {
@@ -238,50 +182,6 @@ body {
 
 .hero-chart {
   animation: hero-chart-reveal 1.4s cubic-bezier(0.22, 0.61, 0.36, 1) 0.4s both;
-}
-
-/* Hero card ring: a real 3D ring, not a per-frame JS simulation of one. Each card's own position
-   (.stock-slot) is fixed — spaced evenly around a circle by --i/--n, pushed out by a radius — and
-   the whole ring turns because .stock-stage itself spins via one CSS animation. Perspective on the
-   scene does the size/depth foreshortening; nothing is recomputed on the main thread each frame,
-   which is what made the previous per-card JS version stumble.
-   The radius and card size are sized to stay inside .stock-scene's own box: the hero's right column
-   sits flush against the page's right padding (see page.tsx's justify-self-end), so there is no
-   spare margin on that side for a 3D transform to bleed into. overflow: hidden is a second,
-   unconditional guarantee of the same thing — this component never draws outside its own bounds,
-   whatever viewport width it lands on. */
-.stock-scene {
-  perspective: 1400px;
-  overflow: hidden;
-}
-
-.stock-stage {
-  transform-style: preserve-3d;
-  animation: stock-orbit 34s linear infinite;
-}
-
-@keyframes stock-orbit {
-  to {
-    transform: rotateY(360deg);
-  }
-}
-
-.stock-slot {
-  width: clamp(120px, 20vw, 156px);
-  aspect-ratio: 0.8;
-  transform-style: preserve-3d;
-  transform: rotateY(calc(var(--i) * (360deg / var(--n)))) translateZ(clamp(64px, 11vw, 92px));
-}
-
-.stock-card {
-  transition: transform 0.2s ease, filter 0.2s ease;
-  backface-visibility: hidden;
-}
-
-.stock-card:hover,
-.stock-card:focus-visible {
-  transform: scale(1.06);
-  filter: brightness(1.08);
 }
 
 /* Markets ticker under the landing hero: two identical runs of items slide left by exactly one run, so
@@ -354,11 +254,6 @@ body {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
-  }
-
-  .hero-anim {
-    opacity: 1;
-    animation: none !important;
   }
 
   .statement-line {

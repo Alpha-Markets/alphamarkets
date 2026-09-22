@@ -6,7 +6,7 @@ import { useMemo } from "react";
 import { formatUnits } from "viem";
 import { usePerpMarket, usePerpMarkets, usePriceHistory } from "@/hooks/queries";
 import { PRICE_DECIMALS, fmtBps, fmtPrice } from "@/lib/format";
-import { PAGE_FRAME } from "@/lib/frame";
+import { CHIP_LABEL, PAGE_FRAME } from "@/lib/frame";
 import { symbolOf } from "@/lib/market";
 import { ArrowIcon } from "./ArrowIcon";
 import { Change, useStatsFor } from "./Change";
@@ -33,7 +33,7 @@ function Row({ symbol }: { symbol: string }) {
   return (
     <li>
       <Link href={`/perpetuals?market=${symbol}`} className={cn(rowLink, "block")}>
-        <div className={cn(PAGE_FRAME, ROW_GRID, "py-[18px] sm:py-[24px]")}>
+        <div className={cn(PAGE_FRAME, ROW_GRID, "py-5 sm:py-7")}>
           <span className="text-[1.5rem] font-light tracking-[-0.02em]">{symbol}</span>
           <Sparkline points={points} className="hidden h-10 w-full sm:block" />
           <Num className="text-right text-xl">{data ? fmtPrice(data.markPrice) : <Skeleton className="w-14" />}</Num>
@@ -58,7 +58,7 @@ export function LandingMarkets() {
         id="landing-markets"
         title="Markets"
         action={
-          <Link href="/markets" className={cn(chip, "h-9 shrink-0 gap-2 rounded-lg px-3 text-[13px] font-medium uppercase tracking-[0.04em]")}>
+          <Link href="/markets" className={cn(chip, CHIP_LABEL, "h-9 shrink-0 gap-2 rounded-control px-3")}>
             All markets
             <ArrowIcon />
           </Link>
