@@ -2,14 +2,14 @@
 
 import { useEffect, useRef } from "react";
 
-/// The hero's one piece of imagery: neon streaks ("rising lines"), twinkling particles, and a
-/// drifting field of jagged asteroid silhouettes, all glowing with a canvas shadow-blur for a
-/// circuit-board/cyberpunk feel — from scratch (no external component registry), in the mark's own
-/// accent teal. The asteroid field is the interactive layer: each rock parallaxes off the pointer by
-/// its own depth, and brightens as the cursor nears it.
-const LINE_COUNT = 50;
-const PARTICLE_COUNT = 80;
-const ASTEROID_COUNT = 16;
+/// The page's one piece of ambient imagery, fixed behind the whole scroll (not just the hero): neon
+/// streaks ("rising lines"), twinkling particles, and a drifting field of coin/token discs, all
+/// glowing with a canvas shadow-blur for a circuit-board/cyberpunk feel — from scratch (no external
+/// component registry), in the mark's own accent teal. The coin field is the interactive layer: each
+/// coin parallaxes off the pointer by its own depth, and brightens as the cursor nears it.
+const LINE_COUNT = 36;
+const PARTICLE_COUNT = 56;
+const COIN_COUNT = 12;
 /// How far the nearest (depth 1) asteroid shifts per full pointer swing, in CSS px before the DPR scale.
 const PARALLAX_MAX_PX = 34;
 /// Cursor-to-asteroid distance (CSS px) inside which a rock starts brightening toward the cursor.
@@ -26,10 +26,10 @@ function accentRgb(): [number, number, number] {
 
 type Line = { x: number; y: number; length: number; width: number; speed: number; opacity: number };
 type Particle = { x: number; y: number; radius: number; speed: number; phase: number; freq: number };
-/// An asteroid's position and spin are pure functions of time (seed + drift * t, wrapped 0..1) rather
+/// A coin's position and spin are pure functions of time (seed + drift * t, wrapped 0..1) rather
 /// than mutated state — the same trick the field's very first version used for its drift blobs — so
-/// nothing needs re-seeding on resize beyond the jagged silhouette itself.
-type Asteroid = {
+/// nothing needs re-seeding on resize beyond the rim silhouette itself.
+type Coin = {
   seedX: number;
   seedY: number;
   driftX: number;
@@ -38,7 +38,7 @@ type Asteroid = {
   spinSpeed: number;
   size: number;
   depth: number;
-  ratios: number[];
+  rimRatios: number[];
 };
 
 function randomLine(width: number, height: number): Line {
@@ -63,9 +63,9 @@ function randomParticle(width: number, height: number): Particle {
   };
 }
 
-function randomAsteroid(): Asteroid {
+function randomCoin(): Coin {
   const depth = 0.15 + Math.random() * 0.85;
-  const sides = 7 + Math.floor(Math.random() * 3);
+  const sides = 20 + Math.floor(Math.random() * 5);
   return {
     seedX: Math.random(),
     seedY: Math.random(),
@@ -73,9 +73,9 @@ function randomAsteroid(): Asteroid {
     driftY: -(0.00002 + Math.random() * 0.00004),
     spinPhase: Math.random() * Math.PI * 2,
     spinSpeed: (Math.random() - 0.5) * 0.0003,
-    size: 7 + depth * 20,
+    size: 6 + depth * 16,
     depth,
-    ratios: Array.from({ length: sides }, () => 0.55 + Math.random() * 0.45),
+    rimRatios: Array.from({ length: sides }, () => 0.92 + Math.random() * 0.08),
   };
 }
 
@@ -92,7 +92,7 @@ export function HeroAtmosphere({ className }: { className?: string }) {
     let dpr = 1;
     let lines: Line[] = [];
     let particles: Particle[] = [];
-    const asteroids: Asteroid[] = Array.from({ length: ASTEROID_COUNT }, randomAsteroid);
+    const coins: Coin[] = Array.from({ length: COIN_COUNT }, randomCoin);
     // Normalised -1..1 pointer position, so parallax strength reads the same regardless of hero size.
     // px/py start far off-canvas so no rock shows a false hover-glow before the pointer ever moves.
     const pointer = { x: 0, y: 0, px: -9999, py: -9999 };
@@ -161,27 +161,27 @@ export function HeroAtmosphere({ className }: { className?: string }) {
         ctx.fill();
       }
 
-      // Asteroid field: jagged rock silhouettes drifting on their own slow diagonal, wrapping edge to
-      // edge. Nearer rocks (higher depth) sit bigger, glow brighter, parallax more off the pointer,
-      // and brighten further the closer the cursor sits to them — the field's interactive layer.
-      for (const rock of asteroids) {
-        const driftedX = ((rock.seedX + rock.driftX * time) % 1 + 1) % 1;
-        const driftedY = ((rock.seedY + rock.driftY * time) % 1 + 1) % 1;
-        const parallaxX = pointer.x * rock.depth * PARALLAX_MAX_PX * dpr;
-        const parallaxY = pointer.y * rock.depth * PARALLAX_MAX_PX * dpr;
+      // Coin field: token discs drifting on their own slow diagonal, wrapping edge to edge. Nearer
+      // coins (higher depth) sit bigger, glow brighter, parallax more off the pointer, and brighten
+      // further the closer the cursor sits to them — the field's interactive layer.
+      for (const coin of coins) {
+        const driftedX = ((coin.seedX + coin.driftX * time) % 1 + 1) % 1;
+        const driftedY = ((coin.seedY + coin.driftY * time) % 1 + 1) % 1;
+        const parallaxX = pointer.x * coin.depth * PARALLAX_MAX_PX * dpr;
+        const parallaxY = pointer.y * coin.depth * PARALLAX_MAX_PX * dpr;
         const cx = driftedX * canvas.width + parallaxX;
         const cy = driftedY * canvas.height + parallaxY;
 
         const distance = Math.hypot(pointer.px - cx, pointer.py - cy) / dpr;
         const proximity = Math.max(0, 1 - distance / HOVER_RADIUS_PX);
-        const baseAlpha = 0.14 + rock.depth * 0.3;
+        const baseAlpha = 0.14 + coin.depth * 0.3;
         const alpha = Math.min(1, baseAlpha + proximity * 0.5);
-        const radius = rock.size * dpr;
-        const angle = rock.spinPhase + rock.spinSpeed * time;
+        const radius = coin.size * dpr;
+        const angle = coin.spinPhase + coin.spinSpeed * time;
 
         ctx.beginPath();
-        rock.ratios.forEach((ratio, i) => {
-          const a = angle + (i / rock.ratios.length) * Math.PI * 2;
+        coin.rimRatios.forEach((ratio, i) => {
+          const a = angle + (i / coin.rimRatios.length) * Math.PI * 2;
           const vx = cx + Math.cos(a) * radius * ratio;
           const vy = cy + Math.sin(a) * radius * ratio;
           if (i === 0) ctx.moveTo(vx, vy);
@@ -192,8 +192,16 @@ export function HeroAtmosphere({ className }: { className?: string }) {
         ctx.strokeStyle = `rgba(${r}, ${g}, ${b}, ${alpha.toFixed(3)})`;
         ctx.shadowBlur = (6 + proximity * 16) * dpr;
         ctx.shadowColor = `rgba(${r}, ${g}, ${b}, ${alpha.toFixed(3)})`;
-        ctx.lineWidth = (0.8 + rock.depth * 0.8) * dpr;
+        ctx.lineWidth = (0.8 + coin.depth * 0.8) * dpr;
         ctx.fill();
+        ctx.stroke();
+
+        // Inner ring: a plain concentric circle (not jittered, unlike the rim) so the contrast
+        // between the fine-grained outer edge and the smooth inner face reads as a stamped coin.
+        ctx.beginPath();
+        ctx.arc(cx, cy, radius * 0.72, 0, Math.PI * 2);
+        ctx.strokeStyle = `rgba(${r}, ${g}, ${b}, ${(alpha * 0.55).toFixed(3)})`;
+        ctx.lineWidth = (0.6 + coin.depth * 0.5) * dpr;
         ctx.stroke();
       }
       ctx.shadowBlur = 0;
@@ -212,11 +220,12 @@ export function HeroAtmosphere({ className }: { className?: string }) {
   }, []);
 
   return (
-    <div aria-hidden="true" className={`pointer-events-none absolute inset-0 overflow-hidden ${className ?? ""}`}>
+    <div aria-hidden="true" className={`pointer-events-none fixed inset-0 z-0 overflow-hidden ${className ?? ""}`}>
       {/* Faint circuit-board grid, fixed (not animated) so it reads as structure under the moving
-          field rather than competing with it. */}
+          field rather than competing with it. Page-wide now, so this also replaces the standalone
+          `.grid-field` background that used to sit below the hero on its own. */}
       <div
-        className="absolute inset-0 opacity-[0.14]"
+        className="absolute inset-0 opacity-[0.05]"
         style={{
           backgroundImage:
             "linear-gradient(to right, var(--color-accent) 1px, transparent 1px), linear-gradient(to bottom, var(--color-accent) 1px, transparent 1px)",
@@ -224,20 +233,12 @@ export function HeroAtmosphere({ className }: { className?: string }) {
         }}
       />
       <canvas ref={ref} className="absolute inset-0 h-full w-full" />
-      {/* Vignette: a lighter touch than a flat field would need, since the asteroid glow now carries
+      {/* Vignette: a lighter touch than a flat field would need, since the coin glow now carries
           most of the depth — just enough to keep the headline's contrast in the corners. */}
       <div
         className="absolute inset-0"
         style={{ background: "radial-gradient(ellipse at center, transparent 55%, rgba(0,0,0,0.42) 100%)" }}
       />
-      {/* Four hairline corners framing the hero, imitating the reference's own reticle — a real
-          structural device (this is where the live field is), not decoration added for its own sake. */}
-      <div className="absolute inset-6 lg:inset-10">
-        <span className="absolute left-0 top-0 size-6 border-l border-t border-accent/40" />
-        <span className="absolute right-0 top-0 size-6 border-r border-t border-accent/40" />
-        <span className="absolute bottom-0 left-0 size-6 border-b border-l border-accent/40" />
-        <span className="absolute bottom-0 right-0 size-6 border-b border-r border-accent/40" />
-      </div>
     </div>
   );
 }

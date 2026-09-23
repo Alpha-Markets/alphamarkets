@@ -59,8 +59,9 @@ function Quote({ symbol }: { symbol: string }) {
 /// A 3D carousel of the venue's live markets that glides continuously and loops, rather than
 /// stepping card-to-card and holding — drag, scroll or arrow-key nudges it off that glide for a
 /// couple of seconds, then it resumes from wherever it was left. Each card takes the company's own
-/// brand colour (see BrandLogos.tsx), so the glow behind the active card — and the card colours
-/// themselves — are real per-market colour, not a generated gradient.
+/// brand colour (see BrandLogos.tsx): every card carries its own colour-matched glow, and the deck's
+/// shared backdrop glow crossfades to whichever brand colour is active — real per-market colour
+/// throughout, not a generated gradient.
 export function HeroMarketCarousel() {
   const { data: markets, isPending } = usePerpMarkets();
   const symbols = useMemo(() => (markets ?? []).map((market) => symbolOf(market.marketId)).slice(0, MAX_CARDS), [markets]);
@@ -236,9 +237,15 @@ export function HeroMarketCarousel() {
                     href={symbol ? `/perpetuals?market=${symbol}` : "#"}
                     aria-label={symbol ? `${symbol} perpetual. Open in the terminal.` : "Loading market"}
                     tabIndex={-1}
-                    style={{ background, color: ink }}
+                    style={{
+                      background,
+                      color: ink,
+                      // Each card glows in its own brand colour, not just the active one — the
+                      // elevation shadow stays, a colour-matched halo layers on top of it.
+                      boxShadow: `0 20px 45px -20px rgb(0 0 0 / 0.7), 0 0 55px 4px color-mix(in oklab, ${background} 65%, transparent)`,
+                    }}
                     className={cn(
-                      "flex h-[15.5rem] w-[12.5rem] flex-col justify-between rounded-feature border border-line/70 p-5 shadow-[0_20px_45px_-20px_rgb(0_0_0/0.7)]",
+                      "flex h-[15.5rem] w-[12.5rem] flex-col justify-between rounded-feature border border-line/70 p-5",
                       index !== active && "pointer-events-none",
                     )}
                   >

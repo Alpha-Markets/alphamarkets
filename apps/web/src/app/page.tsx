@@ -3,6 +3,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import logo from '@/assets/alpha-market-logo.svg';
 import { ArrowIcon } from '@/components/ArrowIcon';
+import { ContractAddressBadge } from '@/components/ContractAddressBadge';
 import { Footer } from '@/components/Footer';
 import { HeroAtmosphere } from '@/components/HeroAtmosphere';
 import { HeroMarketCarousel } from '@/components/HeroMarketCarousel';
@@ -44,15 +45,15 @@ const button = `h-11 gap-2 rounded-control px-4 ${CHIP_LABEL}`;
 export default function Landing() {
     return (
         <div className="flex min-h-full flex-col">
+            <HeroAtmosphere />
             <section className="relative min-h-dvh shrink-0 overflow-hidden">
-                <HeroAtmosphere />
                 <div
                     className={`${PAGE_FRAME} relative flex min-h-dvh flex-col items-center justify-center gap-10 py-24 text-center`}
                 >
                     <div className="w-full max-w-4xl">
                         <HeroMarketCarousel />
                     </div>
-                    <h1 className="hero-heading max-w-[20ch] text-balance font-bold bg-gradient-to-br from-text via-text to-accent bg-clip-text font-serif text-[2.75rem] font-light leading-[1.04] tracking-[-0.03em] text-transparent drop-shadow-[0_0_36px_var(--color-accent-line)] sm:text-[4rem] lg:text-[clamp(3.5rem,6vw,6rem)]">
+                    <h1 className="hero-heading max-w-[20ch] text-balance font-bold bg-gradient-to-br from-text via-text to-accent bg-clip-text font-serif text-[2.75rem] font-light leading-[1.04] tracking-[-0.03em] text-transparent sm:text-[4rem] lg:text-[clamp(3.5rem,6vw,6rem)]">
                         Onchain Derivatives for Stock Tokens.
                     </h1>
                     <div className="flex flex-wrap justify-center gap-2">
@@ -77,6 +78,7 @@ export default function Landing() {
                             Explore markets
                         </Link>
                     </div>
+                    <ContractAddressBadge />
                 </div>
             </section>
 
@@ -113,10 +115,6 @@ export default function Landing() {
             </Reveal>
 
             <div className="relative">
-                <div
-                    aria-hidden="true"
-                    className="grid-field pointer-events-none fixed inset-0 -z-10"
-                />
                 <Reveal>
                     <section
                         aria-labelledby="landing-products"
