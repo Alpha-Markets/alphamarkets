@@ -130,20 +130,6 @@ body {
   color: var(--color-accent-ink);
 }
 
-/* The landing page used to drop to a light "paper" region below the hero. It now stays on the hero's
-   own dark terminal tokens top to bottom, so every section below reads as one continuous surface
-   instead of a seam. `.grid-field` is that surface's one shared texture: the same faint circuit grid
-   the hero draws on canvas, fixed behind the scrolling content so the two never look like different
-   pages stitched together. Kept to a single low-opacity layer — the hero's canvas is where the motion
-   budget goes; below it, the grid stays still. */
-.grid-field {
-  background-image:
-    linear-gradient(to right, var(--color-accent) 1px, transparent 1px),
-    linear-gradient(to bottom, var(--color-accent) 1px, transparent 1px);
-  background-size: 44px 44px;
-  opacity: 0.05;
-}
-
 /* The hero preview's chart draws in from the left once, and again when the market changes. */
 @keyframes hero-chart-reveal {
   from {
