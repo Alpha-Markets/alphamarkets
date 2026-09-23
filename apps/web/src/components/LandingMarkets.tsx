@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useMemo } from "react";
 import { formatUnits } from "viem";
 import type { MarketStats } from "@alphamarkets/sdk";
-import { useMarketOverviews, useMarketStats, usePerpMarket, usePerpMarkets, usePriceHistory, useSettlementDecimals } from "@/hooks/queries";
+import { useMarketOverviews, useMarketStats, usePerpMarkets, usePriceHistory, useSettlementDecimals } from "@/hooks/queries";
 import { PRICE_DECIMALS, fmtBps, fmtPrice, fmtUsd } from "@/lib/format";
 import { CHIP_LABEL, PAGE_FRAME } from "@/lib/frame";
 import { symbolOf } from "@/lib/market";
@@ -30,7 +30,6 @@ interface CardProps {
 /// uses (`rounded-panel`, border on hover only), not a table row: open interest, volume and funding
 /// no longer need to hide behind a breakpoint to fit, they're just the card's own bottom row.
 function MarketCard({ symbol, overview, stats, decimals }: CardProps) {
-  const { data } = usePerpMarket(symbol);
   const changeStats = useStatsFor(symbol);
   const { data: history } = usePriceHistory(symbol, "24h");
   const points = useMemo(() => {
@@ -49,7 +48,7 @@ function MarketCard({ symbol, overview, stats, decimals }: CardProps) {
       </div>
       <Sparkline points={points} className="h-12 w-full" />
       <div className="flex items-baseline justify-between gap-3">
-        <Num className="text-xl">{data ? fmtPrice(data.markPrice) : <Skeleton className="w-14" />}</Num>
+        <Num className="text-xl">{overview?.prices ? fmtPrice(overview.prices.mark.price) : <Skeleton className="w-14" />}</Num>
         <Change stats={changeStats} />
       </div>
       <div className="mt-auto grid grid-cols-3 gap-3 pt-2 text-sm">
@@ -64,7 +63,7 @@ function MarketCard({ symbol, overview, stats, decimals }: CardProps) {
         <div className="flex flex-col gap-1 min-w-0">
           <span className="text-xs text-muted">Funding</span>
           <span className="truncate tabular-nums text-muted" title="Funding rate">
-            {fmtBps(data?.funding.currentFundingRateBps)}
+            {fmtBps(overview?.funding?.currentFundingRateBps)}
           </span>
         </div>
       </div>

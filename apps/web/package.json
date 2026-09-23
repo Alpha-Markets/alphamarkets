@@ -19,7 +19,6 @@
     "@alphamarkets/ui": "workspace:*",
     "@next/env": "15.5.25",
     "@tanstack/react-query": "^5",
-    "gsap": "^3.15.0",
     "lightweight-charts": "^5",
     "next": "^15",
     "react": "^19",
