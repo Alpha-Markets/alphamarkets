@@ -6,8 +6,10 @@ export const ROBINHOOD_TESTNET_CHAIN_ID = 46_630 as const;
 
 export type ChainId = typeof ROBINHOOD_TESTNET_CHAIN_ID;
 
-/// No RPC URL is baked in — every deploy on Robinhood's own default RPC hit an expired TLS
-/// cert (CHANGELOG [1.0.0-testnet]), so callers must supply their own transport (e.g. Alchemy).
+/// No RPC URL is baked in; callers supply their own transport. The official endpoint is
+/// https://rpc.testnet.chain.robinhood.com (its TLS cert expired at the time of the first deploy,
+/// CHANGELOG [1.0.0-testnet], and was valid again on 2026-09-23). Use a paid provider such as
+/// Alchemy for anything beyond testnet demos.
 export const robinhoodTestnet: Chain = {
   id: ROBINHOOD_TESTNET_CHAIN_ID,
   name: "Robinhood Chain Testnet",
