@@ -5,6 +5,7 @@ import type { ReactNode } from "react";
 import { env } from "@/lib/env";
 import { Header } from "./Header";
 import { LandingTicker } from "./LandingTicker";
+import { OptionExpiryAlerts } from "./OptionExpiryAlerts";
 import { TriggerAlerts } from "./TriggerAlerts";
 import { TxToasts } from "./TxToasts";
 
@@ -38,6 +39,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       </div>
       <TxToasts />
       <TriggerAlerts />
+      <OptionExpiryAlerts />
     </div>
   );
 }
