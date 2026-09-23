@@ -1,5 +1,7 @@
 import { chains } from '@alphamarkets/config';
+import Image from 'next/image';
 import Link from 'next/link';
+import logo from '@/assets/alpha-market-logo.svg';
 import { ArrowIcon } from '@/components/ArrowIcon';
 import { Footer } from '@/components/Footer';
 import { HeroAtmosphere } from '@/components/HeroAtmosphere';
@@ -8,13 +10,12 @@ import { LandingContracts } from '@/components/LandingContracts';
 import { LandingFaq } from '@/components/LandingFaq';
 import { LandingMarkets } from '@/components/LandingMarkets';
 import { LandingStats } from '@/components/LandingStats';
-import { LandingTicker } from '@/components/LandingTicker';
+import { Reveal } from '@/components/Reveal';
 import { SectionHeader } from '@/components/SectionHeader';
-import { StackPyramid } from '@/components/StackPyramid';
-import { StatementBand } from '@/components/StatementBand';
+import { StatusBadge } from '@/components/StatusBadge';
 import { env } from '@/lib/env';
 import { CHIP_LABEL, MONO, PAGE_FRAME } from '@/lib/frame';
-import { cn, interactive, rowLink } from '@alphamarkets/ui';
+import { cn, interactive } from '@alphamarkets/ui';
 
 const blocks = [
     {
@@ -40,15 +41,6 @@ const blocks = [
 /// Every button on the landing page: a 38px rounded fill with small uppercase type, as on the reference.
 const button = `h-11 gap-2 rounded-control px-4 ${CHIP_LABEL}`;
 
-/// PROJECT_BRIEF.md Section 23, kept short. The page opens dark, on the animated backdrop (imitating
-/// openjev.sh's hero, in the mark's own teal): the live market carousel first — the most alive thing
-/// on the page, in real per-company colour, real prices — then the promise and the way in, all one
-/// centred column, top to bottom at every width (no breakpoint-dependent recomposition). The header
-/// floats over the hero (see Header), so the hero is the whole first screen. Still dark, the statement
-/// band says what AlphaMarkets is (PROJECT_BRIEF.md Sections 1, 7, 47) before the page turns to what
-/// it does. Below that, a light "paper" region carries the rest, in order: what you can trade
-/// (Products), the venue's own markets (ticker, totals, the market list), the contracts it runs on and
-/// the stack they sit on, then the FAQ, before the footer. The terminal stays the product, and stays dark.
 export default function Landing() {
     return (
         <div className="flex min-h-full flex-col">
@@ -57,17 +49,12 @@ export default function Landing() {
                 <div
                     className={`${PAGE_FRAME} relative flex min-h-dvh flex-col items-center justify-center gap-10 py-24 text-center`}
                 >
-                    <div className="w-full max-w-xl">
+                    <div className="w-full max-w-4xl">
                         <HeroMarketCarousel />
                     </div>
-                    <h1 className="max-w-[20ch] text-balance font-serif text-[2.75rem] font-light leading-[1.04] tracking-[-0.03em] sm:text-[4rem] lg:text-[clamp(3.5rem,6vw,6rem)]">
+                    <h1 className="hero-heading max-w-[20ch] text-balance font-bold bg-gradient-to-br from-text via-text to-accent bg-clip-text font-serif text-[2.75rem] font-light leading-[1.04] tracking-[-0.03em] text-transparent drop-shadow-[0_0_36px_var(--color-accent-line)] sm:text-[4rem] lg:text-[clamp(3.5rem,6vw,6rem)]">
                         Onchain Derivatives for Stock Tokens.
                     </h1>
-                    <p className="max-w-[45ch] text-lg leading-relaxed text-muted">
-                        perpetuals and options on Stock Tokens with
-                        real-time market pricing and onchain settlement,
-                        built on Robinhood Chain.
-                    </p>
                     <div className="flex flex-wrap justify-center gap-2">
                         <Link
                             href="/perpetuals"
@@ -90,74 +77,98 @@ export default function Landing() {
                             Explore markets
                         </Link>
                     </div>
-                    {/* A quiet "we're live" signal, not a competing headline — addresses live in the
-                        Smart Contracts section further down, so this doesn't duplicate them. */}
-                    <p className={cn(MONO, 'flex items-center gap-2 text-sm text-muted')}>
-                        <span aria-hidden="true" className="size-1.5 rounded-full bg-up" />
-                        {chains[env.chainId].name}
-                    </p>
                 </div>
             </section>
 
-            <StatementBand />
-
-            <div className="paper">
-                <section
-                    aria-labelledby="landing-products"
-                    className="py-16 lg:py-24"
-                >
-                    <SectionHeader id="landing-products" title="Products" />
-                    <ul className="divide-y divide-line border-y border-line">
-                        {blocks.map((block) => (
-                            <li key={block.title}>
-                                <Link
-                                    href={block.href}
-                                    className={cn(rowLink, 'block')}
-                                >
-                                    <div
-                                        className={`${PAGE_FRAME} grid items-baseline gap-x-8 gap-y-2 py-6 lg:grid-cols-[16rem_minmax(0,1fr)_auto] lg:py-8`}
-                                    >
-                                        <span className="text-[1.5rem] font-light tracking-[-0.02em] sm:text-[1.75rem]">
-                                            {block.title}
-                                        </span>
-                                        <span className="text-lg leading-relaxed text-muted">
-                                            {block.body}
-                                        </span>
-                                        <span className="mt-2 inline-flex items-center gap-2 text-sm lg:mt-0">
-                                            {block.cta}
-                                            <ArrowIcon />
-                                        </span>
-                                    </div>
-                                </Link>
-                            </li>
-                        ))}
-                    </ul>
-                </section>
-
-                <LandingTicker />
-                <LandingStats />
-                <div className="pt-16 lg:pt-24">
-                    <LandingMarkets />
-                </div>
-
-                <LandingContracts />
-
-                <section
-                    aria-labelledby="landing-stack"
-                    className="pb-16 lg:pb-24"
-                >
-                    <SectionHeader id="landing-stack" title="Tech stack">
-                        <p className="mt-3 max-w-[52ch] text-lg leading-relaxed text-muted">
-                            Each layer stands on the one below it. Pick one to
-                            see what it is made of.
+            <Reveal>
+                <section aria-label="Introduction">
+                    <div
+                        className={`${PAGE_FRAME} flex flex-col items-center gap-6 py-20 text-center lg:py-28`}
+                    >
+                        <Image
+                            src={logo}
+                            alt="AlphaMarkets"
+                            priority
+                            className="h-20 w-auto sm:h-24 lg:h-28"
+                        />
+                        <p className="max-w-[42ch] text-balance font-serif text-[1.75rem] font-light leading-[1.25] tracking-[-0.02em] sm:text-[2.25rem] lg:text-[2.75rem]">
+                            AlphaMarkets is perpetuals and options on tokenized
+                            stocks, with real-time market pricing and onchain
+                            settlement, built on Robinhood Chain.
                         </p>
-                    </SectionHeader>
-                    <div className={`${PAGE_FRAME} mt-4 lg:mt-6`}>
-                        <StackPyramid />
+                        <p
+                            className={cn(
+                                MONO,
+                                'flex items-center gap-2 text-sm text-muted',
+                            )}
+                        >
+                            <span
+                                aria-hidden="true"
+                                className="size-1.5 rounded-full bg-up"
+                            />
+                            {chains[env.chainId].name}
+                        </p>
                     </div>
                 </section>
+            </Reveal>
 
-                <LandingFaq />
+            <div className="relative">
+                <div
+                    aria-hidden="true"
+                    className="grid-field pointer-events-none fixed inset-0 -z-10"
+                />
+                <Reveal>
+                    <section
+                        aria-labelledby="landing-products"
+                        className="py-16 lg:py-24"
+                    >
+                        <SectionHeader id="landing-products" title="Products">
+                            <p className="mt-3 max-w-[52ch] text-lg leading-relaxed text-muted">
+                                Everything trades from one vault. Collateral,
+                                positions and settlement stay onchain the whole
+                                way through.
+                            </p>
+                        </SectionHeader>
+                        <div
+                            className={`${PAGE_FRAME} mt-6 grid gap-4 sm:grid-cols-3`}
+                        >
+                            {blocks.map((block) => (
+                                <Link
+                                    key={block.title}
+                                    href={block.href}
+                                    className="group flex flex-col gap-4 rounded-panel border border-transparent bg-surface p-6 transition-colors duration-150 hover:border-accent hover:bg-accent-soft/20 lg:p-7"
+                                >
+                                    <div className="flex items-start justify-between gap-3">
+                                        <span className="text-[1.5rem] font-light tracking-[-0.02em] transition-colors duration-150 group-hover:text-accent">
+                                            {block.title}
+                                        </span>
+                                        <StatusBadge label="Live" />
+                                    </div>
+                                    <p className="text-muted">{block.body}</p>
+                                    <span className="mt-auto inline-flex items-center gap-2 text-sm text-accent">
+                                        {block.cta}
+                                        <ArrowIcon className="size-3 transition-transform duration-150 group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+                                    </span>
+                                </Link>
+                            ))}
+                        </div>
+                    </section>
+                </Reveal>
+
+                <Reveal>
+                    <LandingStats />
+                </Reveal>
+                <Reveal className="pt-16 lg:pt-24">
+                    <LandingMarkets />
+                </Reveal>
+
+                <Reveal>
+                    <LandingContracts />
+                </Reveal>
+
+                <Reveal>
+                    <LandingFaq />
+                </Reveal>
             </div>
             <Footer />
         </div>

@@ -1,6 +1,6 @@
 "use client";
 
-import { Num, Skeleton, chip, cn, rowLink } from "@alphamarkets/ui";
+import { Num, Skeleton, chip, cn } from "@alphamarkets/ui";
 import Link from "next/link";
 import { useMemo } from "react";
 import { formatUnits } from "viem";
@@ -19,20 +19,17 @@ const SPARK_POINTS = 48;
 
 type Overview = ReturnType<typeof useMarketOverviews>[number]["data"];
 
-/// One grid for the column labels and every row, so they line up. A phone shows the market, price and
-/// change; the chart and funding come in from `sm`; open interest and 24h volume need the room a
-/// wide layout has, so they only join at `lg` (the same point `MarketsTable` hides its own copies).
-const ROW_GRID =
-  "grid grid-cols-[1fr_auto_auto_1rem] items-center gap-x-4 sm:grid-cols-[1fr_7rem_8rem_6rem_6rem_1rem] lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1.6fr)_8rem_7rem_9rem_9rem_7rem_1.5rem] lg:gap-x-6";
-
-interface RowProps {
+interface CardProps {
   symbol: string;
   overview: Overview;
   stats: MarketStats | undefined;
   decimals: number;
 }
 
-function Row({ symbol, overview, stats, decimals }: RowProps) {
+/// One market's price, chart and figures — a card in the same grid the Smart contracts section
+/// uses (`rounded-panel`, border on hover only), not a table row: open interest, volume and funding
+/// no longer need to hide behind a breakpoint to fit, they're just the card's own bottom row.
+function MarketCard({ symbol, overview, stats, decimals }: CardProps) {
   const { data } = usePerpMarket(symbol);
   const changeStats = useStatsFor(symbol);
   const { data: history } = usePriceHistory(symbol, "24h");
@@ -42,32 +39,42 @@ function Row({ symbol, overview, stats, decimals }: RowProps) {
     return all.filter((_, index) => index % step === 0 || index === all.length - 1);
   }, [history]);
   return (
-    <li>
-      <Link href={`/perpetuals?market=${symbol}`} className={cn(rowLink, "block")}>
-        <div className={cn(PAGE_FRAME, ROW_GRID, "py-5 sm:py-7")}>
-          <span className="text-[1.5rem] font-light tracking-[-0.02em]">{symbol}</span>
-          <Sparkline points={points} className="hidden h-10 w-full sm:block" />
-          <Num className="text-right text-xl">{data ? fmtPrice(data.markPrice) : <Skeleton className="w-14" />}</Num>
-          <Change stats={changeStats} className="text-right" />
-          <Num tone="muted" className="hidden text-right lg:block">
-            {overview?.openInterest ? fmtUsd(overview.openInterest.total, decimals, 0) : "–"}
-          </Num>
-          <Num tone="muted" className="hidden text-right lg:block">
-            {stats ? fmtUsd(stats.perpVolume24h, decimals, 0) : "–"}
-          </Num>
-          <Num tone="muted" className="hidden text-right sm:block" title="Funding rate">
-            {fmtBps(data?.funding.currentFundingRateBps)}
-          </Num>
-          <ArrowIcon className="size-3 text-muted" />
+    <Link
+      href={`/perpetuals?market=${symbol}`}
+      className="group flex flex-col gap-4 rounded-panel border border-transparent bg-surface p-6 transition-colors duration-150 hover:border-accent hover:bg-accent-soft/20 lg:p-7"
+    >
+      <div className="flex items-start justify-between gap-3">
+        <span className="text-[1.5rem] font-light tracking-[-0.02em] transition-colors duration-150 group-hover:text-accent">{symbol}</span>
+        <ArrowIcon className="size-3 text-muted transition-transform duration-150 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 group-hover:text-accent" />
+      </div>
+      <Sparkline points={points} className="h-12 w-full" />
+      <div className="flex items-baseline justify-between gap-3">
+        <Num className="text-xl">{data ? fmtPrice(data.markPrice) : <Skeleton className="w-14" />}</Num>
+        <Change stats={changeStats} />
+      </div>
+      <div className="mt-auto grid grid-cols-3 gap-3 pt-2 text-sm">
+        <div className="flex flex-col gap-1 min-w-0">
+          <span className="text-xs text-muted">Open interest</span>
+          <span className="truncate tabular-nums text-muted">{overview?.openInterest ? fmtUsd(overview.openInterest.total, decimals, 0) : "–"}</span>
         </div>
-      </Link>
-    </li>
+        <div className="flex flex-col gap-1 min-w-0">
+          <span className="text-xs text-muted">24h volume</span>
+          <span className="truncate tabular-nums text-muted">{stats ? fmtUsd(stats.perpVolume24h, decimals, 0) : "–"}</span>
+        </div>
+        <div className="flex flex-col gap-1 min-w-0">
+          <span className="text-xs text-muted">Funding</span>
+          <span className="truncate tabular-nums text-muted" title="Funding rate">
+            {fmtBps(data?.funding.currentFundingRateBps)}
+          </span>
+        </div>
+      </div>
+    </Link>
   );
 }
 
 /// Every perpetual market with its price, 24h change, open interest, 24h volume and funding, each a
-/// link into the terminal. Open interest and volume follow the same data/format `MarketsTable` uses
-/// for its own copies of these columns.
+/// card into the terminal — the same grid the Smart contracts section uses, so the two read as one
+/// system instead of a table next to a card list.
 export function LandingMarkets() {
   const { data: markets, isPending } = usePerpMarkets();
   const { data: stats } = useMarketStats();
@@ -88,35 +95,21 @@ export function LandingMarkets() {
         }
       />
       {isPending ? (
-        <p className={cn(PAGE_FRAME, "border-t border-line py-4 text-muted")}>Loading markets…</p>
+        <p className={cn(PAGE_FRAME, "py-4 text-muted")}>Loading markets…</p>
       ) : symbols.length === 0 ? (
-        <p className={cn(PAGE_FRAME, "border-t border-line py-4 text-muted")}>No perpetual markets are listed yet.</p>
+        <p className={cn(PAGE_FRAME, "py-4 text-muted")}>No perpetual markets are listed yet.</p>
       ) : (
-        <>
-          <div aria-hidden="true" className="hidden border-t border-line sm:block">
-            <div className={cn(PAGE_FRAME, ROW_GRID, "py-3 text-xs text-muted")}>
-              <span>Market</span>
-              <span>Last 24 hours</span>
-              <span className="text-right">Price</span>
-              <span className="text-right">24h change</span>
-              <span className="hidden text-right lg:block">Open interest</span>
-              <span className="hidden text-right lg:block">24h volume</span>
-              <span className="text-right">Funding</span>
-              <span />
-            </div>
-          </div>
-          <ul className="divide-y divide-line border-y border-line">
-            {markets!.map((market, index) => (
-              <Row
-                key={market.marketId}
-                symbol={symbols[index]!}
-                overview={overviews[index]?.data}
-                stats={statsById.get(market.marketId)}
-                decimals={decimals}
-              />
-            ))}
-          </ul>
-        </>
+        <div className={cn(PAGE_FRAME, "mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3")}>
+          {markets!.map((market, index) => (
+            <MarketCard
+              key={market.marketId}
+              symbol={symbols[index]!}
+              overview={overviews[index]?.data}
+              stats={statsById.get(market.marketId)}
+              decimals={decimals}
+            />
+          ))}
+        </div>
       )}
     </section>
   );

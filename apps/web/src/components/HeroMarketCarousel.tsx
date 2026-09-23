@@ -11,10 +11,10 @@ import { Change, useStatsFor } from "./Change";
 
 /// The carousel never carries more than this many cards, even when more markets are listed.
 const MAX_CARDS = 7;
-/// Kept inside the deck's own `max-w-md` box (offset 3 * gap + half a card must clear the edge, not
-/// the page) so neighbour cards clip at the container's own border instead of bleeding across the
-/// hero into the headline column.
-const CARD_GAP_PX = 108;
+/// Kept inside the deck's own wrapper box (`max-w-4xl` in page.tsx — offset falloff * gap + half a
+/// card must clear the edge, not the page) so neighbour cards clip at the container's own border
+/// instead of bleeding across the hero into the headline column.
+const CARD_GAP_PX = 170;
 const MAX_ROTATION_DEG = 32;
 const MAX_DEPTH_PX = 160;
 const MIN_SCALE = 0.82;
@@ -103,7 +103,10 @@ export function HeroMarketCarousel() {
           const abs = Math.abs(offset);
           const scale = Math.max(MIN_SCALE, 1 - abs * 0.12);
           el.style.transform = `translateX(${offset * CARD_GAP_PX}px) translateZ(${-abs * MAX_DEPTH_PX}px) rotateY(${-offset * MAX_ROTATION_DEG}deg) scale(${scale})`;
-          el.style.opacity = abs <= 3 ? String(1 - abs * 0.22) : "0";
+          // Continuous falloff to 0, not a cutoff at a fixed offset — a hard `: 0` branch made a card
+          // pop out instantly the moment it crossed the threshold, once a frame, every loop: a blink,
+          // not a fade.
+          el.style.opacity = String(Math.max(0, 1 - abs * 0.34));
           el.style.zIndex = String(100 - Math.round(abs));
         }
       }
@@ -198,7 +201,7 @@ export function HeroMarketCarousel() {
         // max-w-md and overlap the headline column next to it (a plain CSS transform doesn't widen
         // the layout box, so nothing else here catches that overflow).
         className="relative touch-pan-y overflow-hidden outline-none [perspective:1200px] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent"
-        style={{ height: "clamp(220px,30vw,300px)" }}
+        style={{ height: "clamp(260px,34vw,360px)" }}
       >
         {count === 0 ? (
           <div className="flex h-full items-center justify-center rounded-feature border border-line bg-surface">
@@ -225,7 +228,7 @@ export function HeroMarketCarousel() {
                     // First-paint-only fallback (matches `active`, in sync before the rAF loop below
                     // takes over via the ref and moves `transform`/`opacity` continuously by itself).
                     transform: `translateX(${offset * CARD_GAP_PX}px) translateZ(${-Math.abs(offset) * MAX_DEPTH_PX}px) rotateY(${-offset * MAX_ROTATION_DEG}deg) scale(${scale})`,
-                    opacity: Math.abs(offset) <= 3 ? 1 - Math.abs(offset) * 0.22 : 0,
+                    opacity: Math.max(0, 1 - Math.abs(offset) * 0.34),
                     zIndex: 100 - Math.round(Math.abs(offset)),
                   }}
                 >
@@ -235,7 +238,7 @@ export function HeroMarketCarousel() {
                     tabIndex={-1}
                     style={{ background, color: ink }}
                     className={cn(
-                      "flex h-[13rem] w-[10.5rem] flex-col justify-between rounded-feature border border-line/70 p-4 shadow-[0_20px_45px_-20px_rgb(0_0_0/0.7)]",
+                      "flex h-[15.5rem] w-[12.5rem] flex-col justify-between rounded-feature border border-line/70 p-5 shadow-[0_20px_45px_-20px_rgb(0_0_0/0.7)]",
                       index !== active && "pointer-events-none",
                     )}
                   >
@@ -265,28 +268,6 @@ export function HeroMarketCarousel() {
           </ul>
         )}
       </div>
-      {/* Dot pager: click-to-jump plus a visible readout of position, since the deck itself hides
-          most cards behind the active one. */}
-      {count > 1 ? (
-        <div className="mt-6 flex items-center justify-center gap-2">
-          {Array.from({ length: count }, (_, index) => (
-            <button
-              key={index}
-              type="button"
-              aria-label={`Show ${symbols[index] ?? "market"}, ${index + 1} of ${count}`}
-              aria-current={index === active}
-              onClick={() => {
-                pauseGlideRef.current();
-                progressRef.current = index;
-              }}
-              className={cn(
-                "h-1.5 rounded-full transition-[background-color,width] duration-300",
-                index === active ? "w-5 bg-accent" : "w-1.5 bg-line hover:bg-accent/50",
-              )}
-            />
-          ))}
-        </div>
-      ) : null}
     </div>
   );
 }

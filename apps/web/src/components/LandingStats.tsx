@@ -2,23 +2,29 @@
 
 import { cn } from "@alphamarkets/ui";
 import { useMemo } from "react";
+import { formatUnits } from "viem";
 import { useAllMarkets, useMarketOverviews, useMarketStats, usePerpMarkets, useSettlementDecimals } from "@/hooks/queries";
-import { fmtCompactUsd } from "@/lib/format";
+import { fmtCompact } from "@/lib/format";
 import { PAGE_FRAME } from "@/lib/frame";
 import { symbolOf } from "@/lib/market";
+import { CountUp } from "./CountUp";
 
-function Figure({ label, className, children }: { label: string; className?: string; children: string }) {
+function Figure({ label, value, format }: { label: string; value: number | undefined; format: (n: number) => string }) {
   return (
-    <div className={cn("flex min-w-0 flex-col-reverse justify-end gap-2 py-6 sm:py-10", className)}>
+    <div className="flex min-w-0 flex-col-reverse justify-end gap-2">
       <dt className="text-sm text-muted">{label}</dt>
-      <dd className="font-serif text-[2.25rem] font-light leading-none tracking-[-0.03em] tabular-nums sm:text-[3.25rem]">{children}</dd>
+      <dd className="font-serif text-[2.25rem] font-light leading-none tracking-[-0.03em] tabular-nums sm:text-[3.25rem]">
+        <CountUp value={value} format={format} />
+      </dd>
     </div>
   );
 }
 
 /// Four totals for the whole venue, read from the same sources as the Markets page: the indexer for
 /// 24h volume, the chain for open interest and the registry for how many markets trade what. A total
-/// that has not loaded, or that the indexer is off for, shows a dash rather than a guess.
+/// that has not loaded, or that the indexer is off for, shows a dash rather than a guess. Each counts
+/// up from 0 the first time it scrolls into view (`CountUp`) — a score tally for the venue's own
+/// numbers, not a plain appearance.
 export function LandingStats() {
   const { data: decimals } = useSettlementDecimals();
   const { data: stats } = useMarketStats();
@@ -32,19 +38,18 @@ export function LandingStats() {
   const openInterest =
     settled && decimals !== undefined ? overviews.reduce((sum, query) => sum + (query.data?.openInterest?.total ?? 0n), 0n) : undefined;
 
+  const volumeNumber = volume !== undefined ? Number(formatUnits(volume, decimals ?? 0)) : undefined;
+  const openInterestNumber = openInterest !== undefined ? Number(formatUnits(openInterest, decimals ?? 0)) : undefined;
+  const perpCount = markets ? markets.filter((market) => market.perpsEnabled).length : undefined;
+  const optionCount = markets ? markets.filter((market) => market.optionsEnabled).length : undefined;
+
   return (
-    <dl className="border-b border-line">
-      <div className={cn(PAGE_FRAME, "grid grid-cols-2 sm:grid-cols-4")}>
-        <Figure label="24h volume">{fmtCompactUsd(volume, decimals ?? 0)}</Figure>
-        <Figure label="Open interest" className="border-l border-line pl-4 sm:pl-6">
-          {fmtCompactUsd(openInterest, decimals ?? 0)}
-        </Figure>
-        <Figure label="Perpetual markets" className="max-sm:border-t max-sm:border-line sm:border-l sm:border-line sm:pl-6">
-          {markets ? String(markets.filter((market) => market.perpsEnabled).length) : "–"}
-        </Figure>
-        <Figure label="Option markets" className="border-l border-line pl-4 max-sm:border-t sm:pl-6">
-          {markets ? String(markets.filter((market) => market.optionsEnabled).length) : "–"}
-        </Figure>
+    <dl className={cn(PAGE_FRAME, "py-12 lg:py-16")}>
+      <div className="grid grid-cols-2 gap-x-8 gap-y-8 sm:grid-cols-4 sm:gap-x-10">
+        <Figure label="24h volume" value={volumeNumber} format={(n) => `$${fmtCompact(n)}`} />
+        <Figure label="Open interest" value={openInterestNumber} format={(n) => `$${fmtCompact(n)}`} />
+        <Figure label="Perpetual markets" value={perpCount} format={(n) => String(Math.round(n))} />
+        <Figure label="Option markets" value={optionCount} format={(n) => String(Math.round(n))} />
       </div>
     </dl>
   );
