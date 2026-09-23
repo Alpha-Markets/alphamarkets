@@ -242,7 +242,13 @@ export function HeroSilkBackground({
       }
     };
 
-    window.addEventListener("resize", resize);
+    let resizeTimeout: ReturnType<typeof setTimeout> | undefined;
+    const onResize = () => {
+      clearTimeout(resizeTimeout);
+      resizeTimeout = setTimeout(resize, 100);
+    };
+
+    window.addEventListener("resize", onResize);
     document.addEventListener("visibilitychange", onVisibilityChange);
 
     resize();
@@ -250,7 +256,8 @@ export function HeroSilkBackground({
 
     return () => {
       cancelAnimationFrame(animationFrameId);
-      window.removeEventListener("resize", resize);
+      clearTimeout(resizeTimeout);
+      window.removeEventListener("resize", onResize);
       document.removeEventListener("visibilitychange", onVisibilityChange);
       gl.deleteProgram(program);
     };

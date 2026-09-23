@@ -2,7 +2,7 @@
 
 import { Num, Skeleton, cn } from "@alphamarkets/ui";
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type PointerEvent, type WheelEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type PointerEvent } from "react";
 import { usePerpMarket, usePerpMarkets } from "@/hooks/queries";
 import { fmtPrice } from "@/lib/format";
 import { symbolOf } from "@/lib/market";
@@ -24,8 +24,7 @@ const AUTOPLAY_SPEED = 1 / 5.5;
 /// Drag/wheel distance (px) worth one card of progress, for a continuous scrub feel that matches the
 /// autoplay glide instead of snapping in discrete steps.
 const DRAG_PX_PER_CARD = 220;
-const WHEEL_PX_PER_CARD = 260;
-/// How long a manual nudge (drag, wheel, arrow key) holds the glide off before it resumes.
+/// How long a manual nudge (drag, arrow key) holds the glide off before it resumes.
 const RESUME_DELAY_MS = 1800;
 
 /// A ticker with no known brand mark falls back to this, cycled by index. Stays inside the
@@ -88,6 +87,9 @@ export function HeroMarketCarousel() {
 
     let raf = 0;
     let last = performance.now();
+    // Tracks the progress value the DOM was last written for, so a frame where nothing moved
+    // (paused glide, not dragging) skips the style writes below instead of re-applying them.
+    let lastWrittenProgress = -1;
     const tick = (now: number) => {
       const dt = (now - last) / 1000;
       last = now;
@@ -95,28 +97,43 @@ export function HeroMarketCarousel() {
         if (!draggingRef.current) {
           progressRef.current = (progressRef.current + velocityRef.current * dt + count) % count;
         }
-        const nearest = Math.round(progressRef.current) % count;
-        setActive((current) => (current === nearest ? current : nearest));
-        for (let index = 0; index < count; index++) {
-          const el = cardRefs.current[index];
-          if (!el) continue;
-          const offset = wrappedOffset(index, progressRef.current, count);
-          const abs = Math.abs(offset);
-          const scale = Math.max(MIN_SCALE, 1 - abs * 0.12);
-          el.style.transform = `translateX(${offset * CARD_GAP_PX}px) translateZ(${-abs * MAX_DEPTH_PX}px) rotateY(${-offset * MAX_ROTATION_DEG}deg) scale(${scale})`;
-          // Continuous falloff to 0, not a cutoff at a fixed offset — a hard `: 0` branch made a card
-          // pop out instantly the moment it crossed the threshold, once a frame, every loop: a blink,
-          // not a fade.
-          el.style.opacity = String(Math.max(0, 1 - abs * 0.34));
-          el.style.zIndex = String(100 - Math.round(abs));
+        if (progressRef.current !== lastWrittenProgress) {
+          lastWrittenProgress = progressRef.current;
+          const nearest = Math.round(progressRef.current) % count;
+          setActive((current) => (current === nearest ? current : nearest));
+          for (let index = 0; index < count; index++) {
+            const el = cardRefs.current[index];
+            if (!el) continue;
+            const offset = wrappedOffset(index, progressRef.current, count);
+            const abs = Math.abs(offset);
+            const scale = Math.max(MIN_SCALE, 1 - abs * 0.12);
+            el.style.transform = `translateX(${offset * CARD_GAP_PX}px) translateZ(${-abs * MAX_DEPTH_PX}px) rotateY(${-offset * MAX_ROTATION_DEG}deg) scale(${scale})`;
+            // Continuous falloff to 0, not a cutoff at a fixed offset — a hard `: 0` branch made a card
+            // pop out instantly the moment it crossed the threshold, once a frame, every loop: a blink,
+            // not a fade.
+            el.style.opacity = String(Math.max(0, 1 - abs * 0.34));
+            el.style.zIndex = String(100 - Math.round(abs));
+          }
         }
       }
       raf = requestAnimationFrame(tick);
     };
+
+    const onVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        last = performance.now();
+        raf = requestAnimationFrame(tick);
+      } else {
+        cancelAnimationFrame(raf);
+      }
+    };
+
     raf = requestAnimationFrame(tick);
+    document.addEventListener("visibilitychange", onVisibilityChange);
 
     return () => {
       cancelAnimationFrame(raf);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
       if (resumeTimeout.current) clearTimeout(resumeTimeout.current);
     };
     // pauseGlideRef lets the pointer/wheel/keyboard handlers below reach into this same closure
@@ -135,13 +152,6 @@ export function HeroMarketCarousel() {
       }, RESUME_DELAY_MS);
     };
   }, []);
-
-  const onWheel = (event: WheelEvent<HTMLDivElement>) => {
-    if (count === 0) return;
-    event.preventDefault();
-    pauseGlideRef.current();
-    progressRef.current = (progressRef.current + event.deltaY / WHEEL_PX_PER_CARD + count) % count;
-  };
 
   const onPointerDown = (event: PointerEvent<HTMLDivElement>) => {
     if (count === 0) return;
@@ -192,7 +202,6 @@ export function HeroMarketCarousel() {
         aria-roledescription="carousel"
         aria-label="Live markets"
         tabIndex={0}
-        onWheel={onWheel}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={endDrag}

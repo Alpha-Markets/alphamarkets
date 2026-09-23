@@ -55,7 +55,6 @@ export function Footer() {
                         className={`${listLink} items-center gap-2`}
                     >
                         <XIcon />
-                        Follow on X
                     </a>
                 </nav>
             </div>

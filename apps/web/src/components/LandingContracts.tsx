@@ -1,27 +1,12 @@
-"use client";
-
 import { cn } from "@alphamarkets/ui";
-import { useState } from "react";
 import { CONTRACTS } from "@/lib/contracts";
 import { env } from "@/lib/env";
 import { explorerAddressUrl } from "@/lib/explorer";
 import { MONO, PAGE_FRAME } from "@/lib/frame";
 import { ArrowIcon } from "./ArrowIcon";
+import { ContractCopyButton } from "./ContractCopyButton";
 import { SectionHeader } from "./SectionHeader";
 import { StatusBadge } from "./StatusBadge";
-
-function CopyIcon({ copied }: { copied: boolean }) {
-  return copied ? (
-    <svg aria-hidden="true" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.4" className="size-3.5 shrink-0">
-      <path d="M2.5 6.5l2.4 2.4L9.5 3.5" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  ) : (
-    <svg aria-hidden="true" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.2" className="size-3.5 shrink-0">
-      <rect x="3.5" y="3.5" width="7" height="7" rx="1" />
-      <path d="M1.5 8.5v-6a1 1 0 0 1 1-1h6" />
-    </svg>
-  );
-}
 
 /// One deployed contract: its name, what it does, and its own full address to verify on the
 /// explorer — a card, not a row, so the description has room the old hairline grid never gave it.
@@ -30,7 +15,6 @@ function CopyIcon({ copied }: { copied: boolean }) {
 /// It also copies to the clipboard directly, and still opens the explorer as a link — verifying a
 /// contract shouldn't require leaving the page first.
 function ContractCard({ label, description, address }: { label: string; description: string; address: `0x${string}` | undefined }) {
-  const [copied, setCopied] = useState(false);
   const url = address ? explorerAddressUrl(env.explorerUrl, address) : undefined;
 
   return (
@@ -43,22 +27,7 @@ function ContractCard({ label, description, address }: { label: string; descript
       {address ? (
         <div className="mt-auto flex items-start gap-2 rounded-control bg-raised px-3 py-2">
           <span className={cn(MONO, "flex-1 break-all text-sm text-text")}>{address}</span>
-          <button
-            type="button"
-            aria-label={copied ? "Address copied" : "Copy address"}
-            onClick={() => {
-              void navigator.clipboard?.writeText(address).then(() => {
-                setCopied(true);
-                setTimeout(() => setCopied(false), 1500);
-              });
-            }}
-            className={cn(
-              "shrink-0 rounded-control p-1 text-muted transition-colors duration-150 hover:bg-accent-soft hover:text-accent",
-              copied && "text-up",
-            )}
-          >
-            <CopyIcon copied={copied} />
-          </button>
+          <ContractCopyButton address={address} label={label} />
           {url ? (
             <a href={url} target="_blank" rel="noreferrer" aria-label={`View ${label} on the explorer`} className="shrink-0 rounded-control p-1 text-muted transition-colors duration-150 hover:bg-accent-soft hover:text-accent">
               <ArrowIcon className="size-3.5" />
