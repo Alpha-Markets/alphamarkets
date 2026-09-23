@@ -8,7 +8,10 @@ import { alphaMarketsRead } from "@/lib/alphamarkets";
 import { env } from "@/lib/env";
 import { seriesKey } from "@/lib/options";
 
-const TICK_MS = 4_000;
+// Fans out per market (overviewQuery, listedExpiriesQuery) across every mounted component — a
+// rate-limited/free-tier RPC provider hits 429s well before this many requests a second, so this
+// stays conservative rather than "as live as possible".
+const TICK_MS = 15_000;
 
 // Query definitions are exported next to their hooks so `Prefetch` can warm the same cache entries
 // (same key, same function) before a page asks for them.

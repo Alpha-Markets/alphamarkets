@@ -67,10 +67,16 @@ export function createRisk(client: AlphaMarketsClient, addresses: ContractAddres
 
   async function openInterest(marketIdOrSymbol: string): Promise<OpenInterest> {
     const marketId = resolveMarketId(marketIdOrSymbol);
-    const [long, short] = await Promise.all([
-      client.readContract({ address: addresses.riskManager, abi: riskManagerAbi, functionName: "openInterestLong", args: [marketId] }),
-      client.readContract({ address: addresses.riskManager, abi: riskManagerAbi, functionName: "openInterestShort", args: [marketId] }),
-    ]);
+    // One `multicall` instead of two separate `readContract` calls — see oracle.ts `get`.
+    const [long, short] = await client.multicall({
+      contracts: (["openInterestLong", "openInterestShort"] as const).map((functionName) => ({
+        address: addresses.riskManager,
+        abi: riskManagerAbi,
+        functionName,
+        args: [marketId],
+      })),
+      allowFailure: false,
+    });
     return { long, short, total: long + short };
   }
 

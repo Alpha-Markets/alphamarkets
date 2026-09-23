@@ -13,6 +13,10 @@ export const robinhoodTestnet: Chain = {
   name: "Robinhood Chain Testnet",
   nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 },
   rpcUrls: { default: { http: [] } },
+  // The canonical deterministic deployment, confirmed present on this chain (`eth_getCode`
+  // returns real bytecode) — lets the SDK batch reads with `client.multicall` instead of one
+  // `readContract` per call, which matters on a rate-limited RPC provider.
+  contracts: { multicall3: { address: "0xcA11bde05977b3631167028862bE2a173976CA11" } },
 };
 
 export const chains: Record<ChainId, Chain> = {
