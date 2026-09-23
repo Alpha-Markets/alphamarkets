@@ -3,6 +3,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import logo from '@/assets/alpha-market-logo.svg';
 import { ArrowIcon } from '@/components/ArrowIcon';
+import { ContractAddressBadge } from '@/components/ContractAddressBadge';
 import { Footer } from '@/components/Footer';
 import { HeroAtmosphere } from '@/components/HeroAtmosphere';
 import { HeroMarketCarousel } from '@/components/HeroMarketCarousel';
@@ -77,6 +78,7 @@ export default function Landing() {
                             Explore markets
                         </Link>
                     </div>
+                    <ContractAddressBadge />
                 </div>
             </section>
 
