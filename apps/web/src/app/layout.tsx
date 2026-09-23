@@ -48,7 +48,7 @@ const origin = (url: string | undefined) => {
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
-  for (const target of new Set([origin(env.rpcUrl), origin(env.apiUrl)])) {
+  for (const target of new Set([origin(env.readRpcUrl), origin(env.apiUrl)])) {
     if (target) preconnect(target, { crossOrigin: "anonymous" });
   }
   return (
