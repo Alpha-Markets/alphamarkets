@@ -7,6 +7,7 @@ import { ContractAddressBadge } from '@/components/ContractAddressBadge';
 import { Footer } from '@/components/Footer';
 import { HeroAtmosphere } from '@/components/HeroAtmosphere';
 import { HeroMarketCarousel } from '@/components/HeroMarketCarousel';
+import { HeroSilkBackground } from '@/components/HeroSilkBackground';
 import { LandingContracts } from '@/components/LandingContracts';
 import { LandingFaq } from '@/components/LandingFaq';
 import { LandingMarkets } from '@/components/LandingMarkets';
@@ -47,6 +48,7 @@ export default function Landing() {
         <div className="flex min-h-full flex-col">
             <HeroAtmosphere />
             <section className="relative min-h-dvh shrink-0 overflow-hidden">
+                <HeroSilkBackground />
                 <div
                     className={`${PAGE_FRAME} relative flex min-h-dvh flex-col items-center justify-center gap-10 py-24 text-center`}
                 >
