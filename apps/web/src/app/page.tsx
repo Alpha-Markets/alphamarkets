@@ -27,9 +27,6 @@ const LandingFaq = dynamic(() =>
 const LandingMarkets = dynamic(() =>
     import('@/components/LandingMarkets').then((m) => m.LandingMarkets),
 );
-const LandingStats = dynamic(() =>
-    import('@/components/LandingStats').then((m) => m.LandingStats),
-);
 
 const blocks = [
     {
@@ -165,7 +162,6 @@ export default function Landing() {
                     </div>
                 </section>
 
-                <LandingStats />
                 <LandingMarkets />
 
                 <LandingContracts />
