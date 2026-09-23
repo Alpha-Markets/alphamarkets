@@ -70,12 +70,23 @@ export function createPrices(
   const apiGet = createApiGet(apiUrl);
 
   async function get(marketIdOrSymbol: string): Promise<PriceSet> {
-    const [index, mark, last] = await Promise.all([
-      oracle.getIndexPrice(marketIdOrSymbol),
-      oracle.getMarkPrice(marketIdOrSymbol),
-      oracle.getLastPrice(marketIdOrSymbol),
-    ]);
-    return { index, mark, last };
+    const marketId = resolveMarketId(marketIdOrSymbol);
+    // One `multicall` instead of three separate `readContract` calls — a rate-limited RPC
+    // provider counts each request, and this runs on every price tick for every visible market.
+    const [index, mark, last] = await client.multicall({
+      contracts: (["getIndexPrice", "getMarkPrice", "getLastPrice"] as const).map((functionName) => ({
+        address: addresses.oracleRouter,
+        abi: oracleRouterAbi,
+        functionName,
+        args: [marketId],
+      })),
+      allowFailure: false,
+    });
+    return {
+      index: { price: index[0], timestamp: index[1] },
+      mark: { price: mark[0], timestamp: mark[1] },
+      last: { price: last[0], timestamp: last[1] },
+    };
   }
 
   async function settlement(marketIdOrSymbol: string, expiry: bigint | Date | string): Promise<PriceReading> {

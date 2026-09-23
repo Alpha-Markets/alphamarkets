@@ -41,3 +41,5 @@ __pycache__/
 # DEVELOPMENT_STEPS.md
 # PROJECT_BRIEF.md
 .simulator/
+.vercel
+.env*

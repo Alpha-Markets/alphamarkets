@@ -31,26 +31,16 @@ export function createFunding(client: AlphaMarketsClient, addresses: ContractAdd
 
   async function get(marketIdOrSymbol: string): Promise<FundingInfo> {
     const marketId = resolveMarketId(marketIdOrSymbol);
-    const [currentFundingRateBps, fundingIntervalSeconds, nextFundingTimestamp] = await Promise.all([
-      client.readContract({
+    // One `multicall` instead of three separate `readContract` calls — see oracle.ts `get`.
+    const [currentFundingRateBps, fundingIntervalSeconds, nextFundingTimestamp] = await client.multicall({
+      contracts: (["currentFundingRateBps", "fundingInterval", "nextFundingTimestamp"] as const).map((functionName) => ({
         address: addresses.fundingManager,
         abi: fundingManagerAbi,
-        functionName: "currentFundingRateBps",
+        functionName,
         args: [marketId],
-      }),
-      client.readContract({
-        address: addresses.fundingManager,
-        abi: fundingManagerAbi,
-        functionName: "fundingInterval",
-        args: [marketId],
-      }),
-      client.readContract({
-        address: addresses.fundingManager,
-        abi: fundingManagerAbi,
-        functionName: "nextFundingTimestamp",
-        args: [marketId],
-      }),
-    ]);
+      })),
+      allowFailure: false,
+    });
     return { currentFundingRateBps, fundingIntervalSeconds, nextFundingTimestamp };
   }
 

@@ -48,7 +48,20 @@ export function createMarkets(client: AlphaMarketsClient, addresses: ContractAdd
       abi: marketRegistryAbi,
       functionName: "allMarketIds",
     });
-    return Promise.all(marketIds.map((marketId) => get(marketId)));
+    if (marketIds.length === 0) return [];
+    // One `multicall` instead of one `getMarket` per market — an RPC provider on a free/low
+    // tier rate-limits per-request, and this call fires on every markets-list poll across every
+    // mounted component (hero carousel, markets grid, ticker), so N separate reads adds up fast.
+    const configs = await client.multicall({
+      contracts: marketIds.map((marketId) => ({
+        address: addresses.marketRegistry,
+        abi: marketRegistryAbi,
+        functionName: "getMarket",
+        args: [marketId],
+      })),
+      allowFailure: false,
+    });
+    return configs as unknown as MarketConfig[];
   }
 
   async function stats(): Promise<MarketStats[]> {
