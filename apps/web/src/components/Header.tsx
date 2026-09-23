@@ -45,10 +45,10 @@ export function Header() {
   const pathname = usePathname();
   const { isConnected } = useAccount();
   const [open, setOpen] = useState(false);
-  // On the landing page the header floats over the hero, then over the light "paper" section once
-  // the page scrolls past it; on every other page it sits in the normal flow above (always dark)
-  // content. The nav text itself now carries no fill of its own, so the bar needs one soft, even
-  // scrim behind everything (not a box per item) to stay readable against either backdrop.
+  // On the landing page the header floats over the hero only, so the hero reads as the whole first
+  // screen; on every other page — and once the landing page scrolls past its hero — it sits in the
+  // normal flow above content. The nav text carries no fill of its own, so the bar needs one soft,
+  // even scrim behind everything to stay readable over whatever sits under it.
   const landing = pathname === "/";
   const ref = useRef<HTMLElement>(null);
   const close = useCallback(() => setOpen(false), []);
@@ -113,7 +113,7 @@ export function Header() {
         </div>
       </div>
       {open ? (
-        <nav id="mobile-nav" aria-label="Primary mobile" className="absolute inset-x-0 top-full max-h-[calc(100dvh-4.375rem)] overflow-y-auto bg-ground lg:hidden">
+        <nav id="mobile-nav" aria-label="Primary mobile" className="absolute inset-x-0 top-full max-h-[calc(100dvh-7.125rem)] overflow-y-auto bg-ground lg:hidden">
           {items.map((item) => {
             const current = isCurrent(pathname, item.href);
             return (
