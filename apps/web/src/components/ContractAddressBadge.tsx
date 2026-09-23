@@ -20,23 +20,20 @@ function CopyIcon({ copied }: { copied: boolean }) {
   );
 }
 
-const truncate = (address: string) => `${address.slice(0, 6)}…${address.slice(-4)}`;
-
-/// A compact, always-visible pointer to the settlement token's contract address — for the hero and
+/// An always-visible pointer to the settlement token's full contract address — for the hero and
 /// footer, where `LandingContracts` full address list (`#landing-contracts`) would be too much: a
-/// trader skimming the top or bottom of the page should still be able to grab and verify the CA
-/// without scrolling to the contracts section. Truncated (unlike `ContractCard`, which shows the
-/// full address to verify against) since this is a quick pointer, not the place that verification
-/// happens — the explorer link and copy button both carry the real, full address either way.
+/// trader skimming the top or bottom of the page should still be able to read and verify the CA
+/// without scrolling to the contracts section. Shown in full, `break-all` (matching `ContractCard`
+/// there): a partial address isn't something a reader can actually verify against the explorer.
 export function ContractAddressBadge({ className }: { className?: string }) {
   const [copied, setCopied] = useState(false);
   const address = env.addresses.settlementToken;
   const url = explorerAddressUrl(env.explorerUrl, address);
 
   return (
-    <div className={cn("inline-flex items-center gap-2 rounded-control border border-line bg-surface px-3 py-1.5", className)}>
+    <div className={cn("inline-flex max-w-full flex-wrap items-center gap-2 rounded-control border border-line bg-surface px-3 py-1.5", className)}>
       <span className={cn(MONO, "text-xs text-muted")}>CA</span>
-      <span className={cn(MONO, "text-xs text-text")}>{truncate(address)}</span>
+      <span className={cn(MONO, "break-all text-xs text-text")}>{address}</span>
       <button
         type="button"
         aria-label={copied ? "Address copied" : "Copy CA address"}
