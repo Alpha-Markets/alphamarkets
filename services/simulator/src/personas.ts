@@ -127,7 +127,7 @@ export function nextDelayMs(persona: Persona, rng: Rng): number {
 const SECOND = 1_000;
 const MINUTE = 60 * SECOND;
 const HOUR = 60 * MINUTE;
-const ALL = ["NVDA", "TSLA", "AAPL", "META", "HOOD", "AMZN", "PLTR", "NFLX", "AMD"] as const;
+const ALL = ["NVDA", "TSLA", "AAPL", "META", "HOOD", "AMZN", "PLTR", "NFLX", "AMD", "MSFT", "GOOGL", "COIN", "MSTR", "SPY", "QQQ", "AVGO", "JPM", "DIS", "UBER", "SHOP"] as const;
 
 /// The crowd. Big, slow whales; fast scalpers; traders who follow or fade the move; and two 10x
 /// degens (one long, one short) that never take a stop, so a move against them ends in liquidation.

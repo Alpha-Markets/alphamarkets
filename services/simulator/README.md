@@ -55,15 +55,21 @@ To also liquidate positions of your own wallet (a position you open by hand whil
 ## Have candles at once (`backfill`)
 
 ```bash
-pnpm --filter @alphamarkets/simulator backfill 8      # eight hours of history
-pnpm --filter @alphamarkets/simulator backfill undo   # take it out again
+pnpm --filter @alphamarkets/simulator backfill 72 replace   # redraw the last 72 hours, up to now
+pnpm --filter @alphamarkets/simulator backfill 72           # draw 72 hours before the first recorded price
+pnpm --filter @alphamarkets/simulator backfill undo         # take it out again
 ```
 
-`backfill` draws simulated prices for the hours before the first price the indexer recorded (one a minute per market, in moods that change every hour or two) and writes them to the indexer's `price_ticks` table. That table is a display cache for charts and the 24 hour change: it never feeds settlement or liquidation, which read the oracle on chain. The drawn prices end at the first real price, so they join it without a jump. Volume on those candles is 0, because no trades happened.
+`backfill` draws simulated prices (one a minute per market, in moods that change every hour or two) and writes them to the indexer's `price_ticks` table. That table is a display cache for charts and the 24 hour change: it never feeds settlement or liquidation, which read the oracle on chain. It takes 1 to 168 hours (the indexer keeps 8 days of ticks by default, `PRICE_TICK_RETENTION_DAYS`). Volume on those candles is 0, because no trades happened.
 
-**These candles are simulated, not recorded. Say so wherever you show them.** `undo` removes exactly the rows `backfill` added (it saves their time range in `.simulator/backfill.json`); run it before you want the chart to show only recorded prices.
+- **Plain `backfill`** draws the hours before the first price the indexer recorded, and the drawn prices end at that price, so they join it without a jump. Use it for a market that has just been listed.
+- **`backfill 72 replace`** redraws the whole window up to now, ending at each market's latest price, and deletes what the indexer recorded in that window. Use it when the recorded prices are a flat line (nothing moved the mock price), so the last hours have candles with bodies and wicks. `undo` removes the drawn rows but does not bring back the recorded ones it replaced.
+- **It costs no gas and no RPC calls.** It only writes to the database (about 4,300 rows a market for 72 hours). Only `start` sends transactions.
+- **Which candles look right.** The indexer records one price a minute, so 1m candles are flat lines. Use 15m, 1h or 1d in the terminal. 72 hours gives 72 candles on 1h and 3 on 1d; use 168 for a fuller 1d chart.
 
-It writes to the database, so it needs a connection: set `SIM_DATABASE_URL` to the public database URL, or the standard `PGHOST`, `PGPORT`, `PGUSER`, `PGPASSWORD` and `PGDATABASE` variables, and have `psql` installed. Pick the 5m or 15m candles in the terminal: the indexer records one price a minute, so 1m candles are flat lines.
+**These candles are simulated, not recorded. Say so wherever you show them.**
+
+It needs a database connection: set `SIM_DATABASE_URL` to the public database URL, or the standard `PGHOST`, `PGPORT`, `PGUSER`, `PGPASSWORD` and `PGDATABASE` variables, and have `psql` installed. Run it once, then start the simulator: the live prices continue from where the drawn history ends.
 
 ## A price line every second
 
@@ -88,7 +94,7 @@ pnpm --filter @alphamarkets/simulator status   # each wallet's gas, vault balanc
 
 | Variable | Default | Meaning |
 |---|---|---|
-| `SIM_MARKETS` | `NVDA,TSLA,AAPL,META,HOOD` | Markets to move and trade |
+| `SIM_MARKETS` | all 20 testnet markets (`NVDA,TSLA,...,SHOP`) | Markets to move and trade |
 | `SIM_RPC_URL` | `RPC_URL` | RPC endpoint for the simulator only. Give it its own key, so it does not use up the rate limit the hosted services share |
 | `SIM_TICK_MS` | `15000` | Time between price steps, at least 500. `1000` gives a price line every second (see below) |
 | `SIM_VOLATILITY` | `1` | Multiplies the size of the random moves (2 to 3 gives livelier charts) |
