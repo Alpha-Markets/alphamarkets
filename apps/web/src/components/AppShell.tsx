@@ -5,6 +5,7 @@ import type { ReactNode } from "react";
 import { env } from "@/lib/env";
 import { Header } from "./Header";
 import { LandingTicker } from "./LandingTicker";
+import { TriggerAlerts } from "./TriggerAlerts";
 import { TxToasts } from "./TxToasts";
 
 /// The frame every page shares: the markets ticker, header, a warning when the RPC is not configured,
@@ -36,6 +37,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         </main>
       </div>
       <TxToasts />
+      <TriggerAlerts />
     </div>
   );
 }
