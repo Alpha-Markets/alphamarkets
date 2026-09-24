@@ -10,7 +10,7 @@ import "./globals.css";
 
 const geist = Geist({ subsets: ["latin"], variable: "--font-geist", display: "swap" });
 // The landing page's display face: light weights for the headline and statement, italic for the wordmark.
-// Imitates orionisderivative.tech's own display choice (see globals.css's --font-serif comment).
+// Imitates the reference site's own display choice (see globals.css's --font-serif comment).
 const tomorrow = Tomorrow({ subsets: ["latin"], style: ["normal", "italic"], weight: ["300", "400"], variable: "--font-tomorrow", display: "swap" });
 // Verifiable data only (contract addresses, chain name, tech-stack tags) — Geist's own mono companion,
 // so it pairs with the sans instead of reading as a bolted-on font.
