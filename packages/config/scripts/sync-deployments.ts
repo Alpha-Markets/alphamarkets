@@ -1,7 +1,7 @@
-/// Rewrites the checked-in `robinhoodTestnetAddresses` literal in `src/deployments.ts` from the
+/// Rewrites the checked-in `<network>Addresses` literal (testnet or mainnet) in `src/deployments.ts` from the
 /// JSON that `packages/contracts/script/DeployAll.s.sol` writes, so a redeploy needs no hand
 /// copying. Usage: `pnpm --filter @alphamarkets/config sync:deployments [network]` (default
-/// `robinhood_testnet`).
+/// `robinhood_testnet`; `robinhood_mainnet` for mainnet).
 import { readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 
@@ -9,11 +9,13 @@ const network = process.argv[2] ?? "robinhood_testnet";
 const jsonPath = resolve(import.meta.dirname, `../../contracts/deployments/${network}.json`);
 const sourcePath = resolve(import.meta.dirname, "../src/deployments.ts");
 
-const literal = /(const robinhoodTestnetAddresses: ContractAddresses = \{\n)([\s\S]*?)(\n\};)/;
+// `robinhood_testnet` -> `robinhoodTestnetAddresses`, `robinhood_mainnet` -> `robinhoodMainnetAddresses`.
+const constName = `${network.replace(/_(\w)/g, (_, c: string) => c.toUpperCase())}Addresses`;
+const literal = new RegExp(`(const ${constName}: ContractAddresses = \\{\\n)([\\s\\S]*?)(\\n\\};)`);
 
 const source = readFileSync(sourcePath, "utf8");
 const match = literal.exec(source);
-if (!match) throw new Error("sync-deployments: robinhoodTestnetAddresses literal not found");
+if (!match) throw new Error(`sync-deployments: ${constName} literal not found`);
 
 // Contracts added after the first deployment. A deployment that predates one omits it, and the
 // SDK treats the feature as unavailable; a newer deployment must record it.

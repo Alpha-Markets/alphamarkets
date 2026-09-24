@@ -1,5 +1,5 @@
 import type { Address } from "@alphamarkets/types";
-import { ROBINHOOD_TESTNET_CHAIN_ID, type ChainId } from "./chains.js";
+import { ROBINHOOD_MAINNET_CHAIN_ID, ROBINHOOD_TESTNET_CHAIN_ID, type ChainId } from "./chains.js";
 
 export interface ContractAddresses {
   marketRegistry: Address;
@@ -65,8 +65,36 @@ const robinhoodTestnetAddresses: ContractAddresses = {
   rfqManager: "0x98DfBF62399819A508ECFD0E4b605F015970A19e",
 };
 
+/// Mirrors `packages/contracts/deployments/robinhood_mainnet.json` (DeployAll, 2026-09-25). The
+/// stack is deployed but empty: no markets, feeds or funds, and the deployer wallet still holds
+/// every admin role. Not open for real funds until docs/MAINNET_READINESS.md is closed.
+const robinhoodMainnetAddresses: ContractAddresses = {
+  marketRegistry: "0x71Bb058106b1a226a6f66e2152719a6B827c783a",
+  oracleRouter: "0x831255818E492f31a5515b0b62a1406F00c7BA7c",
+  vault: "0x9aC6782D82D980f2623bBE78C8882832baC94903",
+  collateralManager: "0x5Dd7bf74253D392C6D071D00e873F6660edb6D78",
+  feeManager: "0xa8D4641d988411fa4F312ac942da1e063C19cB47",
+  buybackModule: "0xEE8AE4155C653B664727CA5EF0757914aA4769CE",
+  riskManager: "0xCe8d2D037f32B61E4a3023bAB62Fb125A9b97f07",
+  optionsEngine: "0xFa58B6B1D9B9de3A841B463ed1e945f8422932aD",
+  optionMarket: "0x71C64D56ae35a85E18E24A53264E73f4d058338C",
+  optionPositionManager: "0xdfE7AaDBA3574760Be45d0B3D3Ce09507361fa78",
+  perpsEngine: "0xf7Ce817965156A308b0Cdf1FED554e35055f3190",
+  perpPositionManager: "0x3eA78624f5F9a514FA69427a691c62418f4C9493",
+  liquidationEngine: "0x0979B96607C44435BC5462A738a7F10D55a4142C",
+  fundingManager: "0xe9DFC7B3e2179A826095b87E24e657d6e6e45bB0",
+  priceValidator: "0x8eBEB401A0a4f676B63dcC687Cf300B81f239ba6",
+  settlementToken: "0x5fc5360D0400a0Fd4f2af552ADD042D716F1d168",
+  perpOrderManager: "0x170ed757E332547d27b7ca0644Fee22259A25279",
+  insuranceFund: "0xE10833Aa9C438e84626e1D73B4ec5319B5ebc263",
+  crossMargin: "0xea3Ce04FA538FE6C0AEd377Cd0Cc86FE4CD0A28F",
+  subaccountFactory: "0x7bd8f7D7E615A692821d6A31275dB38BC6836980",
+  rfqManager: "0xE4B6aA5FdC12491e89D999FDe17e69340e19344C",
+};
+
 export const deployments: Record<ChainId, ContractAddresses> = {
   [ROBINHOOD_TESTNET_CHAIN_ID]: robinhoodTestnetAddresses,
+  [ROBINHOOD_MAINNET_CHAIN_ID]: robinhoodMainnetAddresses,
 };
 
 export function addressesForChain(chainId: ChainId): ContractAddresses {

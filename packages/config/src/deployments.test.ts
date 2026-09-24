@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { addressesForChain, OPTIONAL_CONTRACTS, resolveAddresses } from "./deployments.js";
-import { ROBINHOOD_TESTNET_CHAIN_ID } from "./chains.js";
+import { ROBINHOOD_MAINNET_CHAIN_ID, ROBINHOOD_TESTNET_CHAIN_ID } from "./chains.js";
 
 const ADDRESS = `0x${"ab".repeat(20)}`;
 
@@ -30,4 +30,15 @@ test("an optional contract (one added after older deployments) is a known overri
   const resolved = resolveAddresses(ROBINHOOD_TESTNET_CHAIN_ID, { ALPHAMARKETS_ADDRESSES: JSON.stringify({ perpOrderManager: ADDRESS }) });
   assert.equal(resolved.perpOrderManager, ADDRESS);
   assert.ok(OPTIONAL_CONTRACTS.includes("perpOrderManager"));
+});
+
+test("mainnet and testnet never share a contract address", () => {
+  const testnet = new Set(Object.values(addressesForChain(ROBINHOOD_TESTNET_CHAIN_ID)));
+  for (const [name, address] of Object.entries(addressesForChain(ROBINHOOD_MAINNET_CHAIN_ID))) {
+    assert.ok(!testnet.has(address), `${name} on mainnet equals a testnet address`);
+  }
+});
+
+test("the mainnet settlement token is USDG", () => {
+  assert.equal(addressesForChain(ROBINHOOD_MAINNET_CHAIN_ID).settlementToken, "0x5fc5360D0400a0Fd4f2af552ADD042D716F1d168");
 });
