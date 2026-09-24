@@ -88,9 +88,15 @@ export function PriceChart() {
   const showCandles = mode === "candles";
   const shown = candles.find((candle) => candle.time === hoverTime) ?? candles.at(-1);
 
+  /// The oracle price only moves when its feed updates (a stock feed can sit still for hours), so a
+  /// window can be a flat line. Say so in the title instead of leaving it to look like missing data.
+  const flat = showCandles
+    ? candles.length > 1 && candles.every((candle) => candle.high === candle.low && candle.low === candles[0]!.low)
+    : points.length > 1 && points.every((point) => point.value === points[0]!.value);
+
   const title = `${symbol || "Market"}-PERP · ${
     showCandles ? `${interval} candles, volume in USD` : past.length > 1 ? "last 24 hours" : "mark price this session"
-  }`;
+  }${flat ? " · oracle price unchanged" : ""}`;
 
   return (
     <Panel
