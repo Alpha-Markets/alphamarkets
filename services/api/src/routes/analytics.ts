@@ -15,6 +15,7 @@ import {
   type SizeDelta,
   type VolumeRow,
 } from "../analytics.js";
+import { fetchPastCandles, mergeHistory } from "../externalCandles.js";
 
 /// Analytics derived from what `services/indexer` recorded (events and index-price samples).
 /// Display data only: nothing that decides money (margin, liquidation, settlement) reads it.
@@ -53,11 +54,13 @@ export function registerAnalyticsRoutes(app: FastifyInstance) {
     "/v1/prices/:symbol/candles",
     async (request) => {
       const marketId = resolveMarketId(request.params.symbol);
-      const bucket = CANDLE_INTERVALS[parseInterval(request.query.interval)];
+      const interval = parseInterval(request.query.interval);
+      const bucket = CANDLE_INTERVALS[interval];
       const limit = parseLimit(request.query.limit, DEFAULT_CANDLE_LIMIT, MAX_CANDLE_LIMIT);
       const windowSeconds = bucket * limit;
 
-      const [prices, volumes] = await Promise.all([
+      const [past, prices, volumes] = await Promise.all([
+        fetchPastCandles(request.params.symbol.toUpperCase(), interval),
         sql<OhlcRow[]>`
           select extract(epoch from bucket)::bigint::int as time,
             (array_agg(price order by sampled_at asc))[1] as open,
@@ -82,7 +85,7 @@ export function registerAnalyticsRoutes(app: FastifyInstance) {
           group by 1
         `,
       ]);
-      return mergeCandles(prices, volumes);
+      return mergeHistory(past, mergeCandles(prices, volumes), limit);
     },
   );
 
