@@ -14,7 +14,10 @@
 # a changed source fails here with a clear message instead of "Fail - Unable to verify" on the explorer.
 #
 # Usage: ./script/verify-full.sh [ContractName ...]   (no argument verifies every contract in the list)
-# Requires: ROBINHOOD_TESTNET_RPC_URL, EXPLORER_VERIFY_URL (from .env), jq, curl, cast, forge.
+# Requires: ROBINHOOD_TESTNET_RPC_URL (or VERIFY_RPC_URL for another chain, e.g. mainnet), EXPLORER_VERIFY_URL (from .env),
+# jq, curl, cast, forge. For mainnet set NETWORK_NAME=robinhood_mainnet, VERIFY_RPC_URL and EXPLORER_VERIFY_URL.
+# It verifies the 20 proxy implementations only: verify each `ChainlinkFeedAdapter` and the timelock with
+# `forge verify-contract`.
 # Sends the input to the Etherscan-compatible /api endpoint (the v2 REST verification route is not served here).
 # Safe to re-run. VERIFY_ATTEMPTS (default 3) retries each contract; VERIFY_POLLS (default 12) x 5 s waits
 # for the explorer result.
@@ -74,7 +77,7 @@ verify() {
 
   local local_tail chain_tail
   local_tail="$(jq -r '.deployedBytecode.object' "$artifact" | metadata_tail)"
-  chain_tail="$(cast code "$address" --rpc-url "$ROBINHOOD_TESTNET_RPC_URL" | metadata_tail)"
+  chain_tail="$(cast code "$address" --rpc-url "${VERIFY_RPC_URL:-$ROBINHOOD_TESTNET_RPC_URL}" | metadata_tail)"
   if [[ "$local_tail" != "$chain_tail" ]]; then
     echo "!!! FAILED: $name local metadata hash differs from the deployed one."
     echo "    Run from the checkout path that made the deployment, after forge build, with no source change since."
