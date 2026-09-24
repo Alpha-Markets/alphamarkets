@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { generateHistory, historyRows, insertStatements } from "./history.js";
+import { deleteStatements, generateHistory, historyRows, insertStatements } from "./history.js";
 import { createRng } from "./prng.js";
 
 const MARKET = `0x${"4e56444100".padEnd(64, "0")}`;
@@ -53,4 +53,13 @@ test("the SQL is chunked, and refuses a value that is not a market id", () => {
   assert.match(statements[0]!, /^INSERT INTO price_ticks \(market_id, price, sampled_at\) VALUES \('0x/);
   assert.throws(() => insertStatements([{ marketId: "x'; DROP TABLE events; --", price: 1n, at: new Date() }]), /not a market id/);
   assert.throws(() => generateHistory({ symbol: "NVDA", endPrice: 190, minutes: 1, rng: createRng(1) }), /at least 2 minutes/);
+});
+
+test("deleteStatements clears each market from the start of the window and refuses a bad id", () => {
+  const from = new Date("2026-09-20T00:00:00.000Z");
+  const statements = deleteStatements([MARKET], from);
+  assert.equal(statements.length, 1);
+  assert.match(statements[0]!, /DELETE FROM price_ticks WHERE market_id = '0x[0-9a-f]{64}' AND sampled_at >= '2026-09-20T00:00:00.000Z';/);
+  assert.throws(() => deleteStatements(["0x1'; DROP TABLE price_ticks; --"], from), /not a market id/);
+  assert.throws(() => deleteStatements([MARKET], new Date("nope")), /not a date/);
 });

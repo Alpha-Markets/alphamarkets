@@ -9,7 +9,7 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 hits=$(git grep -n -I -i -E 'citadel|ctdl|orionis' -- . \
-  ':!PROJECT_BRIEF.md' ':!DEVELOPMENT_STEPS.md' ':!pnpm-lock.yaml' ':!scripts/check-brand.sh' \
+  ':!docs/PROJECT_BRIEF.md' ':!docs/DEVELOPMENT_STEPS.md' ':!pnpm-lock.yaml' ':!scripts/check-brand.sh' \
   ':!packages/contracts/CHANGELOG.md' ':!apps/web/src/assets/*.svg' || true)
 names=$(git ls-files | grep -i -E 'citadel|ctdl|orionis' || true)
 

@@ -12,9 +12,9 @@ import { blockBeforeFirstIndexed } from "./startBlock.js";
 import { serializeArgs } from "./serialize.js";
 
 const POLL_INTERVAL_MS = Number(process.env.INDEXER_POLL_INTERVAL_MS ?? 5000);
-/// getLogs range width per call — the free tier of the Alchemy endpoint this deploy uses
-/// (CHANGELOG [1.0.0-testnet]) caps eth_getLogs at 10 blocks; override via env on a paid tier
-/// or a different RPC provider.
+/// getLogs range width per call. The default of 10 fits the Alchemy free tier, which caps
+/// eth_getLogs at 10 blocks. Robinhood's official testnet RPC (https://rpc.testnet.chain.robinhood.com)
+/// only rejects a query that matches more than 10000 logs, so set this to about 2000 there.
 const MAX_BLOCK_RANGE = BigInt(process.env.INDEXER_MAX_BLOCK_RANGE ?? 10);
 if (MAX_BLOCK_RANGE < 1n) {
   throw new Error(`INDEXER_MAX_BLOCK_RANGE must be at least 1, got ${MAX_BLOCK_RANGE}`);

@@ -6,6 +6,7 @@ import type { CandleInterval, OpenInterestRange } from "@alphamarkets/sdk";
 import type { Address } from "@alphamarkets/types";
 import { alphaMarketsRead } from "@/lib/alphamarkets";
 import { env } from "@/lib/env";
+import { readHistoryAfter } from "@/lib/history";
 import { seriesKey } from "@/lib/options";
 
 // Fans out per market (overviewQuery, listedExpiriesQuery) across every mounted component — a
@@ -140,7 +141,7 @@ export function useHistory() {
   const { address } = useAccount();
   return useQuery({
     queryKey: ["history", address],
-    queryFn: () => alphaMarketsRead.portfolio.history(address as Address, { limit: 200 }),
+    queryFn: () => readHistoryAfter(address as Address),
     enabled: Boolean(address && env.apiUrl),
     refetchInterval: 30_000,
     retry: false,

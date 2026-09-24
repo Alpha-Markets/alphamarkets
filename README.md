@@ -55,7 +55,7 @@ cp .env.example .env   # fill in chain/contract addresses per environment
 pnpm dev
 ```
 
-No chain ID, RPC URL, contract address, leverage cap, fee percentage, or protocol token symbol/address is ever hardcoded — all of it is environment- or registry-driven. See `.env.example` and `PROJECT_BRIEF.md` Section 4 / Section 21.
+No chain ID, RPC URL, contract address, leverage cap, fee percentage, or protocol token symbol/address is ever hardcoded — all of it is environment- or registry-driven. See `.env.example` and `docs/PROJECT_BRIEF.md` Section 4 / Section 21.
 
 After a contract deployment, copy the new addresses into the config package:
 
@@ -89,12 +89,12 @@ pnpm --filter @alphamarkets/simulator start
 
 ## Development
 
-Build order, engineering practices, and phase-by-phase steps live in `DEVELOPMENT_STEPS.md`, derived from `PROJECT_BRIEF.md`. Phases 0 to 6 are done, and Phase 7 (post-MVP features) is built and deployed to testnet but not audited. See the status table in `DEVELOPMENT_STEPS.md`.
+Build order, engineering practices, and phase-by-phase steps live in `docs/DEVELOPMENT_STEPS.md`, derived from `docs/PROJECT_BRIEF.md`. Phases 0 to 6 are done, and Phase 7 (post-MVP features) is built and deployed to testnet but not audited. See the status table in `docs/DEVELOPMENT_STEPS.md`.
 
 ## Docs
 
-- `PROJECT_BRIEF.md` — product, architecture, and scope.
-- `DEVELOPMENT_STEPS.md` — sequenced build plan (Phase 0 through Phase 7), status, hosting notes and cross-cutting engineering rules.
+- `docs/PROJECT_BRIEF.md` — product, architecture, and scope.
+- `docs/DEVELOPMENT_STEPS.md` — sequenced build plan (Phase 0 through Phase 7), status, hosting notes and cross-cutting engineering rules.
 - `packages/contracts/README.md` and `CHANGELOG.md` — contract layout, setup, deployments and upgrade flow.
 - `packages/sdk/README.md` — SDK usage.
 - `services/simulator/README.md` — demo simulator.

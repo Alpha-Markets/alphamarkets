@@ -24,7 +24,9 @@ function Figure({ label, value, format }: { label: string; value: number | undef
 /// 24h volume, the chain for open interest and the registry for how many markets trade what. A total
 /// that has not loaded, or that the indexer is off for, shows a dash rather than a guess. Each counts
 /// up from 0 the first time it scrolls into view (`CountUp`) — a score tally for the venue's own
-/// numbers, not a plain appearance.
+/// numbers, not a plain appearance. Nested directly under `LandingMarkets`'s own `SectionHeader`
+/// (which already pads its own bottom), so this carries no top padding of its own — only the bottom
+/// gap that separates it from the market-card grid below.
 export function LandingStats() {
   const { data: decimals } = useSettlementDecimals();
   const { data: stats } = useMarketStats();
@@ -44,7 +46,7 @@ export function LandingStats() {
   const optionCount = markets ? markets.filter((market) => market.optionsEnabled).length : undefined;
 
   return (
-    <dl className={cn(PAGE_FRAME, "py-12 lg:py-16")}>
+    <dl className={cn(PAGE_FRAME, "pb-10 lg:pb-12")}>
       <div className="grid grid-cols-2 gap-x-8 gap-y-8 sm:grid-cols-4 sm:gap-x-10">
         <Figure label="24h volume" value={volumeNumber} format={(n) => `$${fmtCompact(n)}`} />
         <Figure label="Open interest" value={openInterestNumber} format={(n) => `$${fmtCompact(n)}`} />

@@ -11,6 +11,7 @@ import { CHIP_LABEL, PAGE_FRAME } from "@/lib/frame";
 import { symbolOf } from "@/lib/market";
 import { ArrowIcon } from "./ArrowIcon";
 import { Change, useStatsFor } from "./Change";
+import { LandingStats } from "./LandingStats";
 import { SectionHeader } from "./SectionHeader";
 import { Sparkline } from "./Sparkline";
 
@@ -93,6 +94,7 @@ export function LandingMarkets() {
           </Link>
         }
       />
+      <LandingStats />
       {isPending ? (
         <p className={cn(PAGE_FRAME, "py-4 text-muted")}>Loading markets…</p>
       ) : symbols.length === 0 ? (

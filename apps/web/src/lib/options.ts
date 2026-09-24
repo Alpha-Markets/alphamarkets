@@ -103,3 +103,13 @@ export const seriesKey = (strike: bigint, type: "CALL" | "PUT") => `${strike.toS
 
 /// Whole contracts as shown in the chain: no decimals, thousands separated.
 export const fmtContracts = (value: bigint | undefined) => (value === undefined ? "–" : value.toLocaleString("en-US"));
+
+export type Verdict = "ITM" | "OTM" | "UNKNOWN";
+
+/// Calls pay when the index is above the strike, puts when it is below. Both are 18 decimals. This
+/// reads the live index, not the settlement price, so it is a guide: the Settle transaction decides.
+export function verdictOf(position: Pick<OptionPosition, "optionType" | "strike">, index: bigint | undefined): Verdict {
+  if (index === undefined) return "UNKNOWN";
+  const inTheMoney = position.optionType === OptionType.CALL ? index > position.strike : index < position.strike;
+  return inTheMoney ? "ITM" : "OTM";
+}

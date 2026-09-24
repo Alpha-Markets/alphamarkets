@@ -61,3 +61,13 @@ export function insertStatements(rows: readonly TickRow[], chunk = 500): string[
   }
   return statements;
 }
+
+/// DELETE statements that clear each market's ticks from `from` onwards, so a redrawn window replaces
+/// what the indexer recorded there (a flat line, when nothing moved the mock price).
+export function deleteStatements(marketIds: readonly string[], from: Date): string[] {
+  if (Number.isNaN(from.getTime())) throw new Error("history: not a date");
+  return marketIds.map((marketId) => {
+    if (!HEX.test(marketId)) throw new Error(`history: not a market id: ${marketId}`);
+    return `DELETE FROM price_ticks WHERE market_id = '${marketId}' AND sampled_at >= '${from.toISOString()}';`;
+  });
+}
