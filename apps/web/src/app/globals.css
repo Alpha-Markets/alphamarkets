@@ -25,7 +25,7 @@
   --radius-feature: 14px;
   --radius-pill: 9999px;
   /* A low-alpha halo built from the existing up/down colours (not new hues), imitating
-     orionisderivative.tech's glow on up/down emphasis without adopting its Binance-derived colours.
+     the reference site's glow on up/down emphasis without adopting its Binance-derived colours.
      Used sparingly — one showcase spot, not applied across dense tables. */
   --shadow-up-glow: 0 0 20px rgb(114 217 119 / 0.25);
   --shadow-down-glow: 0 0 20px rgb(238 112 105 / 0.25);
@@ -52,7 +52,7 @@
   --color-down-press: #d95d56;
   --font-sans: var(--font-geist), ui-sans-serif, system-ui, sans-serif;
   /* Display face for the hero, section titles and big figures. Was Newsreader (a literary serif);
-     swapped for Tomorrow, a geometric technical sans, imitating orionisderivative.tech's own display
+     swapped for Tomorrow, a geometric technical sans, imitating the reference site's own display
      choice — moves the landing page's voice from editorial toward institutional/technical, closer to
      PROJECT_BRIEF.md's "precise typography" / "financial-terminal aesthetic" line. Kept under the
      `--font-serif` name so every `font-serif` utility in the app picks it up with no class renames. */

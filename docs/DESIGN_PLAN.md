@@ -12,7 +12,7 @@ repo's `REDESIGN_PLAN.md`):
 - Color palette stays the logo-derived teal-on-dark set (owner-set 2026-09-21). Not touched here.
 - No user-toggleable dark/light mode is being built. The app is fixed-dark with one light `.paper`
   region; this doc formalizes that as the documented strategy.
-- Non-color styling cues were imitated from `orionisderivative.tech` (display font, glow-shadow motif,
+- Non-color styling cues were imitated from the reference site (display font, glow-shadow motif,
   radius scale) — its own accent/up/down colors were Binance's brand colors and are explicitly not
   used here.
 
@@ -43,7 +43,7 @@ design system doc is self-contained.
 | UI | `--font-sans` | Geist | Body copy, labels, controls, nav |
 | Data | `--font-mono` | Geist Mono | Contract addresses, chain name, tech-stack tags — never prices |
 
-Only the display face changes. Geist and Geist Mono already fill the same roles `orionisderivative.tech`
+Only the display face changes. Geist and Geist Mono already fill the same roles the reference site
 uses Instrument Sans and JetBrains Mono for, so they stay. Swapping Newsreader (literary serif) for
 Tomorrow (geometric technical sans) moves the display voice from editorial toward institutional/
 technical — closer to `PROJECT_BRIEF.md`'s "precise typography" / "financial-terminal aesthetic" line.
@@ -81,7 +81,7 @@ purposeful ones.
 
 The glow-shadow tokens are built from the existing `--color-up`/`--color-down` hex values, not new
 colors — a low-alpha halo behind up/down figures and long/short buttons, imitating
-`orionisderivative.tech`'s own up/down glow treatment without adopting its (Binance-derived) hues.
+the reference site's own up/down glow treatment without adopting its (Binance-derived) hues.
 
 **Status: done.** All 4 radius tokens and both glow tokens are in `globals.css`. `Panel.tsx`,
 `MarketHeader.tsx`, `PortfolioView.tsx` now use `rounded-panel` instead of duplicating
@@ -186,7 +186,7 @@ document the new order (hero → statement → paper region → footer).
 
 Second pass, same session: replaced the hero's background technique and layout, keeping the teal
 palette (openjev.sh's own pink is Anthropic-unrelated but still not AlphaMarkets' brand, so not
-adopted — same rule as the earlier orionisderivative.tech pass).
+adopted — same rule as the earlier reference-site pass).
 
 - **`HeroAtmosphere.tsx`** (new) replaces `SilkBackdrop.tsx` (deleted): a canvas halftone effect —
   three soft gradient blobs drift on a sine loop and nudge toward the pointer, redrawn each frame as
