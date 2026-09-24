@@ -79,6 +79,16 @@ contract AdminHandoverTest is BaseTest, HandOverAdmin {
         }
     }
 
+    function test_handoverMovesThePauserRoleToo() public {
+        assertTrue(marketRegistry.hasRole(marketRegistry.PAUSER_ROLE(), admin));
+        assertTrue(oracleRouter.hasRole(oracleRouter.PAUSER_ROLE(), admin));
+        _run(true);
+        assertFalse(marketRegistry.hasRole(marketRegistry.PAUSER_ROLE(), admin), "the deployer kept the pause power");
+        assertFalse(oracleRouter.hasRole(oracleRouter.PAUSER_ROLE(), admin));
+        assertTrue(marketRegistry.hasRole(marketRegistry.PAUSER_ROLE(), timelock));
+        assertTrue(oracleRouter.hasRole(oracleRouter.PAUSER_ROLE(), timelock));
+    }
+
     function test_oneRunCanGrantAndRenounce() public {
         _run(true);
         assertFalse(marketRegistry.hasRole(bytes32(0), admin));

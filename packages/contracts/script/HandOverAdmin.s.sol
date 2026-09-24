@@ -64,7 +64,7 @@ contract HandOverAdmin is Script {
 
     /// @dev The DEFAULT_ADMIN_ROLE is last, so it is revoked last: it is the role that can grant the others.
     function _adminRoles() internal pure returns (bytes32[] memory roles) {
-        roles = new bytes32[](10);
+        roles = new bytes32[](11);
         roles[0] = keccak256("MARKET_ADMIN_ROLE");
         roles[1] = keccak256("VAULT_ADMIN_ROLE");
         roles[2] = keccak256("FEE_ADMIN_ROLE");
@@ -74,7 +74,8 @@ contract HandOverAdmin is Script {
         roles[6] = keccak256("OPTIONS_ADMIN_ROLE");
         roles[7] = keccak256("FUND_ADMIN_ROLE");
         roles[8] = keccak256("TARGET_ADMIN_ROLE");
-        roles[9] = bytes32(0); // DEFAULT_ADMIN_ROLE
+        roles[9] = keccak256("PAUSER_ROLE"); // held by the deployer on the registry and the oracle router
+        roles[10] = bytes32(0); // DEFAULT_ADMIN_ROLE
     }
 
     function run() external {

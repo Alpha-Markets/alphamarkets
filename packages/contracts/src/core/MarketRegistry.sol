@@ -12,6 +12,9 @@ contract MarketRegistry is IMarketRegistry, UpgradeableBase {
     /// @notice Role permitted to add/update/pause markets. Intended to migrate to a
     /// TimelockController-held role without any contract change (Section 37).
     bytes32 public constant MARKET_ADMIN_ROLE = keccak256("MARKET_ADMIN_ROLE");
+    /// @notice May stop new trading in a market, or in every market at once, and cannot turn any back on or
+    /// change any configuration. See {OracleRouter.PAUSER_ROLE}.
+    bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
 
     error MarketAlreadyExists(bytes32 marketId);
     error MarketDoesNotExist(bytes32 marketId);
@@ -33,6 +36,7 @@ contract MarketRegistry is IMarketRegistry, UpgradeableBase {
         if (admin == address(0)) revert ZeroAddress();
         __UpgradeableBase_init(admin);
         _grantRole(MARKET_ADMIN_ROLE, admin);
+        _grantRole(PAUSER_ROLE, admin);
     }
 
     /// @notice Registers a new market. Reverts if `config.marketId` is already registered.
@@ -59,14 +63,29 @@ contract MarketRegistry is IMarketRegistry, UpgradeableBase {
         emit MarketUpdated(marketId, config.underlyingToken, config.oracleId, config.active);
     }
 
-    /// @notice Pauses or unpauses a single market without touching its other config.
-    function setActive(bytes32 marketId, bool active) external onlyRole(MARKET_ADMIN_ROLE) {
+    /// @notice Pauses or unpauses a single market without touching its other config. Pausing (`active` false)
+    /// is open to a pauser as well as a market admin, so it can be done fast. Turning a market back on is
+    /// admin only.
+    function setActive(bytes32 marketId, bool active) external {
+        if (active || !hasRole(PAUSER_ROLE, msg.sender)) _checkRole(MARKET_ADMIN_ROLE);
         if (!_exists[marketId]) revert MarketDoesNotExist(marketId);
 
         _markets[marketId].active = active;
 
         MarketConfig storage m = _markets[marketId];
         emit MarketUpdated(marketId, m.underlyingToken, m.oracleId, active);
+    }
+
+    /// @notice Stops new trading in every market at once: the protocol-wide pause. It sets each market's active
+    /// flag to false. Closing a position, liquidation and option settlement still work, as they do for a single
+    /// paused market. Turning markets back on is admin only, one at a time with `setActive`.
+    function pauseAll() external onlyRole(PAUSER_ROLE) {
+        for (uint256 i = 0; i < _marketIds.length; i++) {
+            MarketConfig storage m = _markets[_marketIds[i]];
+            if (!m.active) continue;
+            m.active = false;
+            emit MarketUpdated(_marketIds[i], m.underlyingToken, m.oracleId, false);
+        }
     }
 
     function getMarket(bytes32 marketId) external view returns (MarketConfig memory) {

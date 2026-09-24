@@ -34,6 +34,12 @@ import {OracleRouter} from "../oracle/OracleRouter.sol";
 contract OptionsEngine is IOptionsEngine, ReentrancyGuardUpgradeable, UpgradeableBase, EIP712 {
     uint256 internal constant WAD = 1e18;
     uint256 internal constant BPS_DENOMINATOR = 10_000;
+    /// @notice How many positions `settleExpired` settles in one call. A series with more is settled by calling
+    /// it again; each holder can also settle their own position at once with `settlePosition`.
+    uint256 public constant DEFAULT_SETTLE_BATCH = 50;
+    /// @notice How far below the intrinsic value a quoted premium may fall, in basis points: the pricing
+    /// service quotes off a price up to a few seconds older than the one read on chain.
+    uint256 public constant PREMIUM_TOLERANCE_BPS = 200;
 
     /// @notice Role allowed to sign premium quotes.
     bytes32 public constant QUOTER_ROLE = keccak256("QUOTER_ROLE");
@@ -46,6 +52,9 @@ contract OptionsEngine is IOptionsEngine, ReentrancyGuardUpgradeable, Upgradeabl
 
     /// @notice EIP-712 digests of quotes that have already been used.
     mapping(bytes32 digest => bool used) public quoteUsed;
+    /// @notice How many positions of a series `settleExpired` has already settled, so a series too large for
+    /// one call is finished over several. Appended after `quoteUsed`, so it moves no existing storage slot.
+    mapping(bytes32 seriesId => uint256 settled) public settleCursor;
 
     IMarketRegistry public immutable marketRegistry;
     OracleRouter public immutable oracleRouter;
@@ -62,6 +71,11 @@ contract OptionsEngine is IOptionsEngine, ReentrancyGuardUpgradeable, Upgradeabl
 
     error OptionsNotEnabled(bytes32 marketId);
     error InvalidExpiry();
+    /// @notice A signed premium is outside what the position can be worth at the current price: below its
+    /// intrinsic value (less a small tolerance), zero, or above the value of the underlying it is written on.
+    error PremiumOutOfBounds(uint256 premium, uint256 min, uint256 max);
+    error PositionNotExpired();
+    error ZeroBatch();
     error ZeroAmount();
     error InsufficientCollateral();
     error NotPositionOwner();
@@ -133,6 +147,9 @@ contract OptionsEngine is IOptionsEngine, ReentrancyGuardUpgradeable, Upgradeabl
         uint256 notional = _notional(contractSize, params.strike, params.contracts);
         bool oiSide = params.optionType == OptionType.CALL;
 
+        _checkPremiumBounds(
+            params.marketId, params.optionType, params.strike, contractSize, params.contracts, params.premium, true
+        );
         _checkAndCharge(params.marketId, oiSide, notional, params.premium);
 
         bytes32 seriesId =
@@ -271,6 +288,16 @@ contract OptionsEngine is IOptionsEngine, ReentrancyGuardUpgradeable, Upgradeabl
         if (pos.status != OptionPositionManager.PositionStatus.OPEN) revert PositionNotOpen();
         if (block.timestamp >= pos.expiry) revert PositionAlreadyExpired(); // must settle via settleExpired instead
 
+        _checkPremiumBounds(
+            pos.marketId,
+            pos.optionType,
+            pos.strike,
+            optionMarket.getContractSize(pos.marketId),
+            pos.contracts,
+            premium,
+            false
+        );
+
         FeeConfig memory fees = feeManager.getFeeConfig(pos.marketId);
         uint256 fee = (premium * fees.optionCloseFee) / BPS_DENOMINATOR;
         uint256 net = premium > fee ? premium - fee : 0;
@@ -300,21 +327,94 @@ contract OptionsEngine is IOptionsEngine, ReentrancyGuardUpgradeable, Upgradeabl
     // Settle (at/after expiry)
     // ---------------------------------------------------------------------
 
+    /// @notice Settles up to `DEFAULT_SETTLE_BATCH` unsettled positions of an expired series at the recorded
+    /// settlement price. Anyone may call it. A series with more positions than that is finished by calling it
+    /// again; `settleCursor(seriesId)` and `positionManager.seriesPositionCount(seriesId)` show the progress.
     function settleExpired(bytes32 marketId, uint256 expiry, uint256 strike, OptionType optionType)
         external
         nonReentrant
     {
+        _settleSeries(marketId, expiry, strike, optionType, DEFAULT_SETTLE_BATCH);
+    }
+
+    /// @notice Same, with the caller choosing how many positions to settle in this call.
+    function settleExpiredBatch(
+        bytes32 marketId,
+        uint256 expiry,
+        uint256 strike,
+        OptionType optionType,
+        uint256 maxPositions
+    ) external nonReentrant {
+        if (maxPositions == 0) revert ZeroBatch();
+        _settleSeries(marketId, expiry, strike, optionType, maxPositions);
+    }
+
+    /// @notice Settles one expired position at once, however many others share its series, so no holder ever
+    /// waits on a large series. Anyone may call it. Does nothing to a position that is already settled.
+    function settlePosition(uint256 positionId) external nonReentrant {
+        OptionPositionManager.OptionPosition memory pos = positionManager.getPosition(positionId);
+        if (block.timestamp < pos.expiry) revert PositionNotExpired();
+        uint256 settlementPrice = oracleRouter.ensureSettlementPrice(pos.marketId, pos.expiry);
+        _settleOne(
+            positionId,
+            pos.marketId,
+            pos.optionType,
+            pos.strike,
+            settlementPrice,
+            optionMarket.getContractSize(pos.marketId)
+        );
+    }
+
+    function _settleSeries(
+        bytes32 marketId,
+        uint256 expiry,
+        uint256 strike,
+        OptionType optionType,
+        uint256 maxPositions
+    ) internal {
         uint256 settlementPrice = oracleRouter.ensureSettlementPrice(marketId, expiry);
 
         bytes32 seriesId = optionMarket.seriesId(marketId, expiry, strike, optionType);
         uint256 contractSize = optionMarket.getContractSize(marketId);
-        uint256[] memory ids = positionManager.getSeriesPositions(seriesId);
+        uint256 start = settleCursor[seriesId];
+        uint256 total = positionManager.seriesPositionCount(seriesId);
+        uint256 end = start + maxPositions;
+        if (end > total) end = total;
+        if (end <= start) return; // nothing left to settle
 
+        uint256[] memory ids = positionManager.getSeriesPositionsRange(seriesId, start, end);
         for (uint256 i = 0; i < ids.length; i++) {
             _settleOne(ids[i], marketId, optionType, strike, settlementPrice, contractSize);
         }
+        settleCursor[seriesId] = end;
 
-        emit OptionSettled(seriesId, settlementPrice, block.timestamp);
+        if (end == total) emit OptionSettled(seriesId, settlementPrice, block.timestamp);
+    }
+
+    /// @dev The premium of a position may not be zero, may not be below its intrinsic value at the current price
+    /// (less a small tolerance: nobody sells an option for less than exercising it would pay), and may not exceed
+    /// the value of the underlying it is written on. Opening checks all three; closing (the premium the holder
+    /// receives) checks only the ceiling, since a low close price costs only the holder who signs for it. This
+    /// bounds what a compromised quoter key could sign, without trying to price the option on chain.
+    function _checkPremiumBounds(
+        bytes32 marketId,
+        OptionType optionType,
+        uint256 strike,
+        uint256 contractSize,
+        uint256 contracts,
+        uint256 premium,
+        bool isOpen
+    ) internal view {
+        (uint256 spot,) = oracleRouter.getIndexPrice(marketId);
+
+        uint256 intrinsic18 =
+            optionType == OptionType.CALL ? (spot > strike ? spot - strike : 0) : (strike > spot ? strike - spot : 0);
+        uint256 floor_ = _toTokenUnits((intrinsic18 * contractSize / WAD) * contracts);
+        floor_ = floor_ * (BPS_DENOMINATOR - PREMIUM_TOLERANCE_BPS) / BPS_DENOMINATOR;
+        uint256 ceiling = _toTokenUnits(((spot > strike ? spot : strike) * contractSize / WAD) * contracts);
+
+        if (premium > ceiling) revert PremiumOutOfBounds(premium, floor_, ceiling);
+        if (isOpen && (premium == 0 || premium < floor_)) revert PremiumOutOfBounds(premium, floor_, ceiling);
     }
 
     function _settleOne(
