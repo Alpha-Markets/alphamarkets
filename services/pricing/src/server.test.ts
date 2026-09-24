@@ -111,6 +111,28 @@ test("signs a close quote for the position's owner", async () => {
   assert.equal(recovered, quoter.address);
 });
 
+test("retries a position the RPC node does not show yet, then quotes it", async () => {
+  const empty = { ...openPosition, owner: "0x0000000000000000000000000000000000000000" as const };
+  let reads = 0;
+  const base = fakeAlphaMarkets(openPosition);
+  const alphaMarkets = {
+    ...base,
+    portfolio: { getOptionPosition: async () => (++reads < 3 ? empty : openPosition) },
+  } as unknown as typeof base;
+  const app = buildServer({ alphaMarkets, account: quoter, now: () => NOW_MS, positionRetryDelayMs: 0 });
+  const response = await app.inject({ method: "POST", url: "/quote/close", payload: { positionId: "5", user: USER } });
+  assert.equal(response.statusCode, 200);
+  assert.equal(reads, 3);
+});
+
+test("says a position is not found yet, not that it belongs to someone else, when it never shows", async () => {
+  const empty = { ...openPosition, owner: "0x0000000000000000000000000000000000000000" as const };
+  const app = buildServer({ alphaMarkets: fakeAlphaMarkets(empty), account: quoter, now: () => NOW_MS, positionRetryDelayMs: 0 });
+  const response = await app.inject({ method: "POST", url: "/quote/close", payload: { positionId: "5", user: USER } });
+  assert.equal(response.statusCode, 404);
+  assert.match(response.json().error, /not found yet/);
+});
+
 test("refuses to quote a close for someone else's, closed, or expired position", async () => {
   const other = buildServer({ alphaMarkets: fakeAlphaMarkets(openPosition), account: quoter, now: () => NOW_MS });
   assert.equal((await other.inject({ method: "POST", url: "/quote/close", payload: { positionId: "5", user: OTHER } })).statusCode, 403);
