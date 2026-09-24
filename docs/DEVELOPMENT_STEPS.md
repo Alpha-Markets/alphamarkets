@@ -384,16 +384,22 @@ and so are the first four findings in that document.
 
 - [ ] All Priority 0 contracts: unit + fuzz + integration + fork tests passing, audit complete, findings resolved.
   - Done: 244 unit, fuzz and integration tests pass at 10,000 fuzz runs; 16 fork tests pass against the live testnet deployment; 3 perps invariants pass.
-  - Done since: the vault solvency gap (finding 1) is fixed in code, with the solvency invariant now passing (see `docs/SECURITY_REVIEW.md`, "Vault solvency fix"). It is not deployed and not audited.
+  - Done since: the vault solvency gap (finding 1) is fixed in code, with the solvency invariant now passing (see `docs/SECURITY_REVIEW.md`, "Vault solvency fix"). It is deployed to testnet (2026-09-24) and not audited.
   - Open: the audit; fork tests against mainnet (needs the mainnet RPC and feeds); invariants for options and liquidation; the launch reserve size and net open-interest limits (product decisions).
 - [x] Staging e2e run completed for both options and perps full lifecycle (open, close, settle/liquidate). Run on live testnet with `packages/sdk/scripts/testnet-lifecycle.ts` and `testnet-smoke.ts`: perp profit, perp liquidation, option settled in the money, option expired out of the money. It found and fixed the pricing-service close-quote race (finding 6). This was the testnet stack with mock feeds, not a mainnet-shaped staging with real feeds.
 - [x] Oracle safeguards verified live on testnet: stale price rejection, deviation rejection, fallback source, emergency pause, each triggered once on the real `OracleRouter` (transactions in `docs/SECURITY_REVIEW.md`).
 - [ ] Admin keys deployment-ready (Section 37): confirm multisig/timelock wiring if used for mainnet, not left on a single EOA.
   - Done: the `UpgradeAll` and `HandOverAdmin` scripts were rehearsed on a fork with a timelock; the deployer ended with no admin role and the timelock could act after its delay.
-  - Done since: a separate `PAUSER_ROLE` and a protocol-wide `pauseAll` fix the slow-pause problem in code (finding 2), so a fast key can pause without the timelock. Not deployed, not audited.
+  - Done since: a separate `PAUSER_ROLE` and a protocol-wide `pauseAll` fix the slow-pause problem in code (finding 2), so a fast key can pause without the timelock. Deployed to testnet, not audited.
   - Open: no multisig or timelock is chosen or deployed, the live deployer still holds every role, and the fast pauser key is not chosen.
 - [ ] Open interest caps and position caps set conservatively for initial launch (canary limits), raised only after mainnet is stable. `packages/contracts/script/check-launch-limits.sh` now enforces chosen limits against the chain; the limits themselves are a product decision and are not set. Testnet's caps are far above any canary value.
 - [ ] Rollback/pause plan documented: who can pause which contract, how fast, communicated to team before launch. `docs/RUNBOOK.md` documents what each pause lever does and the rollback steps; the people and response times in it are **TBD** and the pause-speed decision is open.
+
+**Testnet upgrade (2026-09-24).** The fixes above were deployed with `UpgradeAll` (proxy addresses unchanged),
+`bootstrapLiabilities`, `FundPool` (600,000) and `SetNetOpenInterest` (50,000). After it: the launch check and the
+smoke test pass, a throwaway key proved the pauser cannot unpause or reconfigure, a call settled through
+`settlePosition`, and the 20 new implementations are fully verified on the explorer. Details in
+`docs/SECURITY_REVIEW.md`.
 
 **Verification run (2026-09-24).** Run against the hosted testnet stack after the repository move to the
 `Alpha-Markets` organization.
@@ -402,6 +408,6 @@ and so are the first four findings in that document.
 - `pnpm typecheck` and `pnpm test` pass; the Anvil SDK integration test ran.
 - Slither on `src/`: 2 High and 29 Medium findings, all reviewed and none exploitable (triage in `docs/SECURITY_REVIEW.md`). Aderyn and Mythril were not run.
 - Live testnet: oracle safeguards probe, lifecycle run and smoke test as above. The testnet now lists 20 active markets; the earlier "nine markets" count in the hosting notes is out of date.
-- Found: the vault solvency gap (High), the slow emergency pause behind a timelock, the unbounded quote premium, the unbounded `settleExpired` loop, and the pricing-service race. All five are fixed in code (the vault gap, pause, premium bounds and batched settlement are not deployed and not audited yet).
+- Found: the vault solvency gap (High), the slow emergency pause behind a timelock, the unbounded quote premium, the unbounded `settleExpired` loop, and the pricing-service race. All five are fixed in code (the vault gap, pause, premium bounds and batched settlement are deployed to testnet as of 2026-09-24 and not audited yet).
 
 ---

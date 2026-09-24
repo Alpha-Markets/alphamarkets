@@ -151,7 +151,7 @@ export default function Docs() {
                     <Section
                         id="start"
                         title="Deposit, trade, withdraw"
-                        sources={['core/AlphaMarketsVault.sol', 'risk/CrossMarginManager.sol']}
+                        sources={['core/AlphaMarketsVault.sol', 'risk/CrossMarginManager.sol', 'risk/RiskManager.sol']}
                     >
                         <p className={bodyText}>
                             Deposit the settlement token into the vault first. The vault only accepts tokens the
@@ -166,6 +166,16 @@ export default function Docs() {
                             You can withdraw any available balance at any time. If you hold a cross-margin position,
                             the vault refuses a withdrawal that would leave the account within 10% of its margin
                             requirement or below it.
+                        </p>
+                        <p className={bodyText}>
+                            <strong className="font-medium text-text">The pool.</strong> The vault is the other side
+                            of every trade. It pays a winner from its pool: the tokens it holds beyond what it owes
+                            users. Losses and fees add to the pool, and the team funds it at launch. A winner can
+                            close while the losing side has not closed yet, so the pool covers that gap. If the pool
+                            cannot cover a payout, the close reverts with <Term>InsufficientPoolReserves</Term> and the
+                            position stays open. It closes once losing positions settle or the pool is topped up. To
+                            keep this rare, each market also limits how far long and short open interest may differ,
+                            and an order on the smaller side is never refused for that reason.
                         </p>
                     </Section>
 
@@ -296,6 +306,14 @@ payment    = size × change in cumulative rate ÷ 10,000`}</Formula>
                             quote for a different account, strike or expiry is rejected. The price you pay is
                             therefore only as fair as that signer, and today it uses simple placeholder inputs.
                         </p>
+                        <p className={bodyText}>
+                            <strong className="font-medium text-text">Price bounds.</strong> The contract also checks
+                            every signed premium against the market. When you open, it cannot be zero, cannot be below
+                            the option&apos;s intrinsic value at the current price (2% is allowed for movement since
+                            the quote), and cannot be above the value of the underlying. When you close, it cannot be
+                            above that value. These bounds limit what a wrong or stolen quote can charge or pay; they
+                            do not make the price fair inside the bounds. Opening an option needs a fresh oracle price.
+                        </p>
                         <Formula>{`call payout = max(settlement − strike, 0) × contract size × contracts
 put payout  = max(strike − settlement, 0) × contract size × contracts`}</Formula>
                         <p className={bodyText}>
@@ -315,6 +333,11 @@ put payout  = max(strike − settlement, 0) × contract size × contracts`}</For
                             expired, and gives you a Settle button.
                         </p>
                         <p className={bodyText}>
+                            A series settles 50 positions per call, so a large series is finished over several calls.
+                            You never wait for that: you can settle your own position at once, whatever else is in its
+                            series, and the Settle button does exactly that.
+                        </p>
+                        <p className={bodyText}>
                             The default contract size is one underlying token. Strikes and expiries are chosen by the
                             app, so the contract has no fixed list of them.
                         </p>
@@ -332,8 +355,15 @@ put payout  = max(strike − settlement, 0) × contract size × contracts`}</For
                             10% (default), or the read reverts. If only one works, its price is used.
                         </p>
                         <p className={bodyText}>
-                            An admin can pause a market&apos;s oracle. While it is paused, every read for that market
-                            reverts, which blocks opening and closing positions there.
+                            A pauser key can pause a market&apos;s oracle. While it is paused, every read for that
+                            market reverts, which blocks opening, closing, liquidation and settlement there.
+                        </p>
+                        <p className={bodyText}>
+                            <strong className="font-medium text-text">Pausing.</strong> A pauser key can also stop new
+                            trading in one market, or in every market at once. Closing positions, liquidation and
+                            settlement keep working when trading is stopped. The pauser cannot turn anything back on,
+                            or change a price source or a limit: only the admin can, so a stolen pauser key can stop
+                            trading but not take funds.
                         </p>
                         <p className={bodyText}>
                             On testnet the feeds are test contracts whose price a keeper pushes, not real market
@@ -368,18 +398,28 @@ put payout  = max(strike − settlement, 0) × contract size × contracts`}</For
                                 settlement token are test contracts. Fee values are placeholders, not a final schedule.
                             </li>
                             <li>
-                                <strong className="font-medium text-text">Option counterparty.</strong> Options are
-                                buy-only. The shared vault credits every winning payout. The contract limits exposure
-                                with the position size and open interest caps, but it does not set funds aside for each
-                                option.
+                                <strong className="font-medium text-text">Recent code is unaudited.</strong> The
+                                vault pool, the pause roles, the option price bounds and batched settlement were
+                                upgraded on testnet on 24 September 2026. They are covered by tests and were checked
+                                on testnet, but no independent review has seen them.
+                            </li>
+                            <li>
+                                <strong className="font-medium text-text">Pool size.</strong> Options are buy-only and
+                                the vault pool pays winners. If the pool runs low, winning closes wait until losing
+                                positions settle or the pool is topped up (see The pool).
+                            </li>
+                            <li>
+                                <strong className="font-medium text-text">Quote signer.</strong> One signing service
+                                sets option premiums. The contract bounds them, but the signer can still choose any
+                                premium inside the bounds.
                             </li>
                             <li>
                                 <strong className="font-medium text-text">Funding is inactive</strong>, as described
                                 above.
                             </li>
                             <li>
-                                <strong className="font-medium text-text">Pausing.</strong> You can pause one market. There
-                                is no switch that pauses the whole protocol.
+                                <strong className="font-medium text-text">Who can pause.</strong> On testnet the
+                                deployer key holds the pause role. Who holds it on mainnet is not decided yet.
                             </li>
                             <li>
                                 <strong className="font-medium text-text">Alerts need an open tab.</strong> Take-profit,

@@ -1,5 +1,7 @@
 # AlphaMarkets: Final Pre-Mainnet Testing Plan
 
+> The current status of every item here is in `docs/MAINNET_READINESS.md` and `docs/SECURITY_REVIEW.md`. This file is the original plan.
+
 ## Context
 The stack is testnet-only today (Robinhood Chain testnet, id 46630). It is unaudited, and the README says not to use it with real funds. Testnet uses mock price feeds, a public-mint settlement token, a deployer EOA holding every admin role, and no production liquidation or option-settlement keeper. This plan lists what must be tested and closed before mainnet. Gates are ordered; do not start a later gate until the earlier one passes.
 

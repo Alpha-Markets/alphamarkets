@@ -32,7 +32,9 @@ deployer keeps no pause power after the handover. Granting the pauser key is the
 before launch, not during an incident.
 
 A vault or contract already deployed from older code has no pauser: the admin grants `PAUSER_ROLE` after the
-upgrade, because it is only given automatically to a fresh deployment.
+upgrade, because it is only given automatically to a fresh deployment. The testnet was upgraded this way on
+2026-09-24 (upgrade, `bootstrapLiabilities`, `FundPool` 600,000, `SetNetOpenInterest` 50,000 on every market,
+pauser granted to the deployer); use it as the rehearsal for a mainnet upgrade.
 
 ## Who does what (TBD)
 
