@@ -21,7 +21,7 @@ function ContractCard({ label, description, address }: { label: string; descript
     <div className="flex flex-col gap-4 rounded-panel border border-transparent bg-surface p-6 transition-colors duration-150 hover:border-accent lg:p-7">
       <div className="flex items-start justify-between gap-3">
         <h3 className="text-lg font-medium">{label}</h3>
-        <StatusBadge label={url ? "Verified" : "Not deployed"} tone={url ? "up" : "faint"} />
+        <StatusBadge label={url ? "Deployed" : "Not deployed"} tone={url ? "up" : "faint"} />
       </div>
       <p className="text-muted">{description}</p>
       {address ? (
