@@ -51,6 +51,11 @@ export class InsufficientPoolReservesError extends AlphaMarketsContractError {}
 export class DeadlineExpiredError extends AlphaMarketsContractError {}
 /// The option premium was not authorised by a valid, unexpired, unused quote (see `OptionsEngine`).
 export class InvalidQuoteError extends AlphaMarketsContractError {}
+/// The signed premium is outside what the position can be worth at the current price. Ask for a new
+/// price: the one quoted was off, or the market moved since it was signed.
+export class PremiumOutOfBoundsError extends AlphaMarketsContractError {}
+/// The position has not reached its expiry, so it cannot be settled yet.
+export class PositionNotExpiredError extends AlphaMarketsContractError {}
 export class QuoteExpiredError extends AlphaMarketsContractError {}
 export class QuoteAlreadyUsedError extends AlphaMarketsContractError {}
 export class SlippageExceededError extends AlphaMarketsContractError {}
@@ -77,6 +82,8 @@ const contractErrorClasses: Record<string, ContractErrorClass> = {
   InsufficientPoolReserves: InsufficientPoolReservesError,
   DeadlineExpired: DeadlineExpiredError,
   InvalidQuote: InvalidQuoteError,
+  PremiumOutOfBounds: PremiumOutOfBoundsError,
+  PositionNotExpired: PositionNotExpiredError,
   QuoteExpired: QuoteExpiredError,
   QuoteAlreadyUsed: QuoteAlreadyUsedError,
   SlippageExceeded: SlippageExceededError,

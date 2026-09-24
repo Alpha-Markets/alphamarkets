@@ -226,10 +226,15 @@ export interface OptionsNamespace {
   previewOpen(params: OptionSeriesParams & { user?: Address }): Promise<OptionOpenPreview>;
   openPosition(params: OpenOptionPositionParams): Promise<{ hash: Hex; positionId: bigint }>;
   closePosition(positionId: bigint, params: CloseOptionPositionParams): Promise<Hex>;
-  /// Settles every position in an expired series at the validated settlement price. European
-  /// cash-settled options have no separate user "exercise" call — `OptionExercised` events are
-  /// emitted per in-the-money position as part of this transaction.
+  /// Settles the next batch (up to 50) of positions in an expired series at the validated settlement
+  /// price; a larger series is finished by calling it again. European cash-settled options have no
+  /// separate user "exercise" call — `OptionExercised` events are emitted per in-the-money position
+  /// as part of this transaction.
   settle(underlying: string, expiry: bigint | Date | string, strike: Amount, type: OptionSide, tx?: TxOptions): Promise<Hex>;
+  /// Settles one expired position at once, however many others share its series, and pays its holder.
+  /// This is what a holder should call: `settle` works through a large series a batch at a time, so a
+  /// position late in the series would wait for the earlier ones. Does nothing to a position already settled.
+  settlePosition(positionId: bigint, tx?: TxOptions): Promise<Hex>;
 }
 
 export interface OptionsDeps {
@@ -513,6 +518,21 @@ export function createOptions(deps: OptionsDeps): OptionsNamespace {
     return hash;
   }
 
+  async function settlePosition(positionId: bigint, tx?: TxOptions) {
+    const { hash } = await executeTx(
+      client,
+      () =>
+        client.simulateContract({
+          address: addresses.optionsEngine,
+          abi: optionsEngineAbi,
+          functionName: "settlePosition",
+          args: [positionId],
+        }),
+      tx,
+    );
+    return hash;
+  }
+
   return {
     stats,
     surface,
@@ -525,5 +545,6 @@ export function createOptions(deps: OptionsDeps): OptionsNamespace {
     openPosition,
     closePosition,
     settle,
+    settlePosition,
   };
 }

@@ -34,6 +34,19 @@ export const marketRegistryAbi = [
   },
   {
     "type": "function",
+    "name": "PAUSER_ROLE",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "UPGRADE_INTERFACE_VERSION",
     "inputs": [],
     "outputs": [
@@ -304,6 +317,13 @@ export const marketRegistryAbi = [
       }
     ],
     "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "pauseAll",
+    "inputs": [],
+    "outputs": [],
+    "stateMutability": "nonpayable"
   },
   {
     "type": "function",
@@ -788,6 +808,19 @@ export const oracleRouterAbi = [
   {
     "type": "function",
     "name": "ORACLE_ADMIN_ROLE",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "PAUSER_ROLE",
     "inputs": [],
     "outputs": [
       {
@@ -4786,6 +4819,32 @@ export const optionsEngineAbi = [
   },
   {
     "type": "function",
+    "name": "DEFAULT_SETTLE_BATCH",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "PREMIUM_TOLERANCE_BPS",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "QUOTER_ROLE",
     "inputs": [],
     "outputs": [
@@ -5308,6 +5367,25 @@ export const optionsEngineAbi = [
   },
   {
     "type": "function",
+    "name": "settleCursor",
+    "inputs": [
+      {
+        "name": "seriesId",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "settled",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "settleExpired",
     "inputs": [
       {
@@ -5329,6 +5407,52 @@ export const optionsEngineAbi = [
         "name": "optionType",
         "type": "uint8",
         "internalType": "enum OptionType"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "settleExpiredBatch",
+    "inputs": [
+      {
+        "name": "marketId",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      },
+      {
+        "name": "expiry",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "strike",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "optionType",
+        "type": "uint8",
+        "internalType": "enum OptionType"
+      },
+      {
+        "name": "maxPositions",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "settlePosition",
+    "inputs": [
+      {
+        "name": "positionId",
+        "type": "uint256",
+        "internalType": "uint256"
       }
     ],
     "outputs": [],
@@ -5780,8 +5904,34 @@ export const optionsEngineAbi = [
   },
   {
     "type": "error",
+    "name": "PositionNotExpired",
+    "inputs": []
+  },
+  {
+    "type": "error",
     "name": "PositionNotOpen",
     "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "PremiumOutOfBounds",
+    "inputs": [
+      {
+        "name": "premium",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "min",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "max",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ]
   },
   {
     "type": "error",
@@ -5845,6 +5995,11 @@ export const optionsEngineAbi = [
   {
     "type": "error",
     "name": "ZeroAmount",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "ZeroBatch",
     "inputs": []
   }
 ] as const;
@@ -6805,6 +6960,35 @@ export const optionPositionManagerAbi = [
   },
   {
     "type": "function",
+    "name": "getSeriesPositionsRange",
+    "inputs": [
+      {
+        "name": "seriesId",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      },
+      {
+        "name": "from",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "to",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "ids",
+        "type": "uint256[]",
+        "internalType": "uint256[]"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "getUserPositions",
     "inputs": [
       {
@@ -6938,6 +7122,25 @@ export const optionPositionManagerAbi = [
     ],
     "outputs": [],
     "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "seriesPositionCount",
+    "inputs": [
+      {
+        "name": "seriesId",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
   },
   {
     "type": "function",
@@ -15337,8 +15540,34 @@ export const allErrorsAbi = [
   },
   {
     "type": "error",
+    "name": "PositionNotExpired",
+    "inputs": []
+  },
+  {
+    "type": "error",
     "name": "PositionNotOpen",
     "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "PremiumOutOfBounds",
+    "inputs": [
+      {
+        "name": "premium",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "min",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "max",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ]
   },
   {
     "type": "error",
@@ -15377,6 +15606,11 @@ export const allErrorsAbi = [
         "internalType": "string"
       }
     ]
+  },
+  {
+    "type": "error",
+    "name": "ZeroBatch",
+    "inputs": []
   },
   {
     "type": "error",

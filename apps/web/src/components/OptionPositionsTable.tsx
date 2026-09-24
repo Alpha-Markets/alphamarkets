@@ -84,7 +84,7 @@ function OptionRow({ position, decimals }: { position: OptionPosition; decimals:
     if (!wallet) return;
     setBusy(true);
     await run({ title: "Settle option", summary: optionCodeOf(position) }, (tx) =>
-      wallet.options.settle(symbol, position.expiry, position.strike, type, tx),
+      wallet.options.settlePosition(position.positionId, tx),
     );
     setBusy(false);
   }
