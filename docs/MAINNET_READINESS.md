@@ -1,6 +1,6 @@
 # Mainnet readiness
 
-Status on 2026-09-24: **not ready to deploy to mainnet.** The contracts have the fixes the first review asked
+Status on 2026-09-25: the contracts are **deployed to mainnet (chain 4663) but empty and not open**: no market, feed, funds or backend, and one wallet holds every admin role. **Not ready for users.** The contracts have the fixes the first review asked
 for and they run on testnet, but the items below are open. Nothing on this list is ticked unless it was checked.
 
 ## What is done
@@ -20,15 +20,15 @@ for and they run on testnet, but the items below are open. Nothing on this list 
 | # | Item | Who | Depends on | Status |
 |---|---|---|---|---|
 | 1 | **Independent audit**, then fixes and a re-audit of anything that changed | You (book it), auditor | Nothing: start now | Not started. The longest item. |
-| 2 | Real price feeds, and the adapter that reads them | You (feed addresses), me (adapter) | Robinhood Chain mainnet feed addresses and decimals | Only test feeds exist |
-| 3 | Real settlement token, tested on a fork (decimals, transfer behaviour) | You (choose), me (test) | Token address, mainnet RPC | Only a test token exists |
+| 2 | Real price feeds, and the adapter that reads them | Me | Nothing | **Adapter written and tested** (`ChainlinkPriceFeed`, 9 tests, plus a live mainnet fork test); 11 of 16 testnet markets have a Chainlink feed (`deployments/robinhood_mainnet.markets.json`); AVGO, JPM, DIS, UBER, SHOP have none. **Open decision: the age limit per market.** The feeds have a 24 hour heartbeat and on 2026-09-25 were 11 minutes to 16 hours old, so the default 1 hour limit halts most markets; a long limit trades on an old price. Not listed on chain yet. |
+| 3 | Real settlement token, tested on a fork (decimals, transfer behaviour) | Me | Nothing | **USDG** (`0x5fc5…d168`, 6 decimals, an upgradeable Paxos token) is the settlement token of the mainnet deployment. Fork test: deposit and withdraw move exact amounts through the deployed vault. Still open: behaviour if Paxos pauses or blacklists (a runbook step). |
 | 4 | Mainnet chain in `packages/config` and a mainnet web build on your domain | You (chain ID, RPC, explorer), me | Item 3 | Domain prepared by you; no chain config yet |
 | 5 | Multisig and timelock chosen and deployed; the fast pauser key named | You | Signers | Not started |
 | 6 | Quoter and maker keys behind a multisig or HSM; separate keys for deployer, quoter, keeper, liquidator | You | Item 5 | Keys are plain environment variables today |
 | 7 | Production liquidation bot and option-settlement keeper; feed refresh switched off | Me | Item 2 | Neither exists outside the testnet simulator |
 | 8 | Monitoring and alerts: oracle staleness, keeper gas, indexer lag, `BadDebt`, admin events | Me and you (pick a service) | A pager or chat destination | None exists |
 | 9 | Pool reserve size, net open-interest limits, launch caps | You (product decision) | Nothing | Not decided; `check-launch-limits.sh` enforces them once chosen |
-| 10 | Fork tests against mainnet | Me | Items 2 to 4 | Not run: needs the mainnet RPC |
+| 10 | Fork tests against mainnet | Me | Items 2 to 4 | **Partly done** (`test/fork/MainnetFork.t.sol`, 7 tests: deployment state, USDG, every feed, listing every market as the deployer). Not yet: a full open-to-settle flow on the real feeds, and a Paxos pause of USDG. |
 | 11 | Staging soak of 1 to 2 weeks on a mainnet-shaped deployment | Me and you | Items 2 to 10 | Not started |
 | 12 | Paid hosting, a separate Railway environment and database for mainnet | You | Item 4 | Free plan today |
 | 13 | Runbook fields filled in and a pause rehearsed by the named people | You | Item 5 | Fields are TBD |
