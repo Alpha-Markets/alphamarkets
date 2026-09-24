@@ -27,8 +27,8 @@ import {MarketConfig} from "../src/interfaces/DataTypes.sol";
 ///                       trading whenever the feed is quiet, a large one trades on an old price.
 /// Optional: NETWORK_NAME (default `robinhood_mainnet`). Signs with the forge `--account` keystore.
 ///
-/// Leverage follows the testnet markets: 10x with a 5% maintenance margin for the ETFs (SPY, QQQ), 5x with
-/// 7.5% for stocks. Run this before `SetNetOpenInterest`, `FundPool` and `HandOverAdmin`.
+/// Leverage and maintenance margin come from each market's row in the list (10x SPY and QQQ, 3x for the
+/// most volatile names, 5x for the rest). Run this before `SetNetOpenInterest`, `FundPool` and `HandOverAdmin`.
 ///
 /// Usage (dry run first; add --broadcast to send):
 ///   MAX_POSITION=5000 OPEN_INTEREST_CAP=50000 MAX_PRICE_AGE_HOURS=25 \
@@ -84,15 +84,14 @@ contract AddMarketsMainnet is Script, MarketLister {
             return;
         } catch {}
 
-        bool etf = id == bytes32("SPY") || id == bytes32("QQQ");
         address adapter = _list(
             stack,
             Listing({
                 marketId: id,
                 underlyingToken: vm.parseJsonAddress(list, string.concat(p, ".token")),
                 chainlinkFeed: vm.parseJsonAddress(list, string.concat(p, ".feed")),
-                maxLeverage: etf ? 10 : 5,
-                maintenanceBps: etf ? 500 : 750,
+                maxLeverage: vm.parseJsonUint(list, string.concat(p, ".maxLeverage")),
+                maintenanceBps: vm.parseJsonUint(list, string.concat(p, ".maintenanceBps")),
                 maxPosition: limits.maxPosition,
                 openInterestCap: limits.openInterestCap,
                 maxPriceAge: limits.maxPriceAge

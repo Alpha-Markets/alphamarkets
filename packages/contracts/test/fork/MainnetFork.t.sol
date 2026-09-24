@@ -54,8 +54,7 @@ contract MainnetForkTest is Test, MarketLister {
     // The deployment
     // -----------------------------------------------------------------------------------------
 
-    function test_deployedStackIsEmptyAndOwnedByTheDeployer() public view {
-        assertEq(registry.allMarketIds().length, 0, "no market is listed yet");
+    function test_deployedStackIsOwnedByTheDeployer() public view {
         assertTrue(registry.hasRole(registry.DEFAULT_ADMIN_ROLE(), DEPLOYER));
         assertTrue(vault.hasRole(vault.DEFAULT_ADMIN_ROLE(), DEPLOYER));
         assertTrue(oracle.hasRole(oracle.ORACLE_ADMIN_ROLE(), DEPLOYER));
@@ -125,9 +124,12 @@ contract MainnetForkTest is Test, MarketLister {
     // -----------------------------------------------------------------------------------------
 
     function test_deployerCanListAMarketOnARealFeedAndReadItsPrice() public {
-        address token = vm.parseJsonAddress(markets, ".markets[0].token");
-        address feed = vm.parseJsonAddress(markets, ".markets[0].feed");
-        bytes32 id = bytes32(bytes(vm.parseJsonString(markets, ".markets[0].symbol")));
+        // The last market in the list, so it is one the live chain has not listed yet.
+        uint256 last = abi.decode(vm.parseJson(markets, ".markets[*].symbol"), (string[])).length - 1;
+        string memory p = string.concat(".markets[", vm.toString(last), "]");
+        address token = vm.parseJsonAddress(markets, string.concat(p, ".token"));
+        address feed = vm.parseJsonAddress(markets, string.concat(p, ".feed"));
+        bytes32 id = bytes32(bytes(vm.parseJsonString(markets, string.concat(p, ".symbol"))));
 
         vm.startPrank(DEPLOYER);
         ChainlinkPriceFeed adapter = new ChainlinkPriceFeed(feed);
@@ -151,7 +153,7 @@ contract MainnetForkTest is Test, MarketLister {
         (uint256 price, uint256 ts) = oracle.getIndexPrice(id);
         assertGt(price, 1e18, "18 decimal price above $1");
         assertLe(ts, block.timestamp);
-        assertEq(registry.allMarketIds().length, 1);
+        assertGt(registry.allMarketIds().length, 0);
     }
 
     /// With the default age limit a feed that has not updated for over an hour is refused, so the market
@@ -186,15 +188,17 @@ contract MainnetForkTest is Test, MarketLister {
         for (uint256 i; i < count; i++) {
             string memory p = string.concat(".markets[", vm.toString(i), "]");
             bytes32 id = bytes32(bytes(vm.parseJsonString(markets, string.concat(p, ".symbol"))));
-            bool etf = id == bytes32("SPY") || id == bytes32("QQQ");
+            try registry.getMarket(id) returns (MarketConfig memory) {
+                continue; // already listed on the live chain
+            } catch {}
             _list(
                 stack,
                 Listing({
                     marketId: id,
                     underlyingToken: vm.parseJsonAddress(markets, string.concat(p, ".token")),
                     chainlinkFeed: vm.parseJsonAddress(markets, string.concat(p, ".feed")),
-                    maxLeverage: etf ? 10 : 5,
-                    maintenanceBps: etf ? 500 : 750,
+                    maxLeverage: vm.parseJsonUint(markets, string.concat(p, ".maxLeverage")),
+                    maintenanceBps: vm.parseJsonUint(markets, string.concat(p, ".maintenanceBps")),
                     maxPosition: 5_000 * 1e6,
                     openInterestCap: 50_000 * 1e6,
                     maxPriceAge: 72 hours
@@ -204,7 +208,7 @@ contract MainnetForkTest is Test, MarketLister {
         vm.stopPrank();
 
         bytes32[] memory ids = registry.allMarketIds();
-        assertEq(ids.length, count);
+        assertEq(ids.length, count, "every market in the list is now listed");
         for (uint256 i; i < ids.length; i++) {
             (uint256 price,) = oracle.getIndexPrice(ids[i]);
             assertGt(price, 1e18);
