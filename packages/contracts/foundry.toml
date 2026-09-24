@@ -11,6 +11,10 @@ fs_permissions = [{ access = "read-write", path = "./deployments" }, { access = 
 [profile.default.fuzz]
 runs = 1024
 
+[profile.default.invariant]
+runs = 64
+depth = 100
+
 [profile.ci]
 fuzz = { runs = 10000 }
 verbosity = 3
