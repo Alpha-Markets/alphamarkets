@@ -12,13 +12,15 @@ import { registerPerpRoutes } from "./routes/perps.js";
 import { registerPortfolioRoutes } from "./routes/portfolio.js";
 import { registerPriceRoutes } from "./routes/prices.js";
 import { registerRfqRoutes } from "./routes/rfq.js";
+import { httpUpstream, registerRpcProxy } from "./rpcProxy.js";
 import { registerStatsRoutes } from "./routes/stats.js";
 import { registerTradeRoutes } from "./routes/trade.js";
 import { registerWebSocket } from "./ws.js";
 
 export function buildServer() {
   const chainId = resolveChainId(process.env.CHAIN_ID);
-  const alphaMarkets = new AlphaMarkets({ chainId, transport: http(requireEnv("RPC_URL")) });
+  const rpcUrl = requireEnv("RPC_URL");
+  const alphaMarkets = new AlphaMarkets({ chainId, transport: http(rpcUrl) });
 
   const app = Fastify({ logger: true });
 
@@ -27,6 +29,7 @@ export function buildServer() {
   app.get("/health", async () => ({ ok: true }));
 
   app.register(async (instance) => {
+    registerRpcProxy(instance, httpUpstream(rpcUrl));
     registerMarketRoutes(instance, alphaMarkets);
     registerOptionRoutes(instance, alphaMarkets);
     registerPerpRoutes(instance, alphaMarkets);

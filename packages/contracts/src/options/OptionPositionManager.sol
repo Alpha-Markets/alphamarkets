@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.26;
 
-import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
+import {UpgradeableBase} from "../proxy/UpgradeableBase.sol";
 import {OptionType} from "../interfaces/DataTypes.sol";
 
 /// @notice Option position storage and accounting only — no pricing, no settlement math
 /// (kept separate so each contract has one responsibility). Written only by OptionsEngine.
-contract OptionPositionManager is AccessControl {
+contract OptionPositionManager is UpgradeableBase {
     /// @notice Granted to OptionsEngine.
     bytes32 public constant ENGINE_ROLE = keccak256("ENGINE_ROLE");
 
@@ -39,8 +39,13 @@ contract OptionPositionManager is AccessControl {
     mapping(bytes32 => uint256[]) private _seriesPositions;
     uint256 public nextPositionId;
 
-    constructor(address admin) {
-        _grantRole(DEFAULT_ADMIN_ROLE, admin);
+    /// @custom:oz-upgrades-unsafe-allow constructor
+    constructor() {
+        _disableInitializers();
+    }
+
+    function initialize(address admin) external initializer {
+        __UpgradeableBase_init(admin);
     }
 
     function createPosition(OptionPosition calldata pos, bytes32 seriesId)

@@ -4,7 +4,8 @@ import { Num, textLink } from "@alphamarkets/ui";
 import type { FundingPayment, HistoryEvent } from "@alphamarkets/sdk";
 import { useFunding, useHistory, useSettlementDecimals } from "@/hooks/queries";
 import { env } from "@/lib/env";
-import { fmt, fmtSigned, shortHash, signTone } from "@/lib/format";
+import { closeLabel, FillIndex } from "@/lib/fills";
+import { fmt, fmtPrice, fmtSigned, shortHash, signTone } from "@/lib/format";
 import { perpLabel } from "@/lib/market";
 import { fmtDateTime } from "@/lib/options";
 import { alphaMarketsRead } from "@/lib/alphamarkets";
@@ -97,8 +98,13 @@ const eventLabels: Record<string, string> = {
   PerpPositionUpdated: "Perp changed",
   PerpPositionClosed: "Perp closed",
   PositionLiquidated: "Liquidated",
+  TriggerOrderPlaced: "Trigger order set",
+  TriggerOrderCancelled: "Trigger order cancelled",
+  TriggerOrderExecuted: "Trigger order filled",
   ProtocolFeeCollected: "Fee",
 };
+
+const TRIGGER_KINDS: Record<string, string> = { "0": "Stop loss", "1": "Take profit" };
 
 function details(event: HistoryEvent, decimals: number): string {
   const args = event.args as Record<string, string | undefined>;
@@ -109,6 +115,8 @@ function details(event: HistoryEvent, decimals: number): string {
   if (args.amount && /^-?\d+$/.test(args.amount)) parts.push(`$${fmt(BigInt(args.amount), decimals, 2)}`);
   if (args.realizedPnl) parts.push(`PnL ${fmtSigned(BigInt(args.realizedPnl), decimals)}`);
   if (args.pnl) parts.push(`PnL ${fmtSigned(BigInt(args.pnl), decimals)}`);
+  if (args.triggerPrice) parts.push(`${TRIGGER_KINDS[args.kind ?? ""] ?? "Trigger"} at $${fmtPrice(BigInt(args.triggerPrice))}`);
+  if (args.executionPrice) parts.push(`Filled at $${fmtPrice(BigInt(args.executionPrice))}`);
   return parts.join(", ") || "–";
 }
 
@@ -119,6 +127,15 @@ export function HistoryTable() {
   if (isError) return <p className="p-3 text-down">The transaction history is not available right now.</p>;
   if (isPending) return <p className="p-3 text-muted">Loading history…</p>;
   if (data.length === 0) return <p className="p-3 text-muted">No activity yet for this wallet.</p>;
+
+  // A close that a trigger or a liquidation caused says so, matching the alert the user saw.
+  const index = new FillIndex();
+  index.learn(data);
+  const closedBy = new Map(index.fillsIn(data).map((fill) => [`${fill.txHash}:${fill.positionId}`, fill.kind]));
+  const label = (event: HistoryEvent) => {
+    const kind = event.eventName === "PerpPositionClosed" ? closedBy.get(`${event.txHash}:${String((event.args as { positionId?: unknown }).positionId)}`) : undefined;
+    return kind ? closeLabel[kind] : (eventLabels[event.eventName] ?? event.eventName);
+  };
 
   return (
     <table className="w-full min-w-[640px] text-sm">
@@ -135,7 +152,7 @@ export function HistoryTable() {
         {[...data].reverse().map((event) => (
           <tr key={event.id} className="border-t border-line">
             <td className={cell}>{fmtDateTime(event.createdAt)}</td>
-            <td className={cell}>{eventLabels[event.eventName] ?? event.eventName}</td>
+            <td className={cell}>{label(event)}</td>
             <td className={cell}>{details(event, decimals)}</td>
             <td className={cell}>{event.blockNumber}</td>
             <TxCell hash={event.txHash} />

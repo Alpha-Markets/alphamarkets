@@ -1,56 +1,66 @@
-import { chains } from "@alphamarkets/config";
-import Link from "next/link";
-import { env } from "@/lib/env";
-import { PAGE_FRAME } from "@/lib/frame";
-import { listLink } from "@alphamarkets/ui";
-import { Logo } from "./Logo";
+import { chains } from '@alphamarkets/config';
+import Link from 'next/link';
+import { ContractAddressBadge } from './ContractAddressBadge';
+import { env } from '@/lib/env';
+import { PAGE_FRAME } from '@/lib/frame';
+import { X_URL } from '@/lib/social';
+import { listLink } from '@alphamarkets/ui';
+import { Logo } from './Logo';
+import { StatusBadge } from './StatusBadge';
+import { XIcon } from './XIcon';
 
-const explorerAddress = (address: string) => (env.explorerUrl ? `${env.explorerUrl.replace(/\/+$/, "")}/address/${address}` : undefined);
-
-const contracts = [
-  { label: "Market registry", address: env.addresses.marketRegistry },
-  { label: "Vault", address: env.addresses.vault },
-  { label: "Perps engine", address: env.addresses.perpsEngine },
-  { label: "Options engine", address: env.addresses.optionsEngine },
-];
-
-/// Where the product lives on chain: the network it runs on and the contracts that hold collateral
-/// and settle trades, each linked to the explorer when one is configured.
+/// One slim line, not a block of columns: the brand on the left, everything else — product links, a
+/// way back up to Smart contracts (which already lists every address in full, so the footer doesn't
+/// repeat that list), the chain status and the X link — spaced out on the right. Wraps and centres on
+/// a phone the same way the rest of this file's rows do. The CA badge is the one address shown here
+/// directly, truncated: a quick copy for a trader already at the bottom of the page, not a repeat of
+/// the full verification list `#landing-contracts` owns.
 export function Footer() {
-  return (
-    <footer className="border-t border-line">
-      <div className={`${PAGE_FRAME} grid gap-8 py-8 sm:grid-cols-[1fr_auto_auto]`}>
-        <div>
-          <Logo size="lg" />
-          <p className="mt-2 max-w-xs text-muted">Derivatives for tokenized equities.</p>
-          <p className="mt-4 inline-flex items-center gap-2 rounded-md border border-line px-2 py-1 text-xs text-muted">
-            <span aria-hidden="true" className="size-1.5 rounded-full bg-up" />
-            {chains[env.chainId].name}
-          </p>
-        </div>
-        <nav aria-label="Product" className="flex flex-col gap-2">
-          <p className="text-xs text-muted">Product</p>
-          <Link href="/markets" className={listLink}>Markets</Link>
-          <Link href="/options" className={listLink}>Options</Link>
-          <Link href="/perpetuals" className={listLink}>Perpetuals</Link>
-          <Link href="/portfolio" className={listLink}>Portfolio</Link>
-        </nav>
-        <div className="flex flex-col gap-2">
-          <p className="text-xs text-muted">Contracts</p>
-          {contracts.map(({ label, address }) => {
-            const url = address ? explorerAddress(address) : undefined;
-            return url ? (
-              <a key={label} href={url} target="_blank" rel="noreferrer" className={listLink}>
-                {label}
-              </a>
-            ) : (
-              <span key={label} className="text-muted">
-                {label}
-              </span>
-            );
-          })}
-        </div>
-      </div>
-    </footer>
-  );
+    return (
+        <footer className="border-t border-line bg-surface">
+            <div
+                className={`${PAGE_FRAME} flex flex-wrap items-center justify-center gap-x-6 gap-y-3 py-6 sm:justify-between`}
+            >
+                <div className="flex flex-wrap items-center gap-3">
+                    <Logo />
+                    <p className="text-muted">
+                        Onchain Derivatives for Stock Tokens.
+                    </p>
+                    <ContractAddressBadge />
+                </div>
+                <nav
+                    aria-label="Footer"
+                    className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2"
+                >
+                    <Link href="/markets" className={listLink}>
+                        Markets
+                    </Link>
+                    <Link href="/options" className={listLink}>
+                        Options
+                    </Link>
+                    <Link href="/perpetuals" className={listLink}>
+                        Perpetuals
+                    </Link>
+                    <Link href="/portfolio" className={listLink}>
+                        Portfolio
+                    </Link>
+                    <a href="/#landing-contracts" className={listLink}>
+                        Smart contracts
+                    </a>
+                    <Link href="/docs" className={listLink}>
+                        Docs
+                    </Link>
+                    <StatusBadge label={chains[env.chainId].name} />
+                    <a
+                        href={X_URL}
+                        target="_blank"
+                        rel="noreferrer"
+                        className={`${listLink} items-center gap-2`}
+                    >
+                        <XIcon />
+                    </a>
+                </nav>
+            </div>
+        </footer>
+    );
 }

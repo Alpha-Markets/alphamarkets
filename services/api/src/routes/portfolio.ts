@@ -34,6 +34,9 @@ export function registerPortfolioRoutes(app: FastifyInstance, alphaMarkets: Alph
       // Checks every field that could hold a wallet address across the event types
       // `services/indexer` watches (`services/indexer/src/events.ts`) — a fixed, known set,
       // so each comparison is written out and parameterized rather than built dynamically.
+      // `PerpPositionClosed` carries no wallet field, so it is matched through the wallet's own
+      // `PerpPositionOpened` event for the same position id — that is how a close, and its realized
+      // PnL, reaches the history of the account that owned the position.
       const rows = await sql`
         select id, tx_hash, log_index, block_number, contract_name, event_name, args, created_at
         from events
@@ -44,6 +47,13 @@ export function registerPortfolioRoutes(app: FastifyInstance, alphaMarkets: Alph
             or lower(args ->> 'payer') = ${wallet}
             or lower(args ->> 'receiver') = ${wallet}
             or lower(args ->> 'liquidator') = ${wallet}
+            or (
+              event_name = 'PerpPositionClosed'
+              and args ->> 'positionId' in (
+                select args ->> 'positionId' from events
+                where event_name = 'PerpPositionOpened' and lower(args ->> 'owner') = ${wallet}
+              )
+            )
           )
         order by id asc
         limit ${limit}

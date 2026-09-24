@@ -16,6 +16,6 @@ export const chain = defineChain({
 export const wagmiConfig = createConfig({
   chains: [chain],
   connectors: [injected()],
-  transports: { [chain.id]: http(env.rpcUrl) },
+  transports: { [chain.id]: http(env.readRpcUrl) },
   ssr: true,
 });

@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.26;
 
-import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
+import {UpgradeableBase} from "../proxy/UpgradeableBase.sol";
 
 /// @notice Stateless-ish price validation (staleness + deviation), kept separate from
 /// OracleRouter so the rules are independently unit- and fuzz-testable (PROJECT_BRIEF.md
 /// Section 16). Reverts use the exact error signatures required by Section 36.
-contract PriceValidator is AccessControl {
+contract PriceValidator is UpgradeableBase {
     bytes32 public constant ORACLE_ADMIN_ROLE = keccak256("ORACLE_ADMIN_ROLE");
 
     uint256 public constant DEFAULT_MAX_PRICE_AGE = 1 hours;
@@ -24,8 +24,13 @@ contract PriceValidator is AccessControl {
     error StaleOraclePrice();
     error InvalidOraclePrice();
 
-    constructor(address admin) {
-        _grantRole(DEFAULT_ADMIN_ROLE, admin);
+    /// @custom:oz-upgrades-unsafe-allow constructor
+    constructor() {
+        _disableInitializers();
+    }
+
+    function initialize(address admin) external initializer {
+        __UpgradeableBase_init(admin);
         _grantRole(ORACLE_ADMIN_ROLE, admin);
     }
 

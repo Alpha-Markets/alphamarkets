@@ -10,6 +10,9 @@ import { alphaMarketsRead } from "@/lib/alphamarkets";
 import { chain } from "@/lib/wagmi";
 import { ConnectButton } from "./ConnectButton";
 
+/// The header's own size: a 38px bubble with the same small uppercase type as the navigation.
+const bubble = "h-11! rounded-control! px-4! text-[13px]! uppercase tracking-[0.04em] max-lg:h-10! max-sm:px-3!";
+
 const item = cn(menuItem, "flex h-9 w-full items-center px-3 text-left text-sm");
 
 function explorerAddressUrl(address: `0x${string}`): string | undefined {
@@ -20,8 +23,10 @@ function explorerAddressUrl(address: `0x${string}`): string | undefined {
   }
 }
 
-/// Connect, switch network, or open the account menu — whichever the wallet needs next.
-export function WalletButton() {
+/// Connect, switch network, or open the account menu — whichever the wallet needs next. In the mobile
+/// menu it fills the width (`block`), takes that menu's button size (`className`) and opens its lists
+/// upward (`menuAbove`), because it sits at the bottom of the sheet.
+export function WalletButton({ className = bubble, block = false, menuAbove = false }: { className?: string; block?: boolean; menuAbove?: boolean }) {
   const { address, isConnected, chainId } = useAccount();
   const { disconnect } = useDisconnect();
   const { switchChain, isPending: switching } = useSwitchChain();
@@ -31,11 +36,11 @@ export function WalletButton() {
   const close = useCallback(() => setOpen(false), []);
   useDismiss(ref, open, close);
 
-  if (!isConnected || !address) return <ConnectButton size="sm" className="max-md:h-9" />;
+  if (!isConnected || !address) return <ConnectButton size="sm" className={className} block={block} menuAbove={menuAbove} />;
 
   if (chainId !== chain.id) {
     return (
-      <Button variant="down" size="sm" className="max-md:h-9" disabled={switching} onClick={() => switchChain({ chainId: chain.id })}>
+      <Button variant="down" size="sm" className={cn(className, block && "w-full")} disabled={switching} onClick={() => switchChain({ chainId: chain.id })}>
         Switch to {chain.name}
       </Button>
     );
@@ -44,15 +49,15 @@ export function WalletButton() {
   const explorer = explorerAddressUrl(address);
 
   return (
-    <div ref={ref} className="relative">
-      <Button size="sm" className="max-md:h-9" aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen((value) => !value)}>
+    <div ref={ref} className={cn("relative", block && "w-full")}>
+      <Button size="sm" className={cn(className, block && "w-full")} aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen((value) => !value)}>
         <span aria-hidden="true" className="size-1.5 rounded-full bg-up" />
         <span className="tabular-nums" title={address}>
           {shortHash(address)}
         </span>
       </Button>
       {open ? (
-        <div role="menu" className="absolute right-0 top-full z-50 mt-1 w-56 overflow-hidden rounded-lg border border-line bg-raised py-1">
+        <div role="menu" className={cn("absolute right-0 z-50 w-56 max-w-full overflow-hidden rounded-panel border border-line bg-raised py-1", menuAbove ? "bottom-full mb-1" : "top-full mt-1")}>
           <p className="px-3 py-1.5 text-xs text-muted">Connected to {chain.name}</p>
           <button
             type="button"

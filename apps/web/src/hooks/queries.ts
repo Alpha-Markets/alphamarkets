@@ -6,9 +6,13 @@ import type { CandleInterval, OpenInterestRange } from "@alphamarkets/sdk";
 import type { Address } from "@alphamarkets/types";
 import { alphaMarketsRead } from "@/lib/alphamarkets";
 import { env } from "@/lib/env";
+import { readHistoryAfter } from "@/lib/history";
 import { seriesKey } from "@/lib/options";
 
-const TICK_MS = 4_000;
+// Fans out per market (overviewQuery, listedExpiriesQuery) across every mounted component — a
+// rate-limited/free-tier RPC provider hits 429s well before this many requests a second, so this
+// stays conservative rather than "as live as possible".
+const TICK_MS = 15_000;
 
 // Query definitions are exported next to their hooks so `Prefetch` can warm the same cache entries
 // (same key, same function) before a page asks for them.
@@ -106,12 +110,8 @@ export const overviewQuery = (symbol: string) => ({
   refetchInterval: TICK_MS,
 });
 
-export function useMarketOverview(symbol: string) {
-  return useQuery(overviewQuery(symbol));
-}
-
-/// The same overview for several markets at once, in the order given, so a table can sort by it.
-/// Shares the cache with `useMarketOverview`.
+/// The overview for several markets at once, in the order given, so a table can sort by it. Each
+/// entry is `overviewQuery(symbol)`, so the cache is shared with anything else that reads it.
 export function useMarketOverviews(symbols: string[]) {
   return useQueries({ queries: symbols.map(overviewQuery) });
 }
@@ -141,7 +141,7 @@ export function useHistory() {
   const { address } = useAccount();
   return useQuery({
     queryKey: ["history", address],
-    queryFn: () => alphaMarketsRead.portfolio.history(address as Address, { limit: 200 }),
+    queryFn: () => readHistoryAfter(address as Address),
     enabled: Boolean(address && env.apiUrl),
     refetchInterval: 30_000,
     retry: false,
@@ -224,10 +224,13 @@ export function useOptionStats(symbol: string, expiry: bigint | undefined) {
   });
 }
 
+/// The most candles the API returns. The chart opens on the newest ones; the rest is one zoom-out away.
+const CANDLE_LIMIT = 500;
+
 export function useCandles(symbol: string, interval: CandleInterval) {
   return useQuery({
     queryKey: ["candles", symbol, interval],
-    queryFn: () => alphaMarketsRead.prices.candles(symbol, interval, 120),
+    queryFn: () => alphaMarketsRead.prices.candles(symbol, interval, CANDLE_LIMIT),
     enabled: Boolean(symbol && env.apiUrl),
     refetchInterval: 30_000,
     retry: false,

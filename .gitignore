@@ -28,6 +28,10 @@ packages/contracts/broadcast/
 npm-debug.log*
 pnpm-debug.log*
 
+# Python bytecode
+__pycache__/
+*.pyc
+
 # Editors / OS
 .DS_Store
 .vscode/
@@ -36,5 +40,8 @@ pnpm-debug.log*
 # Project Requirements
 # DEVELOPMENT_STEPS.md
 # PROJECT_BRIEF.md
+.simulator/
+.vercel
+.env*
 
 __pycache__/

@@ -16,7 +16,7 @@ contract SubaccountsTest is BaseTest {
     function setUp() public override {
         super.setUp();
         vm.startPrank(admin);
-        factory = new SubaccountFactory(admin, address(vault));
+        factory = SubaccountFactory(_proxyFor(address(new SubaccountFactory(address(vault))), admin));
         factory.setTargetAllowed(address(perpsEngine), true);
         vm.stopPrank();
 

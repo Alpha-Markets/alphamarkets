@@ -1,75 +1,174 @@
-import Link from "next/link";
-import { Footer } from "@/components/Footer";
-import { MorphingLogo } from "@/components/MorphingLogo";
-import { LandingMarkets } from "@/components/LandingMarkets";
-import { SilkBackdrop } from "@/components/SilkBackdrop";
-import { PAGE_FRAME } from "@/lib/frame";
-import { chip, cn, textLink } from "@alphamarkets/ui";
+import { chains } from '@alphamarkets/config';
+import Image from 'next/image';
+import Link from 'next/link';
+import dynamic from 'next/dynamic';
+import logo from '@/assets/alpha-market-logo.svg';
+import { ArrowIcon } from '@/components/ArrowIcon';
+import { ContractAddressBadge } from '@/components/ContractAddressBadge';
+import { Footer } from '@/components/Footer';
+import { HeroSilkBackground } from '@/components/HeroSilkBackgroundLazy';
+import { SectionHeader } from '@/components/SectionHeader';
+import { StatusBadge } from '@/components/StatusBadge';
+import { env } from '@/lib/env';
+import { CHIP_LABEL, MONO, PAGE_FRAME } from '@/lib/frame';
+import { cn, interactive } from '@alphamarkets/ui';
+
+// Split into their own chunks so the hero's WebGL/carousel and the below-fold sections
+// don't inflate the landing page's initial JS bundle.
+const HeroMarketCarousel = dynamic(() =>
+    import('@/components/HeroMarketCarousel').then((m) => m.HeroMarketCarousel),
+);
+const LandingContracts = dynamic(() =>
+    import('@/components/LandingContracts').then((m) => m.LandingContracts),
+);
+const LandingFaq = dynamic(() =>
+    import('@/components/LandingFaq').then((m) => m.LandingFaq),
+);
+const LandingMarkets = dynamic(() =>
+    import('@/components/LandingMarkets').then((m) => m.LandingMarkets),
+);
 
 const blocks = [
-  { title: "Options", body: "Trade volatility and defined-risk exposure.", href: "/options", cta: "Open the option chain" },
-  { title: "Perpetuals", body: "Long or short tokenized equities with leverage.", href: "/perpetuals", cta: "Open the terminal" },
-  { title: "Onchain", body: "Collateral, positions and settlement remain verifiable.", href: "/activity", cta: "See your transactions" },
+    {
+        title: 'Options',
+        body: 'Trade volatility and defined-risk exposure.',
+        href: '/options',
+        cta: 'Open the option chain',
+    },
+    {
+        title: 'Perpetuals',
+        body: 'Long or short tokenized equities with leverage.',
+        href: '/perpetuals',
+        cta: 'Open the terminal',
+    },
 ];
 
-/// PROJECT_BRIEF.md Section 23, kept short: the promise over a full-screen moving backdrop, then
-/// the markets and a line for each product below the fold. The terminal stays the product.
-/// The header floats over the hero (see Header), so the hero is the whole viewport.
+/// Every button on the landing page: a 38px rounded fill with small uppercase type, as on the reference.
+const button = `h-11 gap-2 rounded-control px-4 ${CHIP_LABEL}`;
+
 export default function Landing() {
-  return (
-    <div className="flex min-h-full flex-col">
-      <section className="relative h-dvh min-h-[34rem] shrink-0">
-        <SilkBackdrop />
-        <div className={`${PAGE_FRAME} relative flex h-full flex-col justify-end pb-24 lg:pb-32`}>
-          {/* The logo sits centred in the space above the headline. */}
-          <div className="hero-logo flex min-h-0 flex-1 flex-col items-center justify-center pt-14">
-            <MorphingLogo className="w-[clamp(200px,min(36vw,46dvh),500px)]" />
-            <p className="mt-[clamp(6px,1.2vw,16px)] pl-[0.32em] text-[clamp(0.6875rem,1vw,0.875rem)] font-medium leading-none tracking-[0.32em] text-muted">ALPHAMARKETS</p>
-          </div>
-          <h1 className="max-w-5xl text-balance text-[2.75rem] font-light leading-[1.05] tracking-[-0.035em] sm:text-[4rem] lg:text-[5rem] xl:text-[5.75rem]">
-            Derivatives for tokenized equities.
-          </h1>
-          <p className="mt-6 max-w-md text-base leading-relaxed text-muted lg:text-lg">Trade options and perpetual derivatives on tokenized markets.</p>
-          <div className="mt-10 flex flex-wrap gap-3">
-            <Link
-              href="/perpetuals"
-              className="inline-flex h-11 items-center rounded-lg bg-accent px-5 text-sm font-medium text-accent-ink transition-[background-color,box-shadow] duration-150 hover:bg-accent-hover hover:shadow-[0_0_0_3px_var(--color-accent-line)] active:bg-accent-press active:shadow-none"
-            >
-              Launch terminal
-            </Link>
-            <Link
-              href="/markets"
-              className={cn(chip, "h-11 rounded-lg px-5 text-sm font-medium")}
-            >
-              Explore markets
-            </Link>
-          </div>
-        </div>
-        <a href="#markets" aria-label="Scroll to markets" className="absolute inset-x-0 bottom-0 mx-auto flex h-16 w-10 justify-center">
-          <span aria-hidden="true" className="silk-cue mt-2 block h-10 w-px bg-muted" />
-        </a>
-      </section>
+    return (
+        <div className="flex min-h-full flex-col">
+            <section className="relative min-h-dvh shrink-0 overflow-hidden">
+                <HeroSilkBackground />
+                <div
+                    className={`${PAGE_FRAME} relative flex min-h-dvh flex-col items-center justify-center gap-8 py-24 text-center`}
+                >
+                    <div className="w-full max-w-4xl">
+                        <HeroMarketCarousel />
+                    </div>
+                    <h1 className="hero-heading max-w-[40ch] text-balance font-bold bg-linear-to-br from-text via-text to-accent bg-clip-text font-serif text-[3.25rem] leading-[1.04] tracking-[-0.03em] text-transparent sm:text-[5.5rem] lg:text-[clamp(3.25rem,6.5vw,5.5rem)]">
+                        Alpha Markets
+                    </h1>
+                    <p className="max-w-[36ch] text-balance text-xl font-medium text-text sm:text-2xl">
+                        Onchain Derivatives for Stock Tokens.
+                    </p>
+                    <p className="max-w-[90ch] text-balance text-base text-muted sm:text-lg">
+                        Options and perpetuals on tokenized stocks, with
+                        real-time market pricing and onchain settlement, built
+                        on Robinhood Chain.
+                    </p>
+                    <div className="flex flex-wrap justify-center gap-2">
+                        <Link
+                            href="/perpetuals"
+                            className={cn(
+                                button,
+                                'inline-flex items-center bg-accent text-accent-ink transition-[background-color,box-shadow] duration-150 hover:bg-accent-hover hover:shadow-[0_0_0_3px_var(--color-accent-line)] active:bg-accent-press active:shadow-none',
+                            )}
+                        >
+                            Trade
+                            <ArrowIcon />
+                        </Link>
+                        <Link
+                            href="/markets"
+                            className={cn(
+                                button,
+                                interactive,
+                                'inline-flex items-center border border-text/30 text-text hover:border-accent hover:bg-accent-soft hover:text-accent active:border-accent active:bg-accent active:text-accent-ink',
+                            )}
+                        >
+                            Explore markets
+                        </Link>
+                    </div>
+                    <ContractAddressBadge />
+                </div>
+            </section>
 
-      <div className={`${PAGE_FRAME} flex flex-1 flex-col gap-16 py-12 lg:gap-28 lg:py-24`}>
-        <div id="markets" className="scroll-mt-24">
-          <LandingMarkets />
-        </div>
+            <section aria-label="Introduction">
+                <div
+                    className={`${PAGE_FRAME} flex flex-col items-center gap-6 py-20 text-center lg:py-28`}
+                >
+                    <Image
+                        src={logo}
+                        alt="AlphaMarkets"
+                        priority
+                        className="h-20 w-auto sm:h-24 lg:h-60"
+                    />
+                    <p className="max-w-[42ch] text-balance font-serif text-[1.75rem] font-light leading-tight tracking-[-0.02em] sm:text-[2.25rem] lg:text-[2.75rem]">
+                        Equities, unchained. Trade stock-tokens as perpetuals
+                        and options, fully onchain, no brokers, no gatekeepers,
+                        no waiting on market hours. Just code, your wallet, and
+                        one shared vault.
+                    </p>
+                    <p
+                        className={cn(
+                            MONO,
+                            'flex items-center gap-2 text-sm text-muted',
+                        )}
+                    >
+                        <span
+                            aria-hidden="true"
+                            className="size-1.5 rounded-full bg-up"
+                        />
+                        {chains[env.chainId].name}
+                    </p>
+                </div>
+            </section>
 
-        <dl className="grid gap-3 sm:grid-cols-3">
-          {blocks.map((block) => (
-            <div key={block.title} className="rounded-[10px] border border-line/70 bg-surface p-6">
-              <dt className="text-title font-light">{block.title}</dt>
-              <dd className="mt-2 leading-relaxed text-muted">{block.body}</dd>
-              <dd className="mt-4">
-                <Link href={block.href} className={cn(textLink, "text-sm")}>
-                  {block.cta}
-                </Link>
-              </dd>
+            <div className="relative">
+                <section
+                    aria-labelledby="landing-products"
+                    className="py-16 lg:py-24"
+                >
+                    <SectionHeader id="landing-products" title="Products">
+                        <p className="mt-3 max-w-[52ch] text-lg leading-relaxed text-muted">
+                            Everything trades from one vault. Collateral,
+                            positions and settlement stay onchain the whole way
+                            through.
+                        </p>
+                    </SectionHeader>
+                    <div
+                        className={`${PAGE_FRAME} mt-6 grid gap-4 sm:grid-cols-2`}
+                    >
+                        {blocks.map((block) => (
+                            <Link
+                                key={block.title}
+                                href={block.href}
+                                className="group flex flex-col gap-4 rounded-panel border border-transparent bg-surface p-6 transition-colors duration-150 hover:border-accent hover:bg-accent-soft/20 lg:p-7"
+                            >
+                                <div className="flex items-start justify-between gap-3">
+                                    <span className="text-[1.5rem] font-light tracking-[-0.02em] transition-colors duration-150 group-hover:text-accent">
+                                        {block.title}
+                                    </span>
+                                    <StatusBadge label="Live" />
+                                </div>
+                                <p className="text-muted">{block.body}</p>
+                                <span className="mt-auto inline-flex items-center gap-2 text-sm text-accent">
+                                    {block.cta}
+                                    <ArrowIcon className="size-3 transition-transform duration-150 group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+                                </span>
+                            </Link>
+                        ))}
+                    </div>
+                </section>
+
+                <LandingMarkets />
+
+                <LandingContracts />
+
+                <LandingFaq />
             </div>
-          ))}
-        </dl>
-      </div>
-      <Footer />
-    </div>
-  );
+            <Footer />
+        </div>
+    );
 }

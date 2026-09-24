@@ -5,6 +5,18 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Changed — every contract is an upgradeable proxy, so a testnet redeploy keeps its addresses
+
+A redeploy used to create 20 new contracts and 20 new addresses, and every client (web app, API, keeper, indexer, SDK) had to pick them up. All 20 contracts now sit behind an ERC-1967 proxy with the UUPS upgrade pattern. The proxy address is the contract's address for good: shipping a change means deploying a new implementation and pointing the proxy at it, and all state (balances, positions, roles) stays.
+
+- **Contracts.** Each one inherits `UpgradeableBase` (`src/proxy/UpgradeableBase.sol`): `AccessControlUpgradeable` plus `UUPSUpgradeable`, with `DEFAULT_ADMIN_ROLE` as the only role that may upgrade. The constructor now only sets the `immutable` dependencies (they live in the implementation's bytecode and point at the other proxies) and calls `_disableInitializers()`. Every storage write moved to `initialize(address admin)`: the role grants, `CrossMarginManager`'s default floor and price shocks, and `RFQManager`'s default deviation. The constructors of the contracts that took an `admin` argument lost it.
+- **`PerpsEngine` and `LiquidationEngine` gained an admin.** They had none. They now hold `DEFAULT_ADMIN_ROLE`, which only authorizes upgrades. `HandOverAdmin.s.sol` moves it with the others (20 targets, up from 18), so handing the protocol to a multisig also hands over the power to change any contract's code.
+- **Deployment.** `DeployAll.s.sol` builds the stack with `script/utils/StackDeployer.sol`, which the test base contract shares, so the tests run against exactly what is deployed. It first creates the 20 proxies on an empty `UpgradePlaceholder`, then the 20 implementations (which need the proxy addresses), then upgrades and initializes each proxy. It writes the proxy addresses to `deployments/<network>.json` and the implementations to `deployments/<network>.implementations.json`.
+- **Redeploying.** `UpgradeAll.s.sol` reads the proxy addresses, deploys new implementations and upgrades every proxy. Addresses in `deployments/<network>.json` and `packages/config` stay the same, so no client changes. `verify.sh` verifies the implementations.
+- **Storage layout guard.** `script/check-storage-layout.py` compares each contract's layout with `storage-layouts/` and fails when a variable is reordered, removed or retyped. CI runs it. Run it with `--update` after a deliberate append.
+- **Tests.** `test/proxy/Upgradeability.t.sol`: the address, state and roles survive an upgrade, only the admin can upgrade, no proxy or implementation can be initialized twice, and trading works after all 20 are upgraded.
+- **One-time cost.** The first proxy deployment makes new addresses, as any redeploy does. After that, `UpgradeAll` keeps them. A change that cannot keep the storage layout still needs `DeployAll` and new addresses.
+
 ### Added — four more testnet markets on `[1.4.0-testnet]` (2026-09-21)
 
 `script/AddMarket.s.sol` adds a market from environment variables (`SYMBOL`, `NAME`, `PRICE`, `MAX_LEVERAGE`, `MAINTENANCE_MARGIN_BPS`, `MAX_POSITION`, `OPEN_INTEREST_CAP`, optional `PRICE_FEED_OWNER`), so a new equity is configuration and not a redeploy (PROJECT_BRIEF.md Section 5). Like `ConfigureMarkets.s.sol` it deploys a mock token and a mock price feed owned by the keeper. Initial margin is 1 / max leverage; the leverage tiers are 1x, 2x, 3x, 5x, 10x up to the maximum; fees are the same placeholders as NVDA. It was run against a local Anvil chain first, then on testnet. No contract changed, and no frontend or service code changed: the API, keeper and web app picked the markets up from the registry.
@@ -17,6 +29,62 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 | HOOD | $100 | 5x | 7.5% | $250K | $3M | `0x9d8cbc5726d2b196B856A0426c471dE6f77Ec130` | `0x51B44454E3140021A7C152b920819eFD39461B40` |
 
 TSLA follows the brief's Section 19 example exactly. The brief gives no numbers for AAPL, META or HOOD: AAPL copies the NVDA numbers, META and HOOD copy TSLA's, and the mock prices are placeholders, not market data. The product owner still has to set real risk limits, fees and prices. The new tokens and feeds are not verified on the explorer yet.
+
+### Added — four more testnet markets (2026-09-23)
+
+`script/AddMarket.s.sol` again, for AMZN, PLTR, NFLX and AMD, all copying TSLA's risk numbers like META and HOOD did. Same story: no contract, service or frontend code changed — `apps/web`'s market hooks read the registry live, and only `services/simulator`'s persona symbol list needed to learn the four new tickers so they get simulated volume.
+
+| Market | Mock price | Max leverage | Maintenance margin | Max position | Open interest cap | Token | Feed |
+|---|---|---|---|---|---|---|---|
+| AMZN | $220 | 5x | 7.5% | $250K | $3M | `0x8c7123b07370845314D85e50f87ACb3D9c230D89` | `0x1680D089A048f4f2159e64b7111763BEfC01DEd1` |
+| PLTR | $180 | 5x | 7.5% | $250K | $3M | `0xB1AA16B6ee8F5217aCc05c26C7E13c01640337C8` | `0xC9f6ee55b0E071fe8ea7D0825231E8676c04Bdb9` |
+| NFLX | $1,200 | 5x | 7.5% | $250K | $3M | `0x57a12DF9dd4BD3501AeD1Cf63fAf3F52fa25CE7e` | `0xcBfca79ee9C00102e9c1AA180C277892f9478877` |
+| AMD | $170 | 5x | 7.5% | $250K | $3M | `0x7f7d5D518449d5b138E31e549B1B3577C97a9332` | `0x0c9EcbFD7a891e900070032c0eA8dD04eb1F6bf5` |
+
+The first `AddMarket.s.sol` run for these four left `PRICE_FEED_OWNER` unset (defaulting to the deployer, not the keeper); since `MockPriceFeed.owner` is `immutable`, that couldn't be fixed in place. Each feed above is a replacement deployed with the keeper as owner and repointed via `OracleRouter.setPrimarySource`, so the addresses here are the ones actually live — not the ones the first run logged. The tokens are unaffected and unchanged. The mock prices are placeholders, not market data, same as the rest.
+
+## [1.5.0-testnet] - 2026-09-21
+
+The first testnet deployment behind proxies (see the `[Unreleased]` proxy entry below, merged in PR #22), via `script/DeployAll.s.sol`, then `script/ConfigureMarkets.s.sol` and `script/AddMarket.s.sol` for TSLA, AAPL, META and HOOD, from the deployer `0xC804c6c50CE6F5B5dFB035378A3F84145914697F`. First block `122444455` (use it as `INDEXER_START_BLOCK`). It replaces `[1.4.0-testnet]`, which is abandoned: its contracts are not proxies and its state is not carried over.
+
+**These are the last addresses a redeploy changes.** The address column is the proxy, the one every client uses. A later contract change runs `script/UpgradeAll.s.sol`, which deploys new implementations and repoints the proxies; the proxy addresses and all state stay. The settlement token is unchanged (`0x70b0FDa35dEb7BA710C601Ed9c45b9F992027112`).
+
+| Contract | Proxy (use this) | Implementation |
+|---|---|---|
+| MarketRegistry | `0xb87fd9Caa50e13F9Be66e8B20E2E7ff6881978ea` | `0x6851A42B7725065edD994F11A60fa060d2746c4a` |
+| CollateralManager | `0x26F4E54735b608520441d481927E01bC5dD64F97` | `0x43d8dB1C941eB486f78994A7134dBEFeB4017A83` |
+| AlphaMarketsVault | `0x4d33A0A4B2b8d18Aadb1aEa325C46A4147b8f5cB` | `0xD971663C1B6Ab1706E9B432017a8b5F6f7008214` |
+| FeeManager | `0x91f32451000F9c506eBdFC9f20DcBd17fAF806CB` | `0x1133680aBfEf7bf77025c0341bb83eb535360152` |
+| BuybackModule | `0xccF3B81e6cc3A0B29B4b9BF2240979C2DD5f470e` | `0xa599a17CABf4257397EFeAdf1AF2F43c6bE90410` |
+| PriceValidator | `0x9192bA91C97293d93fbaa63c746Abe8085365E9d` | `0xCbf26f9Fb446766E8780cBd016D3Bf6C9Cb6E854` |
+| OracleRouter | `0xEC69d88bd7087599a42Bb66b5CF5E37103AE7a44` | `0x5531834Af5F6001004685f817b68c33f1188BC54` |
+| RiskManager | `0x2058eBA4B711282bAb82179F241dB04DdECc5FB3` | `0x064699e1c25B14DEA3D72566a145462CfdceEB30` |
+| OptionPositionManager | `0x42ee6631c48FAb50Cf6065Ad22D286cBf96E537d` | `0x080Cf32a84F71C9c0904960307E904a649F2482e` |
+| OptionMarket | `0x61Ad7EcC224088dC6d3c7e78D83aB5bf71dba8Ee` | `0x8Dd85B2438e51aeFAb2A3a445C442E5BEfb4FBeD` |
+| OptionsEngine | `0xceb57470bac989Db605f73C608fCAd4A6420C576` | `0x19c53c2E1E8f164711A8AB52ceE39371B7773E39` |
+| PerpPositionManager | `0xC3805D46fF734B65DfBd1117770D058188778315` | `0x6a05cCD58E0063bfd232d6CD78d69a0D90a4fAFf` |
+| PerpOrderManager | `0xd6FD86e71FDE619516601729C441D3d015fF5247` | `0x0Dcb629d30d4B3c20b2C89FAf7354224C3633D2a` |
+| FundingManager | `0x51d889e99751046112C3e9B548E653aa04A3a5b9` | `0x68289EcB9Ff90Cd4DD7E561DEd4253f36313C389` |
+| PerpsEngine | `0x8d80Ab71A773B516E3b5CEb51de99717c0F1C5a1` | `0x2100A761A0551a4a0F96045c6e7B3c129e94Aa44` |
+| LiquidationEngine | `0x725d8b6d2d8522D8F218B1f6B1482D403fB80b07` | `0xE704d925625E5916A1AeFE75C512Bf3AdE445388` |
+| InsuranceFund | `0xE25f898a55090BC91b9C5ed119Da11D211181e31` | `0x414D82B374432565ae3FA5637dC55a7e7b267212` |
+| CrossMarginManager | `0xE328D674734D69c47c1e0b1dC78CB78e5c42d29A` | `0x9beC8787b34DdD73B14360efe10f092E41764808` |
+| SubaccountFactory | `0x0E4Df209df0A09898f0Ee8cb7E45EF5952C1e289` | `0x48F1bCB15aa3516CceA717eD38576727cF78b50B` |
+| RFQManager | `0x98DfBF62399819A508ECFD0E4b605F015970A19e` | `0x708759D32B4391D1157c07C67B0B4fe801576205` |
+
+The option quoter role (`QUOTER_ROLE` on `OptionsEngine`) sits with `QUOTER_ADDRESS` from the root `.env`, not the deployer: `DeployAll` granted it to the deployer by default, and it was moved right after. The RFQ maker role is still the deployer.
+
+Markets, each with a mock token and a mock price feed owned by the keeper (`PRICE_FEED_OWNER`):
+
+| Market | Mock price | Max leverage | Token | Feed |
+|---|---|---|---|---|
+| NVDA | $190 | 10x | `0xc73619F2A4aC5959fEBa7EcCaB320a7AEa1b6f75` | `0x0f3bc4aB34b1182a6548e065ECCf5095eB722001` |
+| TSLA | $350 | 5x | `0x05dc7e7A0D78535356cd458BdCd504e344599500` | `0x98F18355eE68b845145ad433ee01F2d7d7B26373` |
+| AAPL | $230 | 10x | `0xEd74c4E54D8436ff2E877Cfc58f39F6E7C7A9180` | `0x84E22D6139B94457816d47d57a1Ba5e53BF7bBbA` |
+| META | $700 | 5x | `0xa138feF0CB60eaae8B76565a311F47bA85d60054` | `0x8b2c91800fFCae690317819076fF38834FF4C030` |
+| HOOD | $100 | 5x | `0xaAdcF7be21C3724B318b753dcff3F72059d02bb5` | `0xE002C09ef2B6408F8d29Df140680FC77B072A1df` |
+
+Risk limits, fees and prices are the same placeholders as in `[1.4.0-testnet]`. The implementations and the new tokens and feeds are not verified on the explorer yet (`script/verify.sh` verifies the implementations). `packages/config` was synced with `pnpm --filter @alphamarkets/config sync:deployments`.
 
 ## [1.4.0-testnet] - 2026-09-21
 

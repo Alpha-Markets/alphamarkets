@@ -7,6 +7,7 @@ import type { Address } from "@alphamarkets/types";
 const raw = {
   chainId: process.env.NEXT_PUBLIC_CHAIN_ID,
   rpcUrl: process.env.NEXT_PUBLIC_RPC_URL,
+  rpcProxyUrl: process.env.NEXT_PUBLIC_RPC_PROXY_URL,
   explorerUrl: process.env.NEXT_PUBLIC_EXPLORER_URL,
   apiUrl: process.env.NEXT_PUBLIC_API_URL,
   marketRegistry: process.env.NEXT_PUBLIC_MARKET_REGISTRY,
@@ -86,7 +87,12 @@ export const env = {
   /// (packages/contracts CHANGELOG). When unset, a reserved `.invalid` host stands in so the app
   /// still builds and renders, and every read fails visibly instead of silently using another RPC.
   rpcUrl: raw.rpcUrl || "http://rpc-not-configured.invalid",
-  rpcConfigured: Boolean(raw.rpcUrl),
+  rpcConfigured: Boolean(raw.rpcUrl || raw.rpcProxyUrl),
+  /// Where the app's own reads go. `services/api` serves `/v1/rpc`, a caching proxy, so many
+  /// visitors share one upstream call instead of each spending the provider's quota. Unset reads
+  /// straight from `rpcUrl`. The wallet still gets `rpcUrl` (see `chain` in wagmi.ts), because it
+  /// broadcasts transactions itself and the proxy refuses writes.
+  readRpcUrl: raw.rpcProxyUrl || raw.rpcUrl || "http://rpc-not-configured.invalid",
   explorerUrl: raw.explorerUrl,
   apiUrl: raw.apiUrl ? raw.apiUrl.replace(/\/+$/, "") : undefined,
   addresses: resolveAddresses(),

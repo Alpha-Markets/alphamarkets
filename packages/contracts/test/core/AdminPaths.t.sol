@@ -41,8 +41,9 @@ contract AdminPathsTest is BaseTest {
     }
 
     function test_registry_rejectsZeroConstructorAndZeroToken() public {
+        address registryImpl = address(new MarketRegistry());
         vm.expectRevert(MarketRegistry.ZeroAddress.selector);
-        new MarketRegistry(address(0));
+        _proxyFor(registryImpl, address(0));
 
         vm.startPrank(admin);
         vm.expectRevert(MarketRegistry.ZeroAddress.selector);
@@ -89,8 +90,9 @@ contract AdminPathsTest is BaseTest {
     }
 
     function test_buyback_accessAndConstructor() public {
+        address buybackImpl = address(new BuybackModule());
         vm.expectRevert(BuybackModule.ZeroAddress.selector);
-        new BuybackModule(address(0));
+        _proxyFor(buybackImpl, address(0));
 
         vm.startPrank(alice);
         vm.expectRevert();

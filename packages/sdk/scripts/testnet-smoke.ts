@@ -56,9 +56,14 @@ assert.equal((await alphaMarkets.portfolio.getPerpPosition(positionId)).open, fa
 step(`closed perp #${positionId}`);
 
 // A quote is signed for one user and one order; ask the pricing service for it and submit it as is.
-const expiries = await alphaMarkets.options.expiries("NVDA");
-assert.ok(expiries.length > 0, "the API lists no option expiry");
-const series = { underlying: "NVDA", type: "CALL", strike: "190", expiry: expiries[0]!, contracts: 1 } as const;
+// The API lists an expiry only once an option position exists, so a fresh indexer database lists none.
+// Then use the web app's rule (`NEXT_PUBLIC_OPTION_EXPIRY_DAYS`, `NEXT_PUBLIC_OPTION_EXPIRY_HOUR_UTC`): seven days out, at 20:00 UTC.
+const listedExpiries = await alphaMarkets.options.expiries("NVDA");
+const inAWeek = new Date();
+inAWeek.setUTCDate(inAWeek.getUTCDate() + 7);
+inAWeek.setUTCHours(20, 0, 0, 0);
+const expiry = listedExpiries[0] ?? BigInt(Math.floor(inAWeek.getTime() / 1000));
+const series = { underlying: "NVDA", type: "CALL", strike: "190", expiry, contracts: 1 } as const;
 const preview = await alphaMarkets.options.previewOpen({ ...series, user: account.address });
 assert.ok(preview.authorization, "the pricing service returned no signed quote (is QUOTER_PRIVATE_KEY set?)");
 assert.deepEqual(preview.violations, []);

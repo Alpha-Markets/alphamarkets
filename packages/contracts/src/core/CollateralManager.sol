@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.26;
 
-import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
+import {UpgradeableBase} from "../proxy/UpgradeableBase.sol";
 
 /// @notice Tracks which tokens are accepted as collateral and per-user/per-token ledger
 /// balances. Deliberately holds no tokens itself and does no custody — AlphaMarketsVault holds
 /// actual token custody and is the only account permitted to move ledger balances here,
 /// keeping token-support rules separate from settlement logic (PROJECT_BRIEF.md Section 7).
-contract CollateralManager is AccessControl {
+contract CollateralManager is UpgradeableBase {
     bytes32 public constant VAULT_ADMIN_ROLE = keccak256("VAULT_ADMIN_ROLE");
     bytes32 public constant VAULT_ROLE = keccak256("VAULT_ROLE");
 
@@ -20,9 +20,14 @@ contract CollateralManager is AccessControl {
     event SupportedTokenAdded(address indexed token);
     event SupportedTokenRemoved(address indexed token);
 
-    constructor(address admin) {
+    /// @custom:oz-upgrades-unsafe-allow constructor
+    constructor() {
+        _disableInitializers();
+    }
+
+    function initialize(address admin) external initializer {
         if (admin == address(0)) revert ZeroAddress();
-        _grantRole(DEFAULT_ADMIN_ROLE, admin);
+        __UpgradeableBase_init(admin);
         _grantRole(VAULT_ADMIN_ROLE, admin);
     }
 

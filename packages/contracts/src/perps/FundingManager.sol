@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.26;
 
-import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
+import {UpgradeableBase} from "../proxy/UpgradeableBase.sol";
 import {IAlphaMarketsVault} from "../interfaces/IAlphaMarketsVault.sol";
 import {OracleRouter} from "../oracle/OracleRouter.sol";
 import {PerpPositionManager} from "./PerpPositionManager.sol";
@@ -9,7 +9,7 @@ import {PerpPositionManager} from "./PerpPositionManager.sol";
 /// @notice Funding rate calculation and per-position accrual (PROJECT_BRIEF.md Section 15).
 /// Keeps perp price aligned with the underlying index by charging the side pushing price
 /// away from index, and paying the other side — a zero-sum transfer between longs/shorts.
-contract FundingManager is AccessControl {
+contract FundingManager is UpgradeableBase {
     bytes32 public constant RISK_ADMIN_ROLE = keccak256("RISK_ADMIN_ROLE");
     /// @notice Granted to PerpsEngine and LiquidationEngine.
     bytes32 public constant ENGINE_ROLE = keccak256("ENGINE_ROLE");
@@ -34,19 +34,18 @@ contract FundingManager is AccessControl {
     event FundingRateUpdated(bytes32 indexed marketId, int256 rateBps, int256 cumulativeIndex);
     event FundingPaid(uint256 indexed positionId, bytes32 indexed marketId, int256 amount, int256 fundingIndex);
 
-    constructor(
-        address admin,
-        address oracleRouter_,
-        address positionManager_,
-        address vault_,
-        address settlementToken_
-    ) {
-        _grantRole(DEFAULT_ADMIN_ROLE, admin);
-        _grantRole(RISK_ADMIN_ROLE, admin);
+    /// @custom:oz-upgrades-unsafe-allow constructor
+    constructor(address oracleRouter_, address positionManager_, address vault_, address settlementToken_) {
         oracleRouter = OracleRouter(oracleRouter_);
         positionManager = PerpPositionManager(positionManager_);
         vault = IAlphaMarketsVault(vault_);
         settlementToken = settlementToken_;
+        _disableInitializers();
+    }
+
+    function initialize(address admin) external initializer {
+        __UpgradeableBase_init(admin);
+        _grantRole(RISK_ADMIN_ROLE, admin);
     }
 
     function setFundingInterval(bytes32 marketId, uint256 interval) external onlyRole(RISK_ADMIN_ROLE) {

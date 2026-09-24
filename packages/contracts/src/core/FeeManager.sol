@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.26;
 
-import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
+import {UpgradeableBase} from "../proxy/UpgradeableBase.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {IFeeManager} from "../interfaces/IFeeManager.sol";
@@ -12,7 +12,7 @@ import {BuybackModule} from "./BuybackModule.sol";
 /// @notice Per-market fee schedule and fee collection routing (PROJECT_BRIEF.md Section
 /// 20). Pulls fees from AlphaMarketsVault, then routes a configurable share on to the
 /// BuybackModule (Section 21) — the rest stays here as protocol revenue.
-contract FeeManager is IFeeManager, AccessControl {
+contract FeeManager is IFeeManager, UpgradeableBase {
     using SafeERC20 for IERC20;
 
     bytes32 public constant FEE_ADMIN_ROLE = keccak256("FEE_ADMIN_ROLE");
@@ -37,11 +37,17 @@ contract FeeManager is IFeeManager, AccessControl {
         bytes32 indexed marketId, address indexed payer, address token, uint256 amount, bytes32 feeType
     );
 
-    constructor(address admin, address vault_) {
-        if (admin == address(0) || vault_ == address(0)) revert ZeroAddress();
-        _grantRole(DEFAULT_ADMIN_ROLE, admin);
-        _grantRole(FEE_ADMIN_ROLE, admin);
+    /// @custom:oz-upgrades-unsafe-allow constructor
+    constructor(address vault_) {
+        if (vault_ == address(0)) revert ZeroAddress();
         vault = IAlphaMarketsVault(vault_);
+        _disableInitializers();
+    }
+
+    function initialize(address admin) external initializer {
+        if (admin == address(0)) revert ZeroAddress();
+        __UpgradeableBase_init(admin);
+        _grantRole(FEE_ADMIN_ROLE, admin);
     }
 
     function setFeeConfig(bytes32 marketId, FeeConfig calldata config) external onlyRole(FEE_ADMIN_ROLE) {

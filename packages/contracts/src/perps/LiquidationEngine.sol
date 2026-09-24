@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.26;
 
-import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import {UpgradeableBase} from "../proxy/UpgradeableBase.sol";
+import {ReentrancyGuardUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
 import {IAlphaMarketsVault} from "../interfaces/IAlphaMarketsVault.sol";
 import {IFeeManager} from "../interfaces/IFeeManager.sol";
 import {IRiskManager} from "../interfaces/IRiskManager.sol";
@@ -17,7 +18,7 @@ import {CrossMarginManager} from "../risk/CrossMarginManager.sol";
 /// The frontend is never the source of truth for eligibility — `isLiquidatable` here is.
 /// Permissionless and keeper-incentivized: whoever calls `liquidate` on an eligible
 /// position earns a share of its collateral.
-contract LiquidationEngine is ReentrancyGuard {
+contract LiquidationEngine is UpgradeableBase, ReentrancyGuardUpgradeable {
     uint256 public constant BPS_DENOMINATOR = 10_000;
     /// @notice Share of the liquidated position's collateral paid to the caller.
     uint256 public constant LIQUIDATOR_REWARD_BPS = 500; // 5%
@@ -53,6 +54,7 @@ contract LiquidationEngine is ReentrancyGuard {
     /// @notice The fund could not cover all of a shortfall: `amount` is bad debt the pool absorbs.
     event BadDebt(uint256 indexed positionId, address indexed owner, uint256 amount);
 
+    /// @custom:oz-upgrades-unsafe-allow constructor
     constructor(
         address oracleRouter_,
         address vault_,
@@ -73,6 +75,12 @@ contract LiquidationEngine is ReentrancyGuard {
         settlementToken = settlementToken_;
         crossMargin = CrossMarginManager(crossMargin_);
         insuranceFund = insuranceFund_;
+        _disableInitializers();
+    }
+
+    function initialize(address admin) external initializer {
+        __UpgradeableBase_init(admin);
+        __ReentrancyGuard_init();
     }
 
     /// @notice True once a position's margin ratio has breached the market's maintenance

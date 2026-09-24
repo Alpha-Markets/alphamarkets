@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.26;
 
-import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
+import {UpgradeableBase} from "../proxy/UpgradeableBase.sol";
 import {IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import {IWithdrawGuard} from "../interfaces/IWithdrawGuard.sol";
 import {OptionType} from "../interfaces/DataTypes.sol";
@@ -39,7 +39,7 @@ import {MarginEngine} from "./MarginEngine.sol";
 /// Not modelled: the funding a cross position has accrued and not yet settled, and volatility or
 /// time value of options (intrinsic value is a lower bound for a long option). Both are
 /// documented limits, and a reason a real deployment needs the audit in DEVELOPMENT_STEPS.md first.
-contract CrossMarginManager is AccessControl, IWithdrawGuard {
+contract CrossMarginManager is UpgradeableBase, IWithdrawGuard {
     /// @notice Granted to PerpsEngine: it marks positions as cross when they are opened.
     bytes32 public constant ENGINE_ROLE = keccak256("ENGINE_ROLE");
     /// @notice Granted to LiquidationEngine: it seizes collateral to cover a shortfall.
@@ -86,7 +86,7 @@ contract CrossMarginManager is AccessControl, IWithdrawGuard {
     /// @notice Price moves the portfolio-margin requirement is tested against, in basis points.
     int256[] public shocksBps;
     /// @notice Least a portfolio-margin requirement can be, as a share of the standard one.
-    uint256 public portfolioFloorBps = 3_000;
+    uint256 public portfolioFloorBps;
 
     error ZeroAddress();
     error TooManyCrossPositions();
@@ -106,8 +106,8 @@ contract CrossMarginManager is AccessControl, IWithdrawGuard {
     event ShocksUpdated(int256[] shocksBps, uint256 floorBps);
     event CollateralSeized(address indexed owner, address indexed token, uint256 amount, uint256 valueCovered);
 
+    /// @custom:oz-upgrades-unsafe-allow constructor
     constructor(
-        address admin,
         address oracleRouter_,
         address riskManager_,
         address vault_,
@@ -118,7 +118,7 @@ contract CrossMarginManager is AccessControl, IWithdrawGuard {
         address insuranceFund_
     ) {
         if (
-            admin == address(0) || oracleRouter_ == address(0) || riskManager_ == address(0) || vault_ == address(0)
+            oracleRouter_ == address(0) || riskManager_ == address(0) || vault_ == address(0)
                 || perpPositionManager_ == address(0) || optionPositionManager_ == address(0)
                 || optionMarket_ == address(0) || settlementToken_ == address(0)
         ) revert ZeroAddress();
@@ -131,9 +131,15 @@ contract CrossMarginManager is AccessControl, IWithdrawGuard {
         settlementToken = settlementToken_;
         settlementDecimals = IERC20Metadata(settlementToken_).decimals();
         insuranceFund = insuranceFund_;
-        _grantRole(DEFAULT_ADMIN_ROLE, admin);
+        _disableInitializers();
+    }
+
+    function initialize(address admin) external initializer {
+        if (admin == address(0)) revert ZeroAddress();
+        __UpgradeableBase_init(admin);
         _grantRole(RISK_ADMIN_ROLE, admin);
 
+        portfolioFloorBps = 3_000;
         // Tested price moves for portfolio margin: down and up by 10% and 20%.
         shocksBps.push(-2_000);
         shocksBps.push(-1_000);

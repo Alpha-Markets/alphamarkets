@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
-# Verifies every contract listed in deployments/<NETWORK_NAME>.json on the Blockscout explorer, so
-# a redeploy needs no address editing here. Set NVDA_TOKEN / NVDA_FEED (printed by
+# Verifies every contract on the Blockscout explorer, so a redeploy needs no address editing here.
+# The protocol contracts are proxies: the code to verify is the implementation behind each proxy, listed in
+# deployments/<NETWORK_NAME>.implementations.json (written by DeployAll and UpgradeAll). The proxy addresses
+# in deployments/<NETWORK_NAME>.json are the ones users see; Blockscout recognizes an ERC-1967 proxy once
+# its implementation is verified. Set NVDA_TOKEN / NVDA_FEED (printed by
 # ConfigureMarkets.s.sol) to verify the mock market contracts too.
 # Requires: ROBINHOOD_TESTNET_RPC_URL, EXPLORER_VERIFY_URL (from .env), jq.
 # Uses --guess-constructor-args so forge reads the real deployment tx from chain and decodes
@@ -19,6 +22,7 @@ cd "$(dirname "$0")/.."
 source .env
 
 file="deployments/${NETWORK_NAME:-robinhood_testnet}.json"
+impl_file="deployments/${NETWORK_NAME:-robinhood_testnet}.implementations.json"
 attempts="${VERIFY_ATTEMPTS:-3}"
 
 verify() {
@@ -42,27 +46,28 @@ verify() {
 }
 
 addr() { jq -er ".$1" "$file"; }
+impl() { jq -er ".$1" "$impl_file"; }
 
-verify "$(addr marketRegistry)" src/core/MarketRegistry.sol:MarketRegistry
-verify "$(addr collateralManager)" src/core/CollateralManager.sol:CollateralManager
-verify "$(addr vault)" src/core/AlphaMarketsVault.sol:AlphaMarketsVault
-verify "$(addr feeManager)" src/core/FeeManager.sol:FeeManager
-verify "$(addr buybackModule)" src/core/BuybackModule.sol:BuybackModule
-verify "$(addr priceValidator)" src/oracle/PriceValidator.sol:PriceValidator
-verify "$(addr oracleRouter)" src/oracle/OracleRouter.sol:OracleRouter
-verify "$(addr riskManager)" src/risk/RiskManager.sol:RiskManager
-verify "$(addr optionPositionManager)" src/options/OptionPositionManager.sol:OptionPositionManager
-verify "$(addr optionMarket)" src/options/OptionMarket.sol:OptionMarket
-verify "$(addr optionsEngine)" src/options/OptionsEngine.sol:OptionsEngine
-verify "$(addr perpPositionManager)" src/perps/PerpPositionManager.sol:PerpPositionManager
-verify "$(addr fundingManager)" src/perps/FundingManager.sol:FundingManager
-verify "$(addr perpsEngine)" src/perps/PerpsEngine.sol:PerpsEngine
-verify "$(addr liquidationEngine)" src/perps/LiquidationEngine.sol:LiquidationEngine
-verify "$(addr perpOrderManager)" src/perps/PerpOrderManager.sol:PerpOrderManager
-verify "$(addr insuranceFund)" src/core/InsuranceFund.sol:InsuranceFund
-verify "$(addr crossMargin)" src/risk/CrossMarginManager.sol:CrossMarginManager
-verify "$(addr subaccountFactory)" src/accounts/SubaccountFactory.sol:SubaccountFactory
-verify "$(addr rfqManager)" src/perps/RFQManager.sol:RFQManager
+verify "$(impl marketRegistry)" src/core/MarketRegistry.sol:MarketRegistry
+verify "$(impl collateralManager)" src/core/CollateralManager.sol:CollateralManager
+verify "$(impl vault)" src/core/AlphaMarketsVault.sol:AlphaMarketsVault
+verify "$(impl feeManager)" src/core/FeeManager.sol:FeeManager
+verify "$(impl buybackModule)" src/core/BuybackModule.sol:BuybackModule
+verify "$(impl priceValidator)" src/oracle/PriceValidator.sol:PriceValidator
+verify "$(impl oracleRouter)" src/oracle/OracleRouter.sol:OracleRouter
+verify "$(impl riskManager)" src/risk/RiskManager.sol:RiskManager
+verify "$(impl optionPositionManager)" src/options/OptionPositionManager.sol:OptionPositionManager
+verify "$(impl optionMarket)" src/options/OptionMarket.sol:OptionMarket
+verify "$(impl optionsEngine)" src/options/OptionsEngine.sol:OptionsEngine
+verify "$(impl perpPositionManager)" src/perps/PerpPositionManager.sol:PerpPositionManager
+verify "$(impl fundingManager)" src/perps/FundingManager.sol:FundingManager
+verify "$(impl perpsEngine)" src/perps/PerpsEngine.sol:PerpsEngine
+verify "$(impl liquidationEngine)" src/perps/LiquidationEngine.sol:LiquidationEngine
+verify "$(impl perpOrderManager)" src/perps/PerpOrderManager.sol:PerpOrderManager
+verify "$(impl insuranceFund)" src/core/InsuranceFund.sol:InsuranceFund
+verify "$(impl crossMargin)" src/risk/CrossMarginManager.sol:CrossMarginManager
+verify "$(impl subaccountFactory)" src/accounts/SubaccountFactory.sol:SubaccountFactory
+verify "$(impl rfqManager)" src/perps/RFQManager.sol:RFQManager
 verify "$(addr settlementToken)" test/mocks/MockERC20.sol:MockERC20
 if [[ -n "${NVDA_TOKEN:-}" ]]; then verify "$NVDA_TOKEN" test/mocks/MockERC20.sol:MockERC20; fi
 if [[ -n "${NVDA_FEED:-}" ]]; then verify "$NVDA_FEED" src/oracle/MockPriceFeed.sol:MockPriceFeed; fi

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.26;
 
-import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
+import {UpgradeableBase} from "../proxy/UpgradeableBase.sol";
 import {TriggerKind} from "../interfaces/DataTypes.sol";
 
 /// @notice Resting limit-order and trigger-order (stop-loss, take-profit) storage only
@@ -10,7 +10,7 @@ import {TriggerKind} from "../interfaces/DataTypes.sol";
 /// An order reserves nothing in the Vault; the collateral is taken when the order fills, so an
 /// order whose owner has withdrawn the money simply cannot fill (and can be cancelled or left to
 /// expire).
-contract PerpOrderManager is AccessControl {
+contract PerpOrderManager is UpgradeableBase {
     /// @notice Granted to PerpsEngine.
     bytes32 public constant ENGINE_ROLE = keccak256("ENGINE_ROLE");
 
@@ -61,8 +61,13 @@ contract PerpOrderManager is AccessControl {
     mapping(address => uint256[]) private _userTriggerOrders;
     uint256 public nextTriggerOrderId;
 
-    constructor(address admin) {
-        _grantRole(DEFAULT_ADMIN_ROLE, admin);
+    /// @custom:oz-upgrades-unsafe-allow constructor
+    constructor() {
+        _disableInitializers();
+    }
+
+    function initialize(address admin) external initializer {
+        __UpgradeableBase_init(admin);
     }
 
     function createOrder(LimitOrder calldata order) external onlyRole(ENGINE_ROLE) returns (uint256 orderId) {

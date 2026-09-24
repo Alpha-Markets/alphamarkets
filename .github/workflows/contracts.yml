@@ -27,6 +27,7 @@ jobs:
         run: |
           forge install foundry-rs/forge-std --no-git
           forge install OpenZeppelin/openzeppelin-contracts@v5.1.0 --no-git
+          forge install OpenZeppelin/openzeppelin-contracts-upgradeable@v5.1.0 --no-git
 
       - name: Check formatting
         run: forge fmt --check
@@ -36,6 +37,11 @@ jobs:
 
       - name: Build
         run: forge build --sizes
+
+      # Every contract is an upgradeable proxy whose state survives a redeploy, so a change must only
+      # append state variables. Run `script/check-storage-layout.py --update` after a deliberate change.
+      - name: Storage layout is upgrade-safe
+        run: python3 script/check-storage-layout.py
 
       - name: Test
         run: forge test -vvv --fuzz-runs 10000

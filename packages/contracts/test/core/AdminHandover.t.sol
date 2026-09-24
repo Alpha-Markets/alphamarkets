@@ -14,13 +14,13 @@ contract AdminHandoverTest is BaseTest, HandOverAdmin {
 
     function setUp() public override {
         super.setUp();
-        subaccounts = new SubaccountFactory(admin, address(vault));
+        subaccounts = SubaccountFactory(_proxyFor(address(new SubaccountFactory(address(vault))), admin));
         timelock = makeAddr("timelock");
         vm.etch(timelock, hex"00"); // any address with code stands in for a multisig or a timelock
     }
 
     function _targets() internal view returns (address[] memory t) {
-        t = new address[](18);
+        t = new address[](20);
         t[0] = address(marketRegistry);
         t[1] = address(collateralManager);
         t[2] = address(vault);
@@ -39,6 +39,8 @@ contract AdminHandoverTest is BaseTest, HandOverAdmin {
         t[15] = address(crossMargin);
         t[16] = address(subaccounts);
         t[17] = address(rfqManager);
+        t[18] = address(perpsEngine);
+        t[19] = address(liquidationEngine);
     }
 
     function _run(bool renounce) internal returns (uint256 changes) {

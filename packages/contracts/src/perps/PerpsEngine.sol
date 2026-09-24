@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.26;
 
-import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import {UpgradeableBase} from "../proxy/UpgradeableBase.sol";
+import {ReentrancyGuardUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
 import {IPerpsEngine} from "../interfaces/IPerpsEngine.sol";
 import {IMarketRegistry} from "../interfaces/IMarketRegistry.sol";
 import {IAlphaMarketsVault} from "../interfaces/IAlphaMarketsVault.sol";
@@ -20,7 +21,7 @@ import {CrossMarginManager} from "../risk/CrossMarginManager.sol";
 /// (PROJECT_BRIEF.md Section 11), and filling resting limit orders (Section 39). Entry/exit
 /// prices come from OracleRouter's mark price; every price-sensitive action is bounded by a
 /// caller-supplied limit price and deadline.
-contract PerpsEngine is IPerpsEngine, ReentrancyGuard {
+contract PerpsEngine is IPerpsEngine, UpgradeableBase, ReentrancyGuardUpgradeable {
     uint256 internal constant BPS_DENOMINATOR = 10_000;
 
     IMarketRegistry public immutable marketRegistry;
@@ -96,6 +97,7 @@ contract PerpsEngine is IPerpsEngine, ReentrancyGuard {
         uint256 indexed orderId, address indexed owner, uint256 indexed positionId, uint256 executionPrice
     );
 
+    /// @custom:oz-upgrades-unsafe-allow constructor
     constructor(
         address marketRegistry_,
         address oracleRouter_,
@@ -119,6 +121,12 @@ contract PerpsEngine is IPerpsEngine, ReentrancyGuard {
         settlementToken = settlementToken_;
         crossMargin = CrossMarginManager(crossMargin_);
         deployer = msg.sender;
+        _disableInitializers();
+    }
+
+    function initialize(address admin) external initializer {
+        __UpgradeableBase_init(admin);
+        __ReentrancyGuard_init();
     }
 
     /// @notice One-time wiring of the RFQ manager, by the deployer.

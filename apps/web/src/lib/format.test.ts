@@ -1,13 +1,20 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { stringToHex } from "viem";
-import { fmt, fmtBps, fmtCountdown, fmtPrice, fmtSigned, fmtUsd, shortHash, signTone } from "./format.js";
+import { fmt, fmtBps, fmtCompact, fmtCompactUsd, fmtCountdown, fmtPrice, fmtSigned, fmtUsd, shortHash, signTone } from "./format.js";
 import { perpLabel, symbolOf } from "./market.js";
 
 test("prices and money format from base units", () => {
   assert.equal(fmtPrice(184_480_000_000_000_000_000n), "184.48");
   assert.equal(fmtUsd(5_000_000_000n, 6), "$5,000.00");
   assert.equal(fmt(undefined, 6), "–");
+});
+
+test("large figures shorten to a few characters", () => {
+  assert.equal(fmtCompact(5_700_000), "5.7M");
+  assert.equal(fmtCompact(950), "950");
+  assert.equal(fmtCompactUsd(5_700_000_000_000n, 6), "$5.7M");
+  assert.equal(fmtCompactUsd(undefined, 6), "–");
 });
 
 test("signed money uses a real minus and no plus for zero", () => {
