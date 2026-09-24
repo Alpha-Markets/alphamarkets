@@ -17,7 +17,7 @@ const faqs = [
     },
     {
         q: 'What chain does it run on?',
-        a: `AlphaMarkets runs on ${chains[env.chainId].name}, an EVM-compatible chain. Every contract address the terminal talks to is read from configuration rather than hardcoded, so the same frontend can point at a testnet deployment today and a mainnet one later without a rebuild.`,
+        a: `AlphaMarkets runs on ${chains[env.chainId].name}, an EVM-compatible chain. Every contract address the terminal talks to is read from configuration rather than hardcoded, so the same frontend can be built for a testnet or a mainnet deployment by changing the build environment.`,
     },
     {
         q: 'How is settlement verified?',
