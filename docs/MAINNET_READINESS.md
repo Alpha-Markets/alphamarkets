@@ -1,5 +1,7 @@
 # Mainnet readiness
 
+The verified chain facts, the exact deployment steps and the rehearsal results are in `docs/MAINNET_DEPLOYMENT.md`.
+
 Status on 2026-09-25: the contracts are **deployed to mainnet (chain 4663) but empty and not open**: no market, feed, funds or backend, and one wallet holds every admin role. **Not ready for users.** The contracts have the fixes the first review asked
 for and they run on testnet, but the items below are open. Nothing on this list is ticked unless it was checked.
 
@@ -23,6 +25,7 @@ for and they run on testnet, but the items below are open. Nothing on this list 
 | 2 | Real price feeds, and the adapter that reads them | Me | Nothing | **Adapter written and tested** (`ChainlinkPriceFeed`, 9 tests, plus a live mainnet fork test); 11 of 16 testnet markets have a Chainlink feed (`deployments/robinhood_mainnet.markets.json`); AVGO, JPM, DIS, UBER, SHOP have none. **Open decision: the age limit per market.** The feeds have a 24 hour heartbeat and on 2026-09-25 were 11 minutes to 16 hours old, so the default 1 hour limit halts most markets; a long limit trades on an old price. Not listed on chain yet. |
 | 3 | Real settlement token, tested on a fork (decimals, transfer behaviour) | Me | Nothing | **USDG** (`0x5fc5…d168`, 6 decimals, an upgradeable Paxos token) is the settlement token of the mainnet deployment. Fork test: deposit and withdraw move exact amounts through the deployed vault. Still open: behaviour if Paxos pauses or blacklists (a runbook step). |
 | 4 | Mainnet chain in `packages/config` and a mainnet web build on your domain | You (chain ID, RPC, explorer), me | Item 3 | Domain prepared by you; no chain config yet |
+| 4 | Mainnet chain in `packages/config` and a mainnet web build on your domain | Me | The deployed addresses | **Done for the web build**: chain 4663 and the deployed addresses are in `packages/config`; the Vercel project `alphamarkets-mainnet` serves `alphamarkets.tech`. Still open: the mainnet API and indexer (item 12), so the site shows no markets yet. |
 | 5 | Multisig and timelock chosen and deployed; the fast pauser key named | You | Signers | Not started |
 | 6 | Quoter and maker keys behind a multisig or HSM; separate keys for deployer, quoter, keeper, liquidator | You | Item 5 | Keys are plain environment variables today |
 | 7 | Production liquidation bot and option-settlement keeper; feed refresh switched off | Me | Item 2 | Neither exists outside the testnet simulator |
