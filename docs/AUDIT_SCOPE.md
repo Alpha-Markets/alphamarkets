@@ -8,7 +8,9 @@ independent firm: this repository's own review (`SECURITY_REVIEW.md`) is not a s
 
 `packages/contracts/src`, Solidity 0.8.26, OpenZeppelin v5.1.0 (upgradeable and non-upgradeable), optimizer on
 at 200 runs, `via_ir` off. About 2,700 non-comment lines in 20 protocol contracts, each behind a UUPS proxy.
-Commit to audit: the head of `main` once PR #7 and PR #8 are merged (the vault solvency fix is in PR #8).
+Commit to audit: the head of `main` (`1debc1a` at the time of writing, which includes the vault solvency fix,
+the pauser role, the premium bounds and batched settlement). The same code is deployed on the Robinhood Chain
+testnet; its implementation addresses are in `packages/contracts/deployments/robinhood_testnet.implementations.json`.
 
 | Area | Lines | Files | Why it matters |
 |---|---|---|---|

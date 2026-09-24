@@ -95,6 +95,8 @@ Build order, engineering practices, and phase-by-phase steps live in `docs/DEVEL
 
 - `docs/PROJECT_BRIEF.md` — product, architecture, and scope.
 - `docs/DEVELOPMENT_STEPS.md` — sequenced build plan (Phase 0 through Phase 7), status, hosting notes and cross-cutting engineering rules.
+- `docs/MAINNET_READINESS.md` — what is done, what blocks mainnet, who owns each item, and the launch order.
+- `docs/SECURITY_REVIEW.md`, `docs/AUDIT_SCOPE.md` and `docs/RUNBOOK.md` — the pre-mainnet review, what to hand an auditor, and the pause and rollback plan.
 - `packages/contracts/README.md` and `CHANGELOG.md` — contract layout, setup, deployments and upgrade flow.
 - `packages/sdk/README.md` — SDK usage.
 - `services/simulator/README.md` — demo simulator.

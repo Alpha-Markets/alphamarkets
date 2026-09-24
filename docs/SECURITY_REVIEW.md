@@ -39,7 +39,7 @@ without it, so CI does not run them.
 | Position caps and open-interest caps | Invariant: recorded open interest always equals the summed size of open positions and stays under the cap. Fork test: a leverage tier that is not allowed reverts. | Pass |
 | Withdrawal validation | Fork test: a withdrawal above the available balance reverts, and only the engine can move ledger balances. The cross-margin guard requires a buffer above the margin requirement. | Pass |
 | Upgrade controls | Only `DEFAULT_ADMIN_ROLE` can upgrade. Implementations cannot be initialised directly. `check-storage-layout.py` passes for all 20 contracts. | Pass |
-| Emergency controls | A separate `PAUSER_ROLE` can pause one market's oracle, stop one market, or stop every market at once (`MarketRegistry.pauseAll`); turning anything back on is admin only. Closing, liquidation and settlement keep working while paused (tests). | Pass in code, not deployed |
+| Emergency controls | A separate `PAUSER_ROLE` can pause one market's oracle, stop one market, or stop every market at once (`MarketRegistry.pauseAll`); turning anything back on is admin only. Closing, liquidation and settlement keep working while paused (tests). | Pass, deployed to testnet |
 
 ### Live oracle probe (Robinhood Chain testnet, 2026-09-24)
 
@@ -95,10 +95,10 @@ a signed quote) also passed.
 
 | # | Severity | Finding | Status |
 |---|---|---|---|
-| 1 | High | **The vault had no solvency guard.** `settlePnl` credited a winner without moving tokens and never checked that losers cover it, so a one-sided win left the vault owing more than it held (the invariant test failed with the ledger about 23.7 tokens above the tokens held). | **Fixed in code, not deployed, not audited.** The vault now counts `totalLiabilities` and refuses a profit credit the pool cannot pay (`InsufficientPoolReserves`). A funded pool (`fundPool`) backs payouts, and `RiskManager.maxNetOpenInterest` caps the long/short imbalance the pool is counterparty to. The solvency invariant now passes over 51,200 random calls with a deliberately small pool. See "Vault solvency fix" below. |
-| 2 | Medium | **Emergency pause was slow once admin sits behind a timelock, and shared a role with the oracle setters.** | **Fixed in code, not deployed, not audited.** `PAUSER_ROLE` on `MarketRegistry` and `OracleRouter` can pause and cannot unpause, change a source or change configuration; `pauseAll` is the protocol-wide stop. Pausing is fast, restoring is timelocked, on purpose. `HandOverAdmin` moves the pauser role with the admin roles, so the deployer keeps no pause power; the timelock then grants it to a fast key. 12 tests in `Pauser.t.sol` and a handover test. |
-| 3 | Medium | **A compromised quoter key could set any premium.** | **Reduced in code, not deployed, not audited.** `OptionsEngine` now rejects, at open, a premium of zero, below the option's intrinsic value at the current price (less 2%), or above the value of the underlying, and rejects a close premium above that value. This bounds what a stolen key can sign; it does not remove the risk, because a key can still sign premiums inside the bounds. The key still belongs behind a multisig or HSM, and rotating it after the handover still waits for the timelock (pause first, see the runbook). 10 tests in `PremiumBounds.t.sol`. |
-| 4 | Medium | **`OptionsEngine.settleExpired` looped over every position in a series.** | **Fixed in code, not deployed, not audited.** It now settles at most 50 positions per call and remembers its place (`settleCursor`), `settleExpiredBatch` lets the caller choose the size, and `settlePosition(positionId)` lets any holder settle their own position at once, so no series can block settlement. One 50-position batch measured 3.4 million gas. 9 tests in `BatchSettlement.t.sol`. |
+| 1 | High | **The vault had no solvency guard.** `settlePnl` credited a winner without moving tokens and never checked that losers cover it, so a one-sided win left the vault owing more than it held (the invariant test failed with the ledger about 23.7 tokens above the tokens held). | **Fixed and deployed to testnet (2026-09-24), not audited.** The vault now counts `totalLiabilities` and refuses a profit credit the pool cannot pay (`InsufficientPoolReserves`). A funded pool (`fundPool`) backs payouts, and `RiskManager.maxNetOpenInterest` caps the long/short imbalance the pool is counterparty to. The solvency invariant now passes over 51,200 random calls with a deliberately small pool. See "Vault solvency fix" below. |
+| 2 | Medium | **Emergency pause was slow once admin sits behind a timelock, and shared a role with the oracle setters.** | **Fixed and deployed to testnet (2026-09-24), not audited.** `PAUSER_ROLE` on `MarketRegistry` and `OracleRouter` can pause and cannot unpause, change a source or change configuration; `pauseAll` is the protocol-wide stop. Pausing is fast, restoring is timelocked, on purpose. `HandOverAdmin` moves the pauser role with the admin roles, so the deployer keeps no pause power; the timelock then grants it to a fast key. 12 tests in `Pauser.t.sol` and a handover test. |
+| 3 | Medium | **A compromised quoter key could set any premium.** | **Reduced and deployed to testnet (2026-09-24), not audited.** `OptionsEngine` now rejects, at open, a premium of zero, below the option's intrinsic value at the current price (less 2%), or above the value of the underlying, and rejects a close premium above that value. This bounds what a stolen key can sign; it does not remove the risk, because a key can still sign premiums inside the bounds. The key still belongs behind a multisig or HSM, and rotating it after the handover still waits for the timelock (pause first, see the runbook). 10 tests in `PremiumBounds.t.sol`. |
+| 4 | Medium | **`OptionsEngine.settleExpired` looped over every position in a series.** | **Fixed and deployed to testnet (2026-09-24), not audited.** It now settles at most 50 positions per call and remembers its place (`settleCursor`), `settleExpiredBatch` lets the caller choose the size, and `settlePosition(positionId)` lets any holder settle their own position at once, so no series can block settlement. One 50-position batch measured 3.4 million gas. 9 tests in `BatchSettlement.t.sol`. |
 | 5 | Low | Funding is inert: mark and index price are the same, so the rate is always 0. Documented as a known limit. | Open, known |
 | 6 | Low | **Pricing service told a position's real owner "position belongs to a different address"** for a few seconds after purchase, because the RPC node it reads had not seen the position yet. Found by the live smoke test (2 of 2 runs failed at "sell back"). | **Fixed** in this change: the service retries, and answers `404 not found yet` instead of a false `403`. |
 | 7 | Info | The testnet feeds are test contracts and the settlement token has a public `mint`. | Open until real feeds and a real token exist |
@@ -139,8 +139,7 @@ Trade-off to know: when the pool cannot pay a winner, the winner's close reverts
 until losing positions settle or the pool is funded. That is the intended safe behavior, and it must be stated
 to users. The net open-interest limit and the pool size decide how often it can happen.
 
-Still open for this finding: it is not deployed anywhere, the launch reserve size and the net limits are product
-decisions, and the change needs the independent audit like everything else.
+Deployed to testnet on 2026-09-24 with `UpgradeAll` and `bootstrapLiabilities` chained, then `FundPool` (600,000 test tokens) and `SetNetOpenInterest` (50,000 on all markets); the launch check passes and the smoke test passes. Still open for this finding: the launch reserve size and the net limits for mainnet are product decisions, and the change needs the independent audit like everything else.
 
 ## Pause, premium and settlement fixes (findings 2 to 4)
 
@@ -155,6 +154,18 @@ decisions, and the change needs the independent audit like everything else.
 | SDK and web | `options.settlePosition`, the new error classes and the web Settle button typecheck; the button now settles the holder's own position |
 
 The price bounds make opening an option depend on a fresh oracle price, which it did not before.
+
+## Live checks after the testnet upgrade (2026-09-24)
+
+| Check | Result |
+|---|---|
+| `UpgradeAll` on the live testnet | All 20 proxies moved to new implementations; proxy addresses unchanged; the counter equals the tokens held |
+| `check-launch-limits.sh` | Passes on 20 active markets; pool 600,000 covers 500,000 |
+| `testnet-smoke.ts` | Passes: perp open and close, option bought on a signed quote and sold back, withdrawal |
+| Pauser separation, throwaway key | It paused an oracle; unpausing, changing a source and turning a market on all reverted with `AccessControlUnauthorizedAccount`; role revoked afterwards |
+| Option settlement | A call expired in the money and `settlePosition` paid it out (+19.98 on a payout of 20 after the fee) |
+| Premium bound | The bound refused a zero-premium quote from the pricing service; the service no longer signs one |
+| Explorer | All 20 new implementations are fully verified |
 
 ## Still not done
 
