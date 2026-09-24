@@ -209,6 +209,14 @@ export function buildServer(options: PricingOptions = {}) {
       ]);
       // Opening pays the ask.
       const premium = premiumForOrder(result.ask, contractSize, BigInt(contracts), tokenDecimals);
+      // OptionsEngine refuses a premium of zero, so never sign one: a flat price history can measure a
+      // volatility so small that a short-dated option rounds to nothing, and the user would only get a
+      // revert. Say so instead.
+      if (premium <= 0n) {
+        return reply.code(422).send({
+          error: "no signed quote: this option is worth less than the smallest unit of the settlement token",
+        });
+      }
       const validUntil = nowSeconds() + QUOTE_TTL_SECONDS;
       const nonce = randomNonce();
       const signature = await account.signTypedData(
