@@ -5,6 +5,16 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Deployed to testnet — vault solvency, fast pauser, premium bounds, batched settlement (2026-09-24)
+
+`UpgradeAll.s.sol` upgraded all 20 proxies to the code merged in PRs #8 and #9. **The proxy addresses did not change**; the 20 new implementation addresses are in `deployments/robinhood_testnet.implementations.json`.
+
+- **Vault solvency.** The vault counts `totalLiabilities` and refuses a profit credit its pool cannot pay (`InsufficientPoolReserves`). Because the deployed vault already held balances, `bootstrapLiabilities(token)` was called right after the upgrade (it sets the counter to the tokens held, so the pool starts at 0). `FundPool.s.sol` then funded the pool with 600,000 test tokens, and `SetNetOpenInterest.s.sol` set `maxNetOpenInterest` to 50,000 on all 21 markets.
+- **Pauser.** `PAUSER_ROLE` on `MarketRegistry` and `OracleRouter` can pause and cannot unpause or change a source; `MarketRegistry.pauseAll` stops every market. Existing proxies do not get the role automatically, so the deployer was granted it. Proven live with a throwaway key: it paused an oracle, and its attempts to unpause, change a source and turn a market on all reverted with `AccessControlUnauthorizedAccount`.
+- **Options.** Premiums are bounded on chain (`PremiumOutOfBounds`), `settleExpired` settles 50 positions per call, and `settlePosition(positionId)` settles one position at once. Proven live: a call expired in the money and `settlePosition` paid it out.
+- **Found live.** For a short-dated at-the-money option the pricing service once quoted a premium of exactly 0, which the old contract would have sold for free and the new one refuses. The pricing service no longer signs a zero premium (this change).
+
+
 ### Changed — every contract is an upgradeable proxy, so a testnet redeploy keeps its addresses
 
 A redeploy used to create 20 new contracts and 20 new addresses, and every client (web app, API, keeper, indexer, SDK) had to pick them up. All 20 contracts now sit behind an ERC-1967 proxy with the UUPS upgrade pattern. The proxy address is the contract's address for good: shipping a change means deploying a new implementation and pointing the proxy at it, and all state (balances, positions, roles) stays.

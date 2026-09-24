@@ -74,6 +74,17 @@ test("no user, or no signing key, means analytics only", async () => {
   assert.ok(keyless.premium > 0);
 });
 
+test("never signs a zero premium", async () => {
+  // A premium that rounds to nothing (here, a zero contract size) must not be signed: the contract
+  // refuses it, and the user would only see a revert.
+  const base = fakeAlphaMarkets();
+  const alphaMarkets = { ...base, options: { ...base.options, contractSize: async () => 0n } } as unknown as typeof base;
+  const app = buildServer({ alphaMarkets, account: quoter, now: () => NOW_MS });
+  const response = await app.inject({ method: "POST", url: "/quote", payload: body });
+  assert.equal(response.statusCode, 422);
+  assert.match(response.json().error, /smallest unit/);
+});
+
 test("rejects a malformed user address", async () => {
   const app = buildServer({ alphaMarkets: fakeAlphaMarkets(), account: quoter, now: () => NOW_MS });
   const response = await app.inject({ method: "POST", url: "/quote", payload: { ...body, user: "0x123" } });
