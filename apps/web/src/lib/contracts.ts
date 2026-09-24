@@ -28,5 +28,4 @@ export const CONTRACTS = [
   { label: "Cross margin manager", description: "Backs a cross position with the whole account, not just itself.", address: env.addresses.crossMargin },
   { label: "Subaccount factory", description: "Creates subaccounts and limits what they're allowed to call.", address: env.addresses.subaccountFactory },
   { label: "RFQ manager", description: "Lets a market maker quote a user's trade directly, off the order book.", address: env.addresses.rfqManager },
-  { label: "Settlement token", description: "The token every account deposits as collateral and margin.", address: env.addresses.settlementToken },
 ];
