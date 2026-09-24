@@ -43,3 +43,5 @@ __pycache__/
 .simulator/
 .vercel
 .env*
+
+__pycache__/
