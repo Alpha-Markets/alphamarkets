@@ -1,4 +1,4 @@
-import { addressesForChain, resolveChainId, type ChainId, type ContractAddresses } from "@alphamarkets/config";
+import { addressesForChain, protocolTokens, resolveChainId, type ChainId, type ContractAddresses } from "@alphamarkets/config";
 import type { Address } from "@alphamarkets/types";
 
 /// Every value the terminal needs from the environment (PROJECT_BRIEF.md Section 4). Next only
@@ -27,6 +27,8 @@ const raw = {
   fundingManager: process.env.NEXT_PUBLIC_FUNDING_MANAGER,
   priceValidator: process.env.NEXT_PUBLIC_PRICE_VALIDATOR,
   buybackModule: process.env.NEXT_PUBLIC_BUYBACK_MODULE,
+  protocolTokenAddress: process.env.NEXT_PUBLIC_PROTOCOL_TOKEN_ADDRESS,
+  protocolTokenSymbol: process.env.NEXT_PUBLIC_PROTOCOL_TOKEN_SYMBOL,
   optionStrikeStepBps: process.env.NEXT_PUBLIC_OPTION_STRIKE_STEP_BPS,
   optionStrikeRows: process.env.NEXT_PUBLIC_OPTION_STRIKE_ROWS,
   optionExpiryDays: process.env.NEXT_PUBLIC_OPTION_EXPIRY_DAYS,
@@ -81,6 +83,15 @@ function resolveAddresses(): ContractAddresses {
   return resolved;
 }
 
+/// The protocol token shown as "CA" on the landing page: the environment wins, then the chain's recorded
+/// token; a malformed address is ignored rather than shown, so the badge falls back to "Coming Soon".
+function resolveProtocolToken(): { address: Address; symbol: string } | undefined {
+  const recorded = protocolTokens[chainId];
+  const address = (raw.protocolTokenAddress || recorded?.address || "").trim();
+  if (!/^0x[0-9a-fA-F]{40}$/.test(address)) return undefined;
+  return { address: address as Address, symbol: raw.protocolTokenSymbol?.trim() || recorded?.symbol || "" };
+}
+
 export const env = {
   chainId,
   /// No default RPC is baked in: Robinhood's own default had an expired TLS certificate
@@ -96,6 +107,8 @@ export const env = {
   explorerUrl: raw.explorerUrl,
   apiUrl: raw.apiUrl ? raw.apiUrl.replace(/\/+$/, "") : undefined,
   addresses: resolveAddresses(),
+  /// Absent until a token exists for this chain.
+  protocolToken: resolveProtocolToken(),
   /// Limit orders need a deployment that includes `PerpOrderManager`; the terminal hides them without one.
   limitOrders: Boolean(resolveAddresses().perpOrderManager),
   /// Cross margin needs a deployment that includes `CrossMarginManager`; the ticket hides it without one.

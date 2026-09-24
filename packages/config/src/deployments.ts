@@ -137,3 +137,12 @@ export function resolveAddresses(
   }
   return resolved;
 }
+
+/// The protocol token of a chain, when one exists. It is not a contract of this stack: `BuybackModule`
+/// takes it through `setProtocolToken`, and nothing here reads it on chain. The mainnet token was created
+/// outside this repository (name "Alpha Markets", 18 decimals, 1,000,000,000 supply, checked on chain on
+/// 2026-09-25), so it is recorded here as a display fact, not a deployment. A web build may override both
+/// values with `NEXT_PUBLIC_PROTOCOL_TOKEN_ADDRESS` and `NEXT_PUBLIC_PROTOCOL_TOKEN_SYMBOL`.
+export const protocolTokens: Partial<Record<ChainId, { address: Address; symbol: string }>> = {
+  [ROBINHOOD_MAINNET_CHAIN_ID]: { address: "0xaf9eb3274b41e372c58b39fabd01e1d1eebc3579", symbol: "ALPHA" },
+};
