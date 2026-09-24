@@ -31,9 +31,24 @@ contract AlphaMarketsVault is IAlphaMarketsVault, UpgradeableBase, ReentrancyGua
     /// withdrawing the free balance that backs its positions. Zero means no check.
     IWithdrawGuard public withdrawGuard;
 
-    event WithdrawGuardUpdated(address indexed guard);
+    /// @notice The sum of every account's ledger balance in `token`, kept by this contract on each ledger
+    /// change (only the vault can write to CollateralManager). It is what the vault owes its users.
+    /// Appended after `withdrawGuard`, so it does not move any existing storage slot.
+    mapping(address => uint256) public totalLiabilities;
+    /// @notice Whether `bootstrapLiabilities` was used for a token. See that function.
+    mapping(address => bool) public liabilitiesBootstrapped;
 
+    event WithdrawGuardUpdated(address indexed guard);
+    /// @notice Capital added to the pool that backs trader profit. It is credited to no account.
+    event PoolFunded(address indexed funder, address indexed token, uint256 amount);
+
+    event LiabilitiesBootstrapped(address indexed token, uint256 amount);
+
+    error AlreadyTracked();
     error InsufficientCollateral();
+    /// @notice A profit credit was refused because the tokens the vault holds would no longer cover what
+    /// it owes. `available` is the pool balance at that moment, `needed` the credit asked for.
+    error InsufficientPoolReserves(uint256 needed, uint256 available);
     error ZeroAddress();
     error ZeroAmount();
 
@@ -62,7 +77,32 @@ contract AlphaMarketsVault is IAlphaMarketsVault, UpgradeableBase, ReentrancyGua
         if (amount == 0) revert ZeroAmount();
         IERC20(token).safeTransferFrom(msg.sender, address(this), amount);
         collateralManager.deposit(msg.sender, token, amount);
+        totalLiabilities[token] += amount;
         emit CollateralDeposited(msg.sender, token, amount);
+    }
+
+    /// @notice Adds capital to the pool that pays trader profit, without crediting any account. Anyone
+    /// may add to it (the treasury at launch, liquidity providers later). The vault is the counterparty
+    /// to every position, and a winner is paid from this pool while the loser's side is still unrealized.
+    /// Pool funds leave only as payouts to traders: there is deliberately no admin function to take
+    /// them out.
+    function fundPool(address token, uint256 amount) external nonReentrant {
+        if (amount == 0) revert ZeroAmount();
+        IERC20(token).safeTransferFrom(msg.sender, address(this), amount);
+        emit PoolFunded(msg.sender, token, amount);
+    }
+
+    /// @notice Only for a vault that was upgraded from code that did not count `totalLiabilities`, so its
+    /// users already hold ledger balances the counter has not seen. Sets the counter to every token the
+    /// vault holds, which counts the whole balance as owed and the pool as empty: the safe side, since the
+    /// true figure cannot be above it. Usable once per token, and only while the counter is still zero.
+    /// A vault deployed with this code never needs it.
+    function bootstrapLiabilities(address token) external onlyRole(VAULT_ADMIN_ROLE) {
+        if (liabilitiesBootstrapped[token] || totalLiabilities[token] != 0) revert AlreadyTracked();
+        liabilitiesBootstrapped[token] = true;
+        uint256 held = IERC20(token).balanceOf(address(this));
+        totalLiabilities[token] = held;
+        emit LiabilitiesBootstrapped(token, held);
     }
 
     function setWithdrawGuard(address guard) external onlyRole(VAULT_ADMIN_ROLE) {
@@ -76,6 +116,7 @@ contract AlphaMarketsVault is IAlphaMarketsVault, UpgradeableBase, ReentrancyGua
         if (address(withdrawGuard) != address(0)) withdrawGuard.check(msg.sender, token, amount);
 
         collateralManager.withdraw(msg.sender, token, amount);
+        totalLiabilities[token] -= amount;
         IERC20(token).safeTransfer(msg.sender, amount);
         emit CollateralWithdrawn(msg.sender, token, amount);
     }
@@ -94,13 +135,24 @@ contract AlphaMarketsVault is IAlphaMarketsVault, UpgradeableBase, ReentrancyGua
     }
 
     /// @notice Applies a signed realized-PnL adjustment to `user`'s ledger balance.
-    /// Positive credits the user; negative debits them. The protocol's shared custody pool
-    /// backs this — solvency is enforced upstream by RiskManager/LiquidationEngine, not here.
+    /// Positive credits the user; negative debits them.
+    ///
+    /// A credit is a payout from the pool, so it reverts with {InsufficientPoolReserves} unless the tokens
+    /// the vault holds still cover everything it owes afterwards. A debit is a loss the pool keeps, which
+    /// adds to the pool. This is what stops the vault from owing more than it holds, which would leave
+    /// the last users to withdraw unable to.
     function settlePnl(address user, address token, int256 amount) external onlyRole(ENGINE_ROLE) {
         if (amount > 0) {
-            collateralManager.deposit(user, token, uint256(amount));
+            uint256 credit = uint256(amount);
+            uint256 held = IERC20(token).balanceOf(address(this));
+            uint256 owed = totalLiabilities[token];
+            if (owed + credit > held) revert InsufficientPoolReserves(credit, held > owed ? held - owed : 0);
+            collateralManager.deposit(user, token, credit);
+            totalLiabilities[token] = owed + credit;
         } else if (amount < 0) {
-            collateralManager.withdraw(user, token, uint256(-amount));
+            uint256 debit = uint256(-amount);
+            collateralManager.withdraw(user, token, debit);
+            totalLiabilities[token] -= debit;
         }
     }
 
@@ -126,12 +178,21 @@ contract AlphaMarketsVault is IAlphaMarketsVault, UpgradeableBase, ReentrancyGua
     {
         if (amount == 0) return;
         collateralManager.withdraw(user, token, amount);
+        totalLiabilities[token] -= amount;
         IERC20(token).safeTransfer(msg.sender, amount);
     }
 
     // ---------------------------------------------------------------------
     // Views
     // ---------------------------------------------------------------------
+
+    /// @notice The tokens the vault holds beyond what it owes its users: seeded capital, plus the losses and
+    /// fees it has kept, minus what it paid out. A profit credit larger than this reverts.
+    function poolBalance(address token) external view returns (uint256) {
+        uint256 held = IERC20(token).balanceOf(address(this));
+        uint256 owed = totalLiabilities[token];
+        return held > owed ? held - owed : 0;
+    }
 
     function availableBalance(address user, address token) public view returns (uint256) {
         uint256 balance = collateralManager.balanceOf(user, token);

@@ -15,4 +15,8 @@ interface IAlphaMarketsVault {
     function transferFee(address user, address token, uint256 amount, bytes32 feeType) external;
 
     function availableBalance(address user, address token) external view returns (uint256);
+
+    function poolBalance(address token) external view returns (uint256);
+
+    function totalLiabilities(address token) external view returns (uint256);
 }

@@ -77,6 +77,13 @@ contract BaseTest is Test, StackDeployer {
         return 18;
     }
 
+    /// @dev Capital the vault's pool holds from the start, in whole settlement tokens. A trader's profit is
+    /// paid from this pool while the loser's side is still unrealized, and a credit larger than the pool
+    /// reverts with `InsufficientPoolReserves`. A test of that limit overrides this with a small number.
+    function _poolSeed() internal pure virtual returns (uint256) {
+        return 10_000_000;
+    }
+
     function setUp() public virtual {
         vm.startPrank(admin);
 
@@ -109,6 +116,13 @@ contract BaseTest is Test, StackDeployer {
 
         _wireRoles();
         _seedMarket();
+
+        uint256 seed = _poolSeed() * 10 ** _settlementDecimals();
+        if (seed > 0) {
+            usdc.mint(admin, seed);
+            usdc.approve(address(vault), seed);
+            vault.fundPool(address(usdc), seed);
+        }
 
         vm.stopPrank();
 

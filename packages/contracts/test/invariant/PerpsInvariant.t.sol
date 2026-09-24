@@ -21,6 +21,12 @@ contract PerpsHandler is BaseTest {
         actors.push(bob);
     }
 
+    /// @dev A small pool, so random profits reach its limit and the solvency guard is exercised: a winner
+    /// that the pool cannot pay reverts, and the invariants below must still hold.
+    function _poolSeed() internal pure override returns (uint256) {
+        return 100;
+    }
+
     /// @dev The test contract below calls this instead of `setUp` so the handler owns the deployment.
     function setUp() public override {}
 
@@ -101,6 +107,17 @@ contract PerpsHandler is BaseTest {
         tokens = usdc.balanceOf(address(vault));
     }
 
+    /// @return liabilities_ The vault's own count of what it owes.
+    /// @return ledger The sum of the ledger balances of every account that can hold one in this run.
+    function liabilities() external view returns (uint256 liabilities_, uint256 ledger) {
+        address token = address(usdc);
+        liabilities_ = vault.totalLiabilities(token);
+        ledger = collateralManager.balanceOf(keeper, token) + collateralManager.balanceOf(address(insuranceFund), token);
+        for (uint256 a; a < actors.length; a++) {
+            ledger += collateralManager.balanceOf(actors[a], token);
+        }
+    }
+
     function totalOpenInterestCap() external view returns (uint256) {
         return riskManager.getRiskConfig(NVDA).openInterestCap;
     }
@@ -138,14 +155,18 @@ contract PerpsInvariantTest is StdInvariant, Test {
         assertEq(handler.malformedOpenPositions(), 0, "open position with zero size or margin");
     }
 
-    /// Solvency probe, deliberately NOT named `invariant_` so CI does not run it: it fails today.
-    /// The vault credits a winner's profit to the ledger without moving tokens and never checks that
-    /// losers cover it, so after one long and one short of different sizes and a price move the
-    /// ledger exceeds the tokens held (about 23.7 tokens in the shrunk counterexample). Rename it to
-    /// `invariant_vaultTokensCoverLedger` once the vault reserves or caps unmatched profit, and it
-    /// becomes the regression test for that fix.
-    function probe_vaultTokensCoverLedger() public view {
+    /// Solvency: the token the vault holds covers every tracked ledger balance plus locked margin, however
+    /// the profits and losses fall. The vault refuses a profit credit that the pool cannot pay
+    /// (`InsufficientPoolReserves`), which is what keeps this true.
+    function invariant_vaultTokensCoverLedger() public view {
         (uint256 ledger, uint256 tokens) = handler.solvency();
         assertLe(ledger, tokens, "ledger exceeds tokens held");
+    }
+
+    /// The vault's own count of what it owes equals the sum of the ledger balances, so the solvency check
+    /// above compares against a true figure.
+    function invariant_liabilitiesMatchTheLedger() public view {
+        (uint256 liabilities, uint256 ledger) = handler.liabilities();
+        assertEq(liabilities, ledger, "liabilities counter drifted from the ledger");
     }
 }
