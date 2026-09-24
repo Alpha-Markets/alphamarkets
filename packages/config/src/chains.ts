@@ -4,7 +4,12 @@ import type { Chain } from "viem";
 /// packages/contracts/CHANGELOG.md [1.0.0-testnet]).
 export const ROBINHOOD_TESTNET_CHAIN_ID = 46_630 as const;
 
-export type ChainId = typeof ROBINHOOD_TESTNET_CHAIN_ID;
+/// Robinhood Chain mainnet (docs.robinhood.com/chain, confirmed with `cast chain-id` on
+/// https://rpc.mainnet.chain.robinhood.com). The stack was deployed here on 2026-09-25, empty and
+/// unaudited; see docs/MAINNET_READINESS.md before pointing a public site at it.
+export const ROBINHOOD_MAINNET_CHAIN_ID = 4_663 as const;
+
+export type ChainId = typeof ROBINHOOD_TESTNET_CHAIN_ID | typeof ROBINHOOD_MAINNET_CHAIN_ID;
 
 /// No RPC URL is baked in; callers supply their own transport. The official endpoint is
 /// https://rpc.testnet.chain.robinhood.com (its TLS cert expired at the time of the first deploy,
@@ -21,8 +26,21 @@ export const robinhoodTestnet: Chain = {
   contracts: { multicall3: { address: "0xcA11bde05977b3631167028862bE2a173976CA11" } },
 };
 
+/// No RPC URL is baked in here either. Official endpoint: https://rpc.mainnet.chain.robinhood.com;
+/// use a proxied, rate-limited provider for the public web build. `multicall3` is the canonical
+/// deployment, confirmed present on chain 4663 (`eth_getCode` returns bytecode).
+export const robinhoodMainnet: Chain = {
+  id: ROBINHOOD_MAINNET_CHAIN_ID,
+  name: "Robinhood Chain",
+  nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 },
+  rpcUrls: { default: { http: [] } },
+  blockExplorers: { default: { name: "Blockscout", url: "https://robinhoodchain.blockscout.com" } },
+  contracts: { multicall3: { address: "0xcA11bde05977b3631167028862bE2a173976CA11" } },
+};
+
 export const chains: Record<ChainId, Chain> = {
   [ROBINHOOD_TESTNET_CHAIN_ID]: robinhoodTestnet,
+  [ROBINHOOD_MAINNET_CHAIN_ID]: robinhoodMainnet,
 };
 
 /// The chain a service or app runs against, from its `CHAIN_ID` (`NEXT_PUBLIC_CHAIN_ID` in the web
