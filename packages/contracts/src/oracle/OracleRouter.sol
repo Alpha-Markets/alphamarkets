@@ -16,6 +16,11 @@ import {PriceValidator} from "./PriceValidator.sol";
 /// (no onchain perp order book), so `getIndexPrice` and `getMarkPrice` resolve identically.
 contract OracleRouter is IOracle, UpgradeableBase {
     bytes32 public constant ORACLE_ADMIN_ROLE = keccak256("ORACLE_ADMIN_ROLE");
+    /// @notice May pause a market's oracle and nothing else: it cannot unpause, or change a source or limit.
+    /// A key held for speed (an on-call operator, a monitoring bot) can stop trading in an emergency without
+    /// being able to swap the price source, while everything that changes behaviour stays behind the admin
+    /// (the timelock).
+    bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
     bytes32 public constant ENGINE_ROLE = keccak256("ENGINE_ROLE");
     uint8 public constant CANONICAL_DECIMALS = 18;
 
@@ -53,6 +58,7 @@ contract OracleRouter is IOracle, UpgradeableBase {
         if (admin == address(0)) revert ZeroAddress();
         __UpgradeableBase_init(admin);
         _grantRole(ORACLE_ADMIN_ROLE, admin);
+        _grantRole(PAUSER_ROLE, admin);
     }
 
     // ---------------------------------------------------------------------
@@ -72,7 +78,10 @@ contract OracleRouter is IOracle, UpgradeableBase {
         emit OracleSourceUpdated(marketId, primarySource[marketId], source);
     }
 
-    function pauseMarket(bytes32 marketId) external onlyRole(ORACLE_ADMIN_ROLE) {
+    /// @notice Blocks every price read for `marketId`, so it cannot open, close, liquidate or settle. Fast on
+    /// purpose: a pauser or an oracle admin may call it. Restoring it (`unpauseMarket`) is admin only.
+    function pauseMarket(bytes32 marketId) external {
+        if (!hasRole(PAUSER_ROLE, msg.sender)) _checkRole(ORACLE_ADMIN_ROLE);
         paused[marketId] = true;
         emit OracleMarketPaused(marketId, true);
     }

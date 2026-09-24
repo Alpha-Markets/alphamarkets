@@ -5,6 +5,7 @@ import {
   InsufficientMarginError,
   InvalidOraclePriceError,
   InvalidQuoteError,
+  PremiumOutOfBoundsError,
   MarketPausedError,
   InsufficientPoolReservesError,
   OpenInterestLimitExceededError,
@@ -83,6 +84,7 @@ export function errorMessage(error: unknown): string {
   if (error instanceof OpenInterestLimitExceededError) return "The market's open interest limit is reached. Try a smaller size.";
   if (error instanceof QuoteExpiredError) return "The option price expired before it confirmed. Request a new price and try again.";
   if (error instanceof QuoteAlreadyUsedError) return "That option price was already used. Request a new price and try again.";
+  if (error instanceof PremiumOutOfBoundsError) return "The option price was outside the allowed range for the current market price. Request a new price and try again.";
   if (error instanceof InvalidQuoteError) return "The option price could not be verified. Request a new price and try again.";
   if (error instanceof DeadlineExpiredError) return "The order took too long to confirm. Submit it again.";
   if (error instanceof SlippageExceededError) return "The price moved past your slippage limit. Submit it again at the new price.";

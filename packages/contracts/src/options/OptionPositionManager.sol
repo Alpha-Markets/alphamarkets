@@ -86,4 +86,24 @@ contract OptionPositionManager is UpgradeableBase {
     function getSeriesPositions(bytes32 seriesId) external view returns (uint256[] memory) {
         return _seriesPositions[seriesId];
     }
+
+    function seriesPositionCount(bytes32 seriesId) external view returns (uint256) {
+        return _seriesPositions[seriesId].length;
+    }
+
+    /// @notice The position ids of a series from index `from` up to but not including `to`, so a large series
+    /// is read in bounded pieces instead of all at once. `to` is capped at the series length.
+    function getSeriesPositionsRange(bytes32 seriesId, uint256 from, uint256 to)
+        external
+        view
+        returns (uint256[] memory ids)
+    {
+        uint256[] storage all = _seriesPositions[seriesId];
+        if (to > all.length) to = all.length;
+        if (from >= to) return new uint256[](0);
+        ids = new uint256[](to - from);
+        for (uint256 i = 0; i < ids.length; i++) {
+            ids[i] = all[from + i];
+        }
+    }
 }

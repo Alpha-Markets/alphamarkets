@@ -48,16 +48,20 @@ and would be valuable additions from the auditor.
 
 ## Known issues (please confirm severity and look for more)
 
-1. Emergency pause is slow behind a timelock, and `pauseMarket` shares a role with the oracle setters (no
-   protocol-wide pause).
-2. A compromised quoter key can set any option premium: no floor or ceiling in `OptionsEngine`.
-3. `OptionsEngine.settleExpired` loops over every position in a series (gas).
-4. Funding is inert: `getMarkPrice` and `getIndexPrice` return the same value.
-5. Options are buy-only: the vault pool is the counterparty. The vault refuses a payout its pool cannot cover
+1. Funding is inert: `getMarkPrice` and `getIndexPrice` return the same value.
+2. Options are buy-only: the vault pool is the counterparty. The vault refuses a payout its pool cannot cover
    (`InsufficientPoolReserves`), so a winner's close can revert until losses settle or the pool is funded.
-6. Bad debt is emitted (`BadDebt`) and not socialized.
-7. Vault solvency was a finding in the first review and is fixed in PR #8. Please review that fix closely: the
-   `totalLiabilities` counter, `fundPool`, `bootstrapLiabilities` and `RiskManager.maxNetOpenInterest`.
+3. Bad debt is emitted (`BadDebt`) and not socialized.
+4. A compromised quoter key can still sign premiums inside the on-chain bounds (above the option's intrinsic
+   value less 2% and below the value of the underlying).
+5. Opening an option now needs a fresh oracle price.
+
+Fixed since the first review, and worth a close look because they are new code:
+
+- Vault solvency: `totalLiabilities`, `fundPool`, `bootstrapLiabilities`, `RiskManager.maxNetOpenInterest`.
+- A separate `PAUSER_ROLE` and `MarketRegistry.pauseAll`, with restoring left to the admin.
+- `OptionsEngine` premium bounds (`_checkPremiumBounds`) and batched settlement (`settleExpired`,
+  `settleExpiredBatch`, `settlePosition`, `settleCursor`).
 
 ## Questions we would like answered
 

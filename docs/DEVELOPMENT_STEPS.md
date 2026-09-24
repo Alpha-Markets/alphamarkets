@@ -390,7 +390,8 @@ and so are the first four findings in that document.
 - [x] Oracle safeguards verified live on testnet: stale price rejection, deviation rejection, fallback source, emergency pause, each triggered once on the real `OracleRouter` (transactions in `docs/SECURITY_REVIEW.md`).
 - [ ] Admin keys deployment-ready (Section 37): confirm multisig/timelock wiring if used for mainnet, not left on a single EOA.
   - Done: the `UpgradeAll` and `HandOverAdmin` scripts were rehearsed on a fork with a timelock; the deployer ended with no admin role and the timelock could act after its delay.
-  - Open: no multisig or timelock is chosen or deployed, and the live deployer still holds every role. The rehearsal also showed that an emergency pause would wait for the timelock delay (finding 2).
+  - Done since: a separate `PAUSER_ROLE` and a protocol-wide `pauseAll` fix the slow-pause problem in code (finding 2), so a fast key can pause without the timelock. Not deployed, not audited.
+  - Open: no multisig or timelock is chosen or deployed, the live deployer still holds every role, and the fast pauser key is not chosen.
 - [ ] Open interest caps and position caps set conservatively for initial launch (canary limits), raised only after mainnet is stable. `packages/contracts/script/check-launch-limits.sh` now enforces chosen limits against the chain; the limits themselves are a product decision and are not set. Testnet's caps are far above any canary value.
 - [ ] Rollback/pause plan documented: who can pause which contract, how fast, communicated to team before launch. `docs/RUNBOOK.md` documents what each pause lever does and the rollback steps; the people and response times in it are **TBD** and the pause-speed decision is open.
 
@@ -401,6 +402,6 @@ and so are the first four findings in that document.
 - `pnpm typecheck` and `pnpm test` pass; the Anvil SDK integration test ran.
 - Slither on `src/`: 2 High and 29 Medium findings, all reviewed and none exploitable (triage in `docs/SECURITY_REVIEW.md`). Aderyn and Mythril were not run.
 - Live testnet: oracle safeguards probe, lifecycle run and smoke test as above. The testnet now lists 20 active markets; the earlier "nine markets" count in the hosting notes is out of date.
-- Found: the vault solvency gap (High), the slow emergency pause behind a timelock, the unbounded quote premium, the unbounded `settleExpired` loop, and the pricing-service race (fixed).
+- Found: the vault solvency gap (High), the slow emergency pause behind a timelock, the unbounded quote premium, the unbounded `settleExpired` loop, and the pricing-service race. All five are fixed in code (the vault gap, pause, premium bounds and batched settlement are not deployed and not audited yet).
 
 ---

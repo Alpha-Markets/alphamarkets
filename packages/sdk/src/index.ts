@@ -4,6 +4,8 @@ export {
   InsufficientCollateralError,
   InsufficientMarginError,
   InvalidQuoteError,
+  PositionNotExpiredError,
+  PremiumOutOfBoundsError,
   InvalidTriggerPriceError,
   LimitPriceNotReachedError,
   InvalidOraclePriceError,
