@@ -7,29 +7,32 @@ purpose: a name invented here would be worse than a blank.
 
 ## What can be paused, and by whom
 
-| Lever | Call | Role | Effect | Does not stop |
+| Lever | Call | Who | Effect | Does not stop |
 |---|---|---|---|---|
-| Stop new positions in one market | `MarketRegistry.setActive(marketId, false)` | `MARKET_ADMIN_ROLE` | New perp positions, position increases, limit orders and new option positions revert with `MarketPaused` | Closing or reducing a position, liquidation, option settlement |
-| Stop all price reads for one market | `OracleRouter.pauseMarket(marketId)` | `ORACLE_ADMIN_ROLE` | Every read of that market's price reverts with `MarketOraclePaused`: no opens, no closes, **no liquidations**, no option settlement for it | Other markets |
-| Restore | `setActive(marketId, true)` or `OracleRouter.unpauseMarket(marketId)` | same roles | Reads and trading resume | |
+| Stop new trading in every market | `MarketRegistry.pauseAll()` | `PAUSER_ROLE` | Every active market becomes inactive: new positions, increases, limit orders and new options revert with `MarketPaused` | Closing or reducing a position, liquidation, option settlement |
+| Stop new trading in one market | `MarketRegistry.setActive(marketId, false)` | `PAUSER_ROLE` or `MARKET_ADMIN_ROLE` | Same, for one market | Same |
+| Stop all price reads for one market | `OracleRouter.pauseMarket(marketId)` | `PAUSER_ROLE` or `ORACLE_ADMIN_ROLE` | Every read of that market's price reverts with `MarketOraclePaused`: no opens, no closes, **no liquidations**, no option settlement for it | Other markets |
+| Turn a market back on | `MarketRegistry.setActive(marketId, true)` | `MARKET_ADMIN_ROLE` only | Trading resumes for that market | |
+| Restore an oracle | `OracleRouter.unpauseMarket(marketId)` | `ORACLE_ADMIN_ROLE` only | Reads resume | |
 
-- There is **no protocol-wide pause**. To stop everything, each market has to be paused one by one.
+- Pausing is deliberately fast and restoring is deliberately slow. The pauser cannot turn anything back on,
+  change a price source or change any configuration, so a stolen pauser key can stop trading but not steal.
 - Pausing the oracle also blocks liquidations for that market, so a long pause lets underwater positions build.
-  Prefer `setActive(false)` when the price is trustworthy and only the trading needs to stop.
-- `OracleRouter.pauseMarket` and the oracle source setters share `ORACLE_ADMIN_ROLE`. A key that can pause the
-  oracle can also swap its price source.
+  Prefer `pauseAll` or `setActive(false)` when the price is trustworthy and only trading needs to stop.
+- After a pause, restoring is one call per market by the admin (the timelock), so a full restart takes as many
+  admin calls as there are markets.
 
-## The speed of a pause once admin sits behind a timelock
+## Pause speed once admin sits behind a timelock
 
 The rehearsal on a fork showed that an admin call sent through a `TimelockController` executes only after its
-delay: an early execute reverts with `TimelockUnexpectedOperationState`. So after the handover, an emergency pause
-takes at least the timelock delay to land. **This is an open risk (finding 2 in `SECURITY_REVIEW.md`).** Decide
-before mainnet between:
+delay. The pause therefore must not depend on the admin: the timelock grants `PAUSER_ROLE` to a fast key (an
+on-call operator, a monitoring bot) on both `MarketRegistry` and `OracleRouter`, and that key pauses directly.
+`HandOverAdmin.s.sol` moves the role from the deployer to the new admin along with the admin roles, so the
+deployer keeps no pause power after the handover. Granting the pauser key is then a timelocked admin call: do it
+before launch, not during an incident.
 
-1. A separate pauser role that a fast key holds and that can only pause (needs a contract change), or
-2. A timelock delay short enough to accept for a pause.
-
-Until one of these is done, do not describe the protocol as having an emergency stop.
+A vault or contract already deployed from older code has no pauser: the admin grants `PAUSER_ROLE` after the
+upgrade, because it is only given automatically to a fresh deployment.
 
 ## Who does what (TBD)
 
@@ -47,9 +50,10 @@ Until one of these is done, do not describe the protocol as having an emergency 
 by more than the max deviation. If the price is wrong but still fresh and in agreement, pause the market's oracle
 (`pauseMarket`), then fix the source with `setPrimarySource` or `setFallbackSource`, then unpause.
 
-**Quoter key compromised.** An attacker can sign option quotes with any premium until the role is revoked. Revoke
-`QUOTER_ROLE` on `OptionsEngine` and grant it to a new key. After the handover this is an admin call and is
-delayed by the timelock, so pause option trading first with `setActive(false)` on each market. Signed quotes
+**Quoter key compromised.** An attacker can sign option quotes until the role is revoked, but only with premiums
+inside the on-chain bounds (not zero, not below the option's intrinsic value less 2%, not above the value of the
+underlying). Call `pauseAll` first, which the pauser can do at once. Then revoke `QUOTER_ROLE` on `OptionsEngine`
+and grant it to a new key: after the handover that is an admin call and waits for the timelock. Signed quotes
 expire after 30 seconds, so nothing already signed stays valid for long.
 
 **Maker key compromised (RFQ).** Same steps for `MAKER_ROLE` on `RFQManager`.
@@ -57,6 +61,11 @@ expire after 30 seconds, so nothing already signed stays valid for long.
 **Keeper or liquidator down.** Nothing in the protocol liquidates on its own. If no bot is running, positions stay
 open past their maintenance margin. Restart the bot and check the API's price timestamp is fresh. On testnet the
 keeper also refreshes the mock feeds, which go stale after 1 hour; that does not apply to real feeds.
+
+**Option settlement backlog.** A series settles 50 positions per `settleExpired` call. A holder never waits: they
+call `settlePosition(positionId)` (the web app's Settle button does). A keeper can finish a series with repeated
+`settleExpired` calls or `settleExpiredBatch` with a larger size; `settleCursor(seriesId)` against
+`seriesPositionCount(seriesId)` shows the progress.
 
 **Indexer or API down.** The chain stays the source of truth: positions, balances and settlement are unaffected.
 The web app shows stale or missing history and cannot fetch option quotes. Users can still close perps and
@@ -110,6 +119,6 @@ Order for a fresh mainnet deployment: `DeployAll`, add the markets, `SetNetOpenI
 ## Before launch
 
 - [ ] Every **TBD** above is filled in.
-- [ ] The pause-speed decision above is made and, if it needs a contract change, done.
+- [ ] A fast pauser key is chosen, granted `PAUSER_ROLE` on `MarketRegistry` and `OracleRouter`, and a pause was rehearsed with it.
 - [ ] `check-launch-limits.sh` passes with the chosen limits.
 - [ ] A pause and an unpause were rehearsed on the staging deployment by the people named above.

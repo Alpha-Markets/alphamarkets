@@ -32,14 +32,14 @@ without it, so CI does not run them.
 | Oracle freshness | Fork test and live probe: a price older than the max age reverts with `StaleOraclePrice`. | Pass |
 | Oracle deviation | Fork test and live probe: two sources 20% apart, limit 5%, revert with `InvalidOraclePrice`. | Pass |
 | Oracle fallback | Fork test and live probe: with the primary stale and the fallback fresh, the fallback price is returned. | Pass |
-| Emergency oracle pause | Fork test and live probe: `pauseMarket` makes reads revert with `MarketOraclePaused`, `unpauseMarket` restores them. | Pass, but see finding 2 |
+| Emergency oracle pause | Fork test and live probe: `pauseMarket` makes reads revert with `MarketOraclePaused`, `unpauseMarket` restores them. New unit tests: a `PAUSER_ROLE` key can pause but cannot unpause or change a source. | Pass |
 | Precision-safe accounting | Fuzz tests on margin and option math, and 6-decimal token tests. Slither `divide-before-multiply` findings reviewed: each loses at most one unit of an 18-decimal figure. | Pass |
 | Slippage checks | Fork test: a long with a limit price far below the market reverts. | Pass |
 | Deadline checks | Fork test: an order with a past deadline reverts. | Pass |
 | Position caps and open-interest caps | Invariant: recorded open interest always equals the summed size of open positions and stays under the cap. Fork test: a leverage tier that is not allowed reverts. | Pass |
 | Withdrawal validation | Fork test: a withdrawal above the available balance reverts, and only the engine can move ledger balances. The cross-margin guard requires a buffer above the margin requirement. | Pass |
 | Upgrade controls | Only `DEFAULT_ADMIN_ROLE` can upgrade. Implementations cannot be initialised directly. `check-storage-layout.py` passes for all 20 contracts. | Pass |
-| Emergency controls | Per-market only: there is no protocol-wide pause. | Partial, see finding 2 |
+| Emergency controls | A separate `PAUSER_ROLE` can pause one market's oracle, stop one market, or stop every market at once (`MarketRegistry.pauseAll`); turning anything back on is admin only. Closing, liquidation and settlement keep working while paused (tests). | Pass in code, not deployed |
 
 ### Live oracle probe (Robinhood Chain testnet, 2026-09-24)
 
@@ -96,9 +96,9 @@ a signed quote) also passed.
 | # | Severity | Finding | Status |
 |---|---|---|---|
 | 1 | High | **The vault had no solvency guard.** `settlePnl` credited a winner without moving tokens and never checked that losers cover it, so a one-sided win left the vault owing more than it held (the invariant test failed with the ledger about 23.7 tokens above the tokens held). | **Fixed in code, not deployed, not audited.** The vault now counts `totalLiabilities` and refuses a profit credit the pool cannot pay (`InsufficientPoolReserves`). A funded pool (`fundPool`) backs payouts, and `RiskManager.maxNetOpenInterest` caps the long/short imbalance the pool is counterparty to. The solvency invariant now passes over 51,200 random calls with a deliberately small pool. See "Vault solvency fix" below. |
-| 2 | Medium | **Emergency pause is slow once admin sits behind a timelock.** The handover rehearsal showed an admin call executes only after the timelock delay. `OracleRouter.pauseMarket` shares `ORACLE_ADMIN_ROLE` with the oracle source setters, so a fast pause key could also swap the oracle. There is no protocol-wide pause. | **Open.** Needs a separate pauser role (a contract change). |
-| 3 | Medium | **A compromised quoter key can set any premium.** `OptionsEngine.openPosition` accepts the premium in a valid signed quote with no floor or ceiling, and rotating `QUOTER_ROLE` needs an admin call, which the timelock also delays. | **Open.** Needs a premium floor and ceiling in the contract, and the quoter key behind a multisig or HSM. |
-| 4 | Medium | **`OptionsEngine.settleExpired` loops over every position in a series.** A large series can exceed the block gas limit. Not triggered in any test. | **Open.** Needs a cap or a batch settle. |
+| 2 | Medium | **Emergency pause was slow once admin sits behind a timelock, and shared a role with the oracle setters.** | **Fixed in code, not deployed, not audited.** `PAUSER_ROLE` on `MarketRegistry` and `OracleRouter` can pause and cannot unpause, change a source or change configuration; `pauseAll` is the protocol-wide stop. Pausing is fast, restoring is timelocked, on purpose. `HandOverAdmin` moves the pauser role with the admin roles, so the deployer keeps no pause power; the timelock then grants it to a fast key. 12 tests in `Pauser.t.sol` and a handover test. |
+| 3 | Medium | **A compromised quoter key could set any premium.** | **Reduced in code, not deployed, not audited.** `OptionsEngine` now rejects, at open, a premium of zero, below the option's intrinsic value at the current price (less 2%), or above the value of the underlying, and rejects a close premium above that value. This bounds what a stolen key can sign; it does not remove the risk, because a key can still sign premiums inside the bounds. The key still belongs behind a multisig or HSM, and rotating it after the handover still waits for the timelock (pause first, see the runbook). 10 tests in `PremiumBounds.t.sol`. |
+| 4 | Medium | **`OptionsEngine.settleExpired` looped over every position in a series.** | **Fixed in code, not deployed, not audited.** It now settles at most 50 positions per call and remembers its place (`settleCursor`), `settleExpiredBatch` lets the caller choose the size, and `settlePosition(positionId)` lets any holder settle their own position at once, so no series can block settlement. One 50-position batch measured 3.4 million gas. 9 tests in `BatchSettlement.t.sol`. |
 | 5 | Low | Funding is inert: mark and index price are the same, so the rate is always 0. Documented as a known limit. | Open, known |
 | 6 | Low | **Pricing service told a position's real owner "position belongs to a different address"** for a few seconds after purchase, because the RPC node it reads had not seen the position yet. Found by the live smoke test (2 of 2 runs failed at "sell back"). | **Fixed** in this change: the service retries, and answers `404 not found yet` instead of a false `403`. |
 | 7 | Info | The testnet feeds are test contracts and the settlement token has a public `mint`. | Open until real feeds and a real token exist |
@@ -141,6 +141,20 @@ to users. The net open-interest limit and the pool size decide how often it can 
 
 Still open for this finding: it is not deployed anywhere, the launch reserve size and the net limits are product
 decisions, and the change needs the independent audit like everything else.
+
+## Pause, premium and settlement fixes (findings 2 to 4)
+
+| Check | Result |
+|---|---|
+| Existing 244 tests plus the vault and net-limit tests | All pass unchanged with the new bounds |
+| `Pauser.t.sol` (12) | A pauser pauses an oracle or a market but cannot unpause, change a source, or change or add a market; only a pauser can `pauseAll`; a paused market still lets users close and be liquidated; the admin holds the role from deploy |
+| `AdminHandover.t.sol` | The handover moves the pauser role to the timelock and leaves the deployer none |
+| `PremiumBounds.t.sol` (10, one fuzz at 1,024 runs) | Free, below-intrinsic and above-underlying premiums are refused for both calls and puts; within-tolerance drift is accepted; a stale oracle blocks opening; the fuzz accepts exactly the premiums inside the bounds |
+| `BatchSettlement.t.sol` (9) | 120 positions settle over three calls; a holder settles their own position first and is not paid twice; batching pays the same as one call; a finished series does nothing on a repeat call; open interest is released |
+| Storage layout | `OptionsEngine.settleCursor` is appended; all 20 contracts keep their layout |
+| SDK and web | `options.settlePosition`, the new error classes and the web Settle button typecheck; the button now settles the holder's own position |
+
+The price bounds make opening an option depend on a fresh oracle price, which it did not before.
 
 ## Still not done
 
