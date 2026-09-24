@@ -1798,6 +1798,19 @@ export const vaultAbi = [
   },
   {
     "type": "function",
+    "name": "bootstrapLiabilities",
+    "inputs": [
+      {
+        "name": "token",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
     "name": "collateralManager",
     "inputs": [],
     "outputs": [
@@ -1812,6 +1825,24 @@ export const vaultAbi = [
   {
     "type": "function",
     "name": "deposit",
+    "inputs": [
+      {
+        "name": "token",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "amount",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "fundPool",
     "inputs": [
       {
         "name": "token",
@@ -1903,6 +1934,25 @@ export const vaultAbi = [
   },
   {
     "type": "function",
+    "name": "liabilitiesBootstrapped",
+    "inputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "bool",
+        "internalType": "bool"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "lockMargin",
     "inputs": [
       {
@@ -1935,6 +1985,25 @@ export const vaultAbi = [
       },
       {
         "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "poolBalance",
+    "inputs": [
+      {
+        "name": "token",
         "type": "address",
         "internalType": "address"
       }
@@ -2071,6 +2140,25 @@ export const vaultAbi = [
         "name": "",
         "type": "bool",
         "internalType": "bool"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "totalLiabilities",
+    "inputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
       }
     ],
     "stateMutability": "view"
@@ -2245,6 +2333,50 @@ export const vaultAbi = [
   },
   {
     "type": "event",
+    "name": "LiabilitiesBootstrapped",
+    "inputs": [
+      {
+        "name": "token",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "amount",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "PoolFunded",
+    "inputs": [
+      {
+        "name": "funder",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "token",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "amount",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
     "name": "RoleAdminChanged",
     "inputs": [
       {
@@ -2378,6 +2510,11 @@ export const vaultAbi = [
   },
   {
     "type": "error",
+    "name": "AlreadyTracked",
+    "inputs": []
+  },
+  {
+    "type": "error",
     "name": "ERC1967InvalidImplementation",
     "inputs": [
       {
@@ -2401,6 +2538,22 @@ export const vaultAbi = [
     "type": "error",
     "name": "InsufficientCollateral",
     "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "InsufficientPoolReserves",
+    "inputs": [
+      {
+        "name": "needed",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "available",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ]
   },
   {
     "type": "error",
@@ -3862,7 +4015,7 @@ export const riskManagerAbi = [
         "internalType": "bytes32"
       },
       {
-        "name": "",
+        "name": "isLong",
         "type": "bool",
         "internalType": "bool"
       },
@@ -4100,6 +4253,25 @@ export const riskManagerAbi = [
   },
   {
     "type": "function",
+    "name": "maxNetOpenInterest",
+    "inputs": [
+      {
+        "name": "",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "openInterestLong",
     "inputs": [
       {
@@ -4210,6 +4382,24 @@ export const riskManagerAbi = [
   },
   {
     "type": "function",
+    "name": "setMaxNetOpenInterest",
+    "inputs": [
+      {
+        "name": "marketId",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      },
+      {
+        "name": "value",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
     "name": "setRiskConfig",
     "inputs": [
       {
@@ -4304,6 +4494,25 @@ export const riskManagerAbi = [
         "type": "uint64",
         "indexed": false,
         "internalType": "uint64"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "MaxNetOpenInterestUpdated",
+    "inputs": [
+      {
+        "name": "marketId",
+        "type": "bytes32",
+        "indexed": true,
+        "internalType": "bytes32"
+      },
+      {
+        "name": "value",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
       }
     ],
     "anonymous": false
@@ -4475,6 +4684,11 @@ export const riskManagerAbi = [
   {
     "type": "error",
     "name": "InvalidLeverageTiers",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "NetOpenInterestLimitExceeded",
     "inputs": []
   },
   {
@@ -14966,8 +15180,29 @@ export const allErrorsAbi = [
   },
   {
     "type": "error",
+    "name": "AlreadyTracked",
+    "inputs": []
+  },
+  {
+    "type": "error",
     "name": "InsufficientCollateral",
     "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "InsufficientPoolReserves",
+    "inputs": [
+      {
+        "name": "needed",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "available",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ]
   },
   {
     "type": "error",
@@ -15020,6 +15255,11 @@ export const allErrorsAbi = [
   {
     "type": "error",
     "name": "InvalidLeverageTiers",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "NetOpenInterestLimitExceeded",
     "inputs": []
   },
   {

@@ -140,9 +140,18 @@ describe("SDK against a local Anvil deployment", { skip: skipReason, timeout: 18
       abi: parseAbi(["function mint(address to, uint256 amount)"]),
       chain: null,
       functionName: "mint",
-      args: [account.address, 100_000n * 10n ** 6n],
+      args: [account.address, 200_000n * 10n ** 6n],
     });
     await deployer.waitForTransactionReceipt({ hash: mint });
+
+    // The vault pays a trader's profit from a pool of capital it holds beyond what it owes users, and
+    // refuses a payout larger than that pool. Seed one, as a launch would, so profits in these tests
+    // can be paid while the losing side is still unrealized.
+    const poolAbi = parseAbi(["function approve(address spender, uint256 amount) returns (bool)", "function fundPool(address token, uint256 amount)"]);
+    const approve = await deployer.writeContract({ address: collateral as `0x${string}`, abi: poolAbi, chain: null, functionName: "approve", args: [addresses.vault, 100_000n * 10n ** 6n] });
+    await deployer.waitForTransactionReceipt({ hash: approve });
+    const fund = await deployer.writeContract({ address: addresses.vault, abi: poolAbi, chain: null, functionName: "fundPool", args: [collateral as `0x${string}`, 100_000n * 10n ** 6n] });
+    await deployer.waitForTransactionReceipt({ hash: fund });
 
     alphaMarkets = new AlphaMarkets({ chainId: 46_630, transport: http(rpcUrl), account, addresses });
   });

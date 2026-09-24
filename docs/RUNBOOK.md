@@ -62,6 +62,12 @@ keeper also refreshes the mock feeds, which go stale after 1 hour; that does not
 The web app shows stale or missing history and cannot fetch option quotes. Users can still close perps and
 withdraw through any wallet.
 
+**The pool cannot pay a winner.** A profitable close reverts with `InsufficientPoolReserves` and the position
+stays open. It clears when losing positions settle or the pool is funded. To fund it, run `AMOUNT=<whole tokens>
+forge script script/FundPool.s.sol --rpc-url <rpc> --broadcast`. If this happens often, lower the market's
+`maxNetOpenInterest` (`script/SetNetOpenInterest.s.sol`) or fund a larger pool. There is no way to take funds back out
+of the pool, so size a top-up deliberately.
+
 **Bad debt.** A liquidation that leaves a shortfall covers it from the insurance fund and emits `BadDebt` for the
 rest. Alert on every `BadDebt` event, and check the insurance fund balance before raising caps.
 
@@ -86,13 +92,20 @@ markets are configured and before the site opens, run:
 
 ```bash
 cd packages/contracts
-RPC_URL=<mainnet rpc> MAX_POSITION=<whole tokens> MAX_OPEN_INTEREST=<whole tokens> MAX_LEVERAGE=<n> \
+RPC_URL=<mainnet rpc> MAX_POSITION=<whole tokens> MAX_OPEN_INTEREST=<whole tokens> \
+  MAX_NET_OPEN_INTEREST=<whole tokens> MAX_LEVERAGE=<n> [MAX_MOVE_BPS=5000] \
   ./script/check-launch-limits.sh <network>
 ```
 
 It reads every active market's limits from `RiskManager` and exits with an error if any is above the values you
-pass. **The numbers are a product decision and are TBD**; the script only enforces whatever you choose. Run it
-again after every change to a risk parameter.
+pass, if a market has no net open interest limit, or if the vault's pool is smaller than the sum of the net limits
+times `MAX_MOVE_BPS` (default 50%, an assumed worst one-sided price move). **The numbers are a product decision and
+are TBD**; the script only enforces whatever you choose. Run it again after every change to a risk parameter or
+to the pool.
+
+Order for a fresh mainnet deployment: `DeployAll`, add the markets, `SetNetOpenInterest`, `FundPool`, then
+`check-launch-limits.sh`. Upgrading an existing vault that already holds user balances is different: run
+`vault.bootstrapLiabilities(token)` in the same transaction batch as the upgrade, or every withdrawal reverts.
 
 ## Before launch
 

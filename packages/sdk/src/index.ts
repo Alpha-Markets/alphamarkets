@@ -10,6 +10,8 @@ export {
   MarketPausedError,
   mapError,
   NotImplementedError,
+  InsufficientPoolReservesError,
+  NetOpenInterestLimitExceededError,
   OpenInterestLimitExceededError,
   OrderExpiredError,
   OrderNotOpenError,

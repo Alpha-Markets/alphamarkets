@@ -35,6 +35,14 @@ contract RiskManager is IRiskManager, UpgradeableBase {
     mapping(bytes32 => RiskConfig) private _riskConfigs;
     mapping(bytes32 => uint256) public openInterestLong;
     mapping(bytes32 => uint256) public openInterestShort;
+    /// @notice The most that long and short open interest may differ by, per market. The vault is the
+    /// counterparty to the difference (the unmatched side has no loser to pay it), so this bounds what
+    /// a one-sided price move can cost the pool. Zero means no limit. Appended after the open-interest
+    /// mappings, so it does not move any existing storage slot.
+    mapping(bytes32 => uint256) public maxNetOpenInterest;
+
+    error NetOpenInterestLimitExceeded();
+    event MaxNetOpenInterestUpdated(bytes32 indexed marketId, uint256 value);
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
@@ -50,6 +58,11 @@ contract RiskManager is IRiskManager, UpgradeableBase {
         if (config.allowedLeverageTiers.length == 0) revert InvalidLeverageTiers();
         _riskConfigs[marketId] = config;
         emit RiskConfigUpdated(marketId);
+    }
+
+    function setMaxNetOpenInterest(bytes32 marketId, uint256 value) external onlyRole(RISK_ADMIN_ROLE) {
+        maxNetOpenInterest[marketId] = value;
+        emit MaxNetOpenInterestUpdated(marketId, value);
     }
 
     function getRiskConfig(bytes32 marketId) external view returns (RiskConfig memory) {
@@ -78,20 +91,23 @@ contract RiskManager is IRiskManager, UpgradeableBase {
         if (notional > _riskConfigs[marketId].maxPositionNotional) revert PositionLimitExceeded();
     }
 
-    /// @dev `isLong` is unused: MVP enforces one combined open-interest cap per market
-    /// rather than separate long/short caps, though long and short OI are tracked
-    /// separately (see `openInterestLong`/`openInterestShort`) for indexer/analytics use.
-    function checkOpenInterest(
-        bytes32 marketId,
-        bool,
-        /* isLong */
-        uint256 notionalDelta
-    )
-        external
-        view
-    {
-        uint256 projected = openInterestLong[marketId] + openInterestShort[marketId] + notionalDelta;
-        if (projected > _riskConfigs[marketId].openInterestCap) revert OpenInterestLimitExceeded();
+    /// @dev Two limits. The combined open interest may not pass the market's cap. The difference between
+    /// long and short open interest may not pass `maxNetOpenInterest` (when set) unless the trade
+    /// reduces that difference: a trade on the smaller side is never refused for adding imbalance.
+    function checkOpenInterest(bytes32 marketId, bool isLong, uint256 notionalDelta) external view {
+        uint256 longOi = openInterestLong[marketId];
+        uint256 shortOi = openInterestShort[marketId];
+        if (longOi + shortOi + notionalDelta > _riskConfigs[marketId].openInterestCap) {
+            revert OpenInterestLimitExceeded();
+        }
+
+        uint256 netCap = maxNetOpenInterest[marketId];
+        if (netCap == 0) return;
+        uint256 netBefore = longOi > shortOi ? longOi - shortOi : shortOi - longOi;
+        if (isLong) longOi += notionalDelta;
+        else shortOi += notionalDelta;
+        uint256 netAfter = longOi > shortOi ? longOi - shortOi : shortOi - longOi;
+        if (netAfter > netCap && netAfter > netBefore) revert NetOpenInterestLimitExceeded();
     }
 
     function checkMargin(uint256 collateral, uint256 requiredMargin) external pure {
