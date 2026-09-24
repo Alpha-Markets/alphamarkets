@@ -44,9 +44,12 @@ export function Footer() {
                     <Link href="/portfolio" className={listLink}>
                         Portfolio
                     </Link>
-                    <a href="#landing-contracts" className={listLink}>
+                    <a href="/#landing-contracts" className={listLink}>
                         Smart contracts
                     </a>
+                    <Link href="/docs" className={listLink}>
+                        Docs
+                    </Link>
                     <StatusBadge label={chains[env.chainId].name} />
                     <a
                         href={X_URL}
