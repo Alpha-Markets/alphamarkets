@@ -378,11 +378,28 @@ Covers what Phase 1 step 14 and the CI gate don't: full-stack integration, stagi
 
 **Pre-mainnet checklist**
 
-- All Priority 0 contracts: unit + fuzz + integration + fork tests passing, audit complete, findings resolved.
-- Staging e2e run completed for both options and perps full lifecycle (open, close, settle/liquidate).
-- Oracle safeguards verified live on testnet: stale price rejection, deviation rejection, fallback source, emergency pause — each manually triggered once and confirmed working, not just unit-tested.
-- Admin keys deployment-ready (Section 37): confirm multisig/timelock wiring if used for mainnet, not left on a single EOA.
-- Open interest caps and position caps set conservatively for initial launch (canary limits), raised only after mainnet is stable.
-- Rollback/pause plan documented: who can pause which contract, how fast, communicated to team before launch — not improvised during an incident.
+Status as of 2026-09-24. A box is ticked only where the check was run and its result is in
+`docs/SECURITY_REVIEW.md`. Nothing here means the protocol is ready for mainnet: the box for the audit is open,
+and so are the first four findings in that document.
+
+- [ ] All Priority 0 contracts: unit + fuzz + integration + fork tests passing, audit complete, findings resolved.
+  - Done: 244 unit, fuzz and integration tests pass at 10,000 fuzz runs; 16 fork tests pass against the live testnet deployment; 3 perps invariants pass.
+  - Open: the audit; fork tests against mainnet (needs the mainnet RPC and feeds); invariants for options and liquidation; **the vault solvency invariant fails** (finding 1).
+- [x] Staging e2e run completed for both options and perps full lifecycle (open, close, settle/liquidate). Run on live testnet with `packages/sdk/scripts/testnet-lifecycle.ts` and `testnet-smoke.ts`: perp profit, perp liquidation, option settled in the money, option expired out of the money. It found and fixed the pricing-service close-quote race (finding 6). This was the testnet stack with mock feeds, not a mainnet-shaped staging with real feeds.
+- [x] Oracle safeguards verified live on testnet: stale price rejection, deviation rejection, fallback source, emergency pause, each triggered once on the real `OracleRouter` (transactions in `docs/SECURITY_REVIEW.md`).
+- [ ] Admin keys deployment-ready (Section 37): confirm multisig/timelock wiring if used for mainnet, not left on a single EOA.
+  - Done: the `UpgradeAll` and `HandOverAdmin` scripts were rehearsed on a fork with a timelock; the deployer ended with no admin role and the timelock could act after its delay.
+  - Open: no multisig or timelock is chosen or deployed, and the live deployer still holds every role. The rehearsal also showed that an emergency pause would wait for the timelock delay (finding 2).
+- [ ] Open interest caps and position caps set conservatively for initial launch (canary limits), raised only after mainnet is stable. `packages/contracts/script/check-launch-limits.sh` now enforces chosen limits against the chain; the limits themselves are a product decision and are not set. Testnet's caps are far above any canary value.
+- [ ] Rollback/pause plan documented: who can pause which contract, how fast, communicated to team before launch. `docs/RUNBOOK.md` documents what each pause lever does and the rollback steps; the people and response times in it are **TBD** and the pause-speed decision is open.
+
+**Verification run (2026-09-24).** Run against the hosted testnet stack after the repository move to the
+`Alpha-Markets` organization.
+
+- `forge test`: 261 tests pass (244 existing, 16 fork, the invariant suite). Storage layout and admin-role coverage pass.
+- `pnpm typecheck` and `pnpm test` pass; the Anvil SDK integration test ran.
+- Slither on `src/`: 2 High and 29 Medium findings, all reviewed and none exploitable (triage in `docs/SECURITY_REVIEW.md`). Aderyn and Mythril were not run.
+- Live testnet: oracle safeguards probe, lifecycle run and smoke test as above. The testnet now lists 20 active markets; the earlier "nine markets" count in the hosting notes is out of date.
+- Found: the vault solvency gap (High), the slow emergency pause behind a timelock, the unbounded quote premium, the unbounded `settleExpired` loop, and the pricing-service race (fixed).
 
 ---

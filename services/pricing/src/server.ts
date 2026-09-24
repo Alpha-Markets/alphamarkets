@@ -14,7 +14,7 @@ import {
   toBaseUnits,
 } from "@alphamarkets/sdk";
 import Fastify from "fastify";
-import { http, isAddress, type LocalAccount } from "viem";
+import { http, isAddress, zeroAddress, type LocalAccount } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { quote, type OptionType } from "./blackScholes.js";
 import { advancedGreeks } from "./greeks.js";
@@ -66,6 +66,9 @@ interface CloseQuoteRequestBody {
   user: string;
 }
 
+/// Reads of a just-opened position that come back empty before giving up (see "/quote/close").
+const POSITION_READ_ATTEMPTS = 5;
+
 export interface PricingOptions {
   /// Injected in tests; built from `RPC_URL` otherwise.
   alphaMarkets?: AlphaMarkets;
@@ -76,6 +79,9 @@ export interface PricingOptions {
   /// Index-price history for a market, for realized volatility. Injected in tests; otherwise read
   /// from `API_URL` (services/api) and empty when that is unset or unreachable.
   priceHistory?: (market: string) => Promise<PriceSample[]>;
+  /// How long to wait between reads of a position that the RPC node does not show yet. Injected in
+  /// tests; 1 second otherwise.
+  positionRetryDelayMs?: number;
   /// Overrides `OPTION_SPREAD_BPS`.
   spreadBps?: number;
   /// Overrides `VOL_SKEW_SLOPE`, `VOL_SMILE_CURVE` and `VOL_TERM_SLOPE`.
@@ -117,6 +123,7 @@ export function buildServer(options: PricingOptions = {}) {
   const chainId = resolveChainId(process.env.CHAIN_ID);
   const alphaMarkets =
     options.alphaMarkets ?? new AlphaMarkets({ chainId, transport: http(requireEnv("RPC_URL")) });
+  const positionRetryDelayMs = options.positionRetryDelayMs ?? 1_000;
   const account = options.account ?? quoterFromEnv();
   const now = options.now ?? Date.now;
   const spreadBps = options.spreadBps ?? SPREAD_BPS;
@@ -241,7 +248,17 @@ export function buildServer(options: PricingOptions = {}) {
       return reply.code(400).send({ error: "positionId (integer string) and user (address) are required" });
     }
 
-    const position = await alphaMarkets.portfolio.getOptionPosition(BigInt(positionId));
+    // A position opened a moment ago may not be visible on the RPC node this service reads from yet:
+    // the contract returns an empty position, whose owner is the zero address. Retry a few times
+    // before saying so, instead of telling the real owner that the position is not theirs.
+    let position = await alphaMarkets.portfolio.getOptionPosition(BigInt(positionId));
+    for (let attempt = 0; attempt < POSITION_READ_ATTEMPTS && position.owner === zeroAddress; attempt++) {
+      await new Promise((resolve) => setTimeout(resolve, positionRetryDelayMs));
+      position = await alphaMarkets.portfolio.getOptionPosition(BigInt(positionId));
+    }
+    if (position.owner === zeroAddress) {
+      return reply.code(404).send({ error: "position not found yet, retry in a few seconds" });
+    }
     if (position.owner.toLowerCase() !== user.toLowerCase()) {
       return reply.code(403).send({ error: "position belongs to a different address" });
     }
