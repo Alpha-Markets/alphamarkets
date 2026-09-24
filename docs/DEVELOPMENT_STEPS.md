@@ -384,7 +384,8 @@ and so are the first four findings in that document.
 
 - [ ] All Priority 0 contracts: unit + fuzz + integration + fork tests passing, audit complete, findings resolved.
   - Done: 244 unit, fuzz and integration tests pass at 10,000 fuzz runs; 16 fork tests pass against the live testnet deployment; 3 perps invariants pass.
-  - Open: the audit; fork tests against mainnet (needs the mainnet RPC and feeds); invariants for options and liquidation; **the vault solvency invariant fails** (finding 1).
+  - Done since: the vault solvency gap (finding 1) is fixed in code, with the solvency invariant now passing (see `docs/SECURITY_REVIEW.md`, "Vault solvency fix"). It is not deployed and not audited.
+  - Open: the audit; fork tests against mainnet (needs the mainnet RPC and feeds); invariants for options and liquidation; the launch reserve size and net open-interest limits (product decisions).
 - [x] Staging e2e run completed for both options and perps full lifecycle (open, close, settle/liquidate). Run on live testnet with `packages/sdk/scripts/testnet-lifecycle.ts` and `testnet-smoke.ts`: perp profit, perp liquidation, option settled in the money, option expired out of the money. It found and fixed the pricing-service close-quote race (finding 6). This was the testnet stack with mock feeds, not a mainnet-shaped staging with real feeds.
 - [x] Oracle safeguards verified live on testnet: stale price rejection, deviation rejection, fallback source, emergency pause, each triggered once on the real `OracleRouter` (transactions in `docs/SECURITY_REVIEW.md`).
 - [ ] Admin keys deployment-ready (Section 37): confirm multisig/timelock wiring if used for mainnet, not left on a single EOA.

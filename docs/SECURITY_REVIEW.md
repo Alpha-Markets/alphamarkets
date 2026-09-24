@@ -12,7 +12,7 @@ not be run in full, the gap is stated.
 | Method | What it covers | Where |
 |---|---|---|
 | Unit, fuzz and integration tests | Contract logic, at 10,000 fuzz runs | `packages/contracts/test/` (244 tests, all pass) |
-| Invariant tests | Open interest accounting, position shape | `test/invariant/PerpsInvariant.t.sol` (3 pass) |
+| Invariant tests | Open interest accounting, position shape, vault solvency | `test/invariant/PerpsInvariant.t.sol` (5 pass) |
 | Fork tests on the live testnet deployment | Real deployed contracts and state, on a local fork | `test/fork/TestnetFork.t.sol` (16 pass) |
 | Live testnet probes | Oracle safeguards on the real chain | Transactions listed below |
 | Live lifecycle run | Perp profit, liquidation, option settlement through the hosted API | `packages/sdk/scripts/testnet-lifecycle.ts` |
@@ -95,7 +95,7 @@ a signed quote) also passed.
 
 | # | Severity | Finding | Status |
 |---|---|---|---|
-| 1 | High | **The vault has no solvency guard.** `settlePnl` credits a winner without moving tokens and never checks that losers cover it. The invariant probe `probe_vaultTokensCoverLedger` fails after one long and one short of different sizes and a price move (the ledger exceeded the tokens held by about 23.7 tokens). On mainnet a one-sided win would leave the vault owing more than it holds, and the last users to withdraw would fail. Options have the same shape. | **Open.** Needs a design decision: cap open-interest imbalance, reserve capital for unmatched profit, or fund a real insurance pool. |
+| 1 | High | **The vault had no solvency guard.** `settlePnl` credited a winner without moving tokens and never checked that losers cover it, so a one-sided win left the vault owing more than it held (the invariant test failed with the ledger about 23.7 tokens above the tokens held). | **Fixed in code, not deployed, not audited.** The vault now counts `totalLiabilities` and refuses a profit credit the pool cannot pay (`InsufficientPoolReserves`). A funded pool (`fundPool`) backs payouts, and `RiskManager.maxNetOpenInterest` caps the long/short imbalance the pool is counterparty to. The solvency invariant now passes over 51,200 random calls with a deliberately small pool. See "Vault solvency fix" below. |
 | 2 | Medium | **Emergency pause is slow once admin sits behind a timelock.** The handover rehearsal showed an admin call executes only after the timelock delay. `OracleRouter.pauseMarket` shares `ORACLE_ADMIN_ROLE` with the oracle source setters, so a fast pause key could also swap the oracle. There is no protocol-wide pause. | **Open.** Needs a separate pauser role (a contract change). |
 | 3 | Medium | **A compromised quoter key can set any premium.** `OptionsEngine.openPosition` accepts the premium in a valid signed quote with no floor or ceiling, and rotating `QUOTER_ROLE` needs an admin call, which the timelock also delays. | **Open.** Needs a premium floor and ceiling in the contract, and the quoter key behind a multisig or HSM. |
 | 4 | Medium | **`OptionsEngine.settleExpired` loops over every position in a series.** A large series can exceed the block gas limit. Not triggered in any test. | **Open.** Needs a cap or a batch settle. |
@@ -103,10 +103,49 @@ a signed quote) also passed.
 | 6 | Low | **Pricing service told a position's real owner "position belongs to a different address"** for a few seconds after purchase, because the RPC node it reads had not seen the position yet. Found by the live smoke test (2 of 2 runs failed at "sell back"). | **Fixed** in this change: the service retries, and answers `404 not found yet` instead of a false `403`. |
 | 7 | Info | The testnet feeds are test contracts and the settlement token has a public `mint`. | Open until real feeds and a real token exist |
 
+## Vault solvency fix (finding 1)
+
+What changed in `packages/contracts`:
+
+- `AlphaMarketsVault` keeps `totalLiabilities[token]`, the sum of every ledger balance, updated on every
+  deposit, withdrawal, fee and PnL change. `poolBalance(token)` is the tokens held beyond that.
+- `settlePnl` with a positive amount (a payout) reverts with `InsufficientPoolReserves(needed, available)` when
+  it would leave the vault owing more than it holds. A loss realized by a trader adds to the pool. A fee leaves
+  both sides equally.
+- `fundPool(token, amount)` adds capital to the pool, credited to no account. Anyone can call it. There is
+  deliberately no admin function to take pool funds out: they leave only as payouts to traders. A recovery path
+  for seed capital would need its own design and audit.
+- `RiskManager.maxNetOpenInterest(marketId)` (admin-set, 0 = no limit) bounds the difference between long and
+  short open interest, which is what the pool is counterparty to. An order on the smaller side is never refused
+  for adding imbalance.
+- `bootstrapLiabilities(token)` exists only for a vault upgraded from the old code: its counter starts at 0 while
+  users hold balances, so every withdrawal would underflow. It sets the counter to every token the vault holds,
+  which counts the pool as empty (the safe side). It works once per token. A fresh deployment never needs it.
+- Both new state variables are appended, so `check-storage-layout.py` still passes for all 20 contracts.
+
+How it was checked:
+
+| Check | Result |
+|---|---|
+| 244 existing tests, with the test base seeded with a pool | All pass |
+| `VaultSolvency.t.sol` (10 tests) | A profit within the pool is paid; a profit beyond it reverts with the exact figures and leaves the position open; a losing side refills the pool so the winner can then be paid; the counter equals the ledger; `fundPool` credits no account; `bootstrapLiabilities` fixes an upgraded vault and works only once |
+| `NetOpenInterest.t.sol` (6 tests, one fuzz at 1,024 runs) | The gap never exceeds the limit; the smaller side is always allowed; 0 means no limit; only the risk admin can set it |
+| Invariants, 256 runs, depth 200, small pool (51,200 calls) | Vault tokens cover the ledger, the counter matches the ledger, open interest matches open positions and stays under the cap: all pass |
+| SDK integration test on a local Anvil deployment | 10 of 10 pass. It first failed, correctly, when an option was sold back for more than it cost with no pool; it now seeds one |
+| Upgrade rehearsal on a fork of the live testnet | After `UpgradeAll` the counter is 0 and a withdrawal reverts; `bootstrapLiabilities` sets it to the tokens held; the withdrawal then succeeds; a second bootstrap reverts with `AlreadyTracked` |
+| Launch gate on that fork (`check-launch-limits.sh`) | With net limits of 50,000 on 20 markets and a 100,000 pool it fails ("pool 100,000 is below 500,000"); after funding 600,000 it passes |
+
+Trade-off to know: when the pool cannot pay a winner, the winner's close reverts and the position stays open
+until losing positions settle or the pool is funded. That is the intended safe behavior, and it must be stated
+to users. The net open-interest limit and the pool size decide how often it can happen.
+
+Still open for this finding: it is not deployed anywhere, the launch reserve size and the net limits are product
+decisions, and the change needs the independent audit like everything else.
+
 ## Still not done
 
 - Independent audit.
 - Fork tests against **mainnet**: they need the mainnet RPC URL and real feed addresses.
-- Invariant tests for options and liquidation (only perps are covered), and the vault solvency invariant, which fails until finding 1 is fixed.
+- Invariant tests for options and liquidation (only perps are covered).
 - Staging soak of 1 to 2 weeks.
 - Multisig and timelock chosen and deployed.
