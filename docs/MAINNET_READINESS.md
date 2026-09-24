@@ -2,7 +2,7 @@
 
 The verified chain facts, the exact deployment steps and the rehearsal results are in `docs/MAINNET_DEPLOYMENT.md`.
 
-Status on 2026-09-25: the contracts are **deployed to mainnet (chain 4663) but empty and not open**: no market, feed, funds or backend, and one wallet holds every admin role. **Not ready for users.** The contracts have the fixes the first review asked
+Status on 2026-09-25: the contracts are **deployed to mainnet (chain 4663) but not open**: 11 markets are listed on Chainlink feeds (21 more are prepared), and there is no pool funding and no backend yet. One wallet still holds every admin role. **Not ready for users.** The contracts have the fixes the first review asked
 for and they run on testnet, but the items below are open. Nothing on this list is ticked unless it was checked.
 
 ## What is done
@@ -22,7 +22,7 @@ for and they run on testnet, but the items below are open. Nothing on this list 
 | # | Item | Who | Depends on | Status |
 |---|---|---|---|---|
 | 1 | **Independent audit**, then fixes and a re-audit of anything that changed | You (book it), auditor | Nothing: start now | Not started. The longest item. |
-| 2 | Real price feeds, and the adapter that reads them | Me | Nothing | **Adapter written and tested** (`ChainlinkPriceFeed`, 9 tests, plus a live mainnet fork test); 11 of 16 testnet markets have a Chainlink feed (`deployments/robinhood_mainnet.markets.json`); AVGO, JPM, DIS, UBER, SHOP have none. **Open decision: the age limit per market.** The feeds have a 24 hour heartbeat and on 2026-09-25 were 11 minutes to 16 hours old, so the default 1 hour limit halts most markets; a long limit trades on an old price. Not listed on chain yet. |
+| 2 | Real price feeds, and the adapter that reads them | Me | Nothing | **Adapter written and tested** (`ChainlinkPriceFeed`, 9 tests, plus a live mainnet fork test); 11 of 16 testnet markets have a Chainlink feed (`deployments/robinhood_mainnet.markets.json`); AVGO, JPM, DIS, UBER, SHOP have none. **Open decision: the age limit per market.** The feeds have a 24 hour heartbeat and on 2026-09-25 were 11 minutes to 16 hours old, so the default 1 hour limit halts most markets; a long limit trades on an old price. Listed on chain: 11 markets (2026-09-25); 21 more prepared. |
 | 3 | Real settlement token, tested on a fork (decimals, transfer behaviour) | Me | Nothing | **USDG** (`0x5fc5…d168`, 6 decimals, an upgradeable Paxos token) is the settlement token of the mainnet deployment. Fork test: deposit and withdraw move exact amounts through the deployed vault. Still open: behaviour if Paxos pauses or blacklists (a runbook step). |
 | 4 | Mainnet chain in `packages/config` and a mainnet web build on your domain | You (chain ID, RPC, explorer), me | Item 3 | Domain prepared by you; no chain config yet |
 | 4 | Mainnet chain in `packages/config` and a mainnet web build on your domain | Me | The deployed addresses | **Done for the web build**: chain 4663 and the deployed addresses are in `packages/config`; the Vercel project `alphamarkets-mainnet` serves `alphamarkets.tech`. Still open: the mainnet API and indexer (item 12), so the site shows no markets yet. |
