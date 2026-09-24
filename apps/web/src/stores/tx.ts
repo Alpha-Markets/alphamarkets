@@ -6,6 +6,7 @@ import {
   InvalidOraclePriceError,
   InvalidQuoteError,
   MarketPausedError,
+  InsufficientPoolReservesError,
   OpenInterestLimitExceededError,
   PositionLimitExceededError,
   QuoteAlreadyUsedError,
@@ -78,6 +79,7 @@ export function errorMessage(error: unknown): string {
   if (error instanceof InsufficientCollateralError) return "Not enough available collateral. Deposit more or reduce the size.";
   if (error instanceof InsufficientMarginError) return "The margin is too low for this size. Add collateral or lower leverage.";
   if (error instanceof PositionLimitExceededError) return "This size is above the position limit for the market.";
+  if (error instanceof InsufficientPoolReservesError) return "The pool cannot pay this profit right now. Your position is still open. Try again in a few minutes.";
   if (error instanceof OpenInterestLimitExceededError) return "The market's open interest limit is reached. Try a smaller size.";
   if (error instanceof QuoteExpiredError) return "The option price expired before it confirmed. Request a new price and try again.";
   if (error instanceof QuoteAlreadyUsedError) return "That option price was already used. Request a new price and try again.";

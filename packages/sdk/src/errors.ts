@@ -41,6 +41,13 @@ export class InsufficientCollateralError extends AlphaMarketsContractError {}
 export class InsufficientMarginError extends AlphaMarketsContractError {}
 export class PositionLimitExceededError extends AlphaMarketsContractError {}
 export class OpenInterestLimitExceededError extends AlphaMarketsContractError {}
+/// The market's long and short open interest may not differ by more than its limit, and this order would
+/// widen the gap. An order on the smaller side is still accepted.
+export class NetOpenInterestLimitExceededError extends OpenInterestLimitExceededError {}
+/// The vault's pool cannot pay this profit yet: it pays winners from capital it holds beyond what it owes
+/// users, and it refuses a payout that would leave it owing more than it holds. It clears once losing
+/// positions settle or the pool is funded, so the position stays open and the same call can be retried.
+export class InsufficientPoolReservesError extends AlphaMarketsContractError {}
 export class DeadlineExpiredError extends AlphaMarketsContractError {}
 /// The option premium was not authorised by a valid, unexpired, unused quote (see `OptionsEngine`).
 export class InvalidQuoteError extends AlphaMarketsContractError {}
@@ -66,6 +73,8 @@ const contractErrorClasses: Record<string, ContractErrorClass> = {
   InsufficientMargin: InsufficientMarginError,
   PositionLimitExceeded: PositionLimitExceededError,
   OpenInterestLimitExceeded: OpenInterestLimitExceededError,
+  NetOpenInterestLimitExceeded: NetOpenInterestLimitExceededError,
+  InsufficientPoolReserves: InsufficientPoolReservesError,
   DeadlineExpired: DeadlineExpiredError,
   InvalidQuote: InvalidQuoteError,
   QuoteExpired: QuoteExpiredError,
