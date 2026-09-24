@@ -38,15 +38,18 @@ function CopyIcon({ copied }: { copied: boolean }) {
     );
 }
 
-/// An always-visible pointer to the settlement token's full contract address — for the hero and
+/// An always-visible pointer to the protocol token's full contract address — for the hero and
 /// footer, where `LandingContracts` full address list (`#landing-contracts`) would be too much: a
 /// trader skimming the top or bottom of the page should still be able to read and verify the CA
 /// without scrolling to the contracts section. Shown in full, `break-all` (matching `ContractCard`
 /// there): a partial address isn't something a reader can actually verify against the explorer.
 export function ContractAddressBadge({ className }: { className?: string }) {
     const [copied, setCopied] = useState(false);
-    const address = env.addresses.settlementToken;
-    const url = explorerAddressUrl(env.explorerUrl, address);
+    const token = env.protocolToken;
+    const address = token?.address;
+    const url = address
+        ? explorerAddressUrl(env.explorerUrl, address)
+        : undefined;
 
     return (
         <div
@@ -55,26 +58,32 @@ export function ContractAddressBadge({ className }: { className?: string }) {
                 className,
             )}
         >
-            <span className={cn(MONO, 'text-xs text-muted')}>CA</span>
-            <span className={cn(MONO, 'break-all text-xs text-text')}>
-                Coming Soon
+            <span className={cn(MONO, 'text-xs text-muted')}>
+                {token?.symbol ? `$${token.symbol} CA` : 'CA'}
             </span>
-            <button
-                type="button"
-                aria-label={copied ? 'Address copied' : 'Copy CA address'}
-                onClick={() => {
-                    void navigator.clipboard?.writeText(address).then(() => {
-                        setCopied(true);
-                        setTimeout(() => setCopied(false), 1500);
-                    });
-                }}
-                className={cn(
-                    'shrink-0 rounded-control p-0.5 text-muted transition-colors duration-150 hover:bg-accent-soft hover:text-accent',
-                    copied && 'text-up',
-                )}
-            >
-                <CopyIcon copied={copied} />
-            </button>
+            <span className={cn(MONO, 'break-all text-[11px] text-text sm:text-xs')}>
+                {address ?? 'Coming Soon'}
+            </span>
+            {address ? (
+                <button
+                    type="button"
+                    aria-label={copied ? 'Address copied' : 'Copy CA address'}
+                    onClick={() => {
+                        void navigator.clipboard
+                            ?.writeText(address)
+                            .then(() => {
+                                setCopied(true);
+                                setTimeout(() => setCopied(false), 1500);
+                            });
+                    }}
+                    className={cn(
+                        'shrink-0 rounded-control p-0.5 text-muted transition-colors duration-150 hover:bg-accent-soft hover:text-accent',
+                        copied && 'text-up',
+                    )}
+                >
+                    <CopyIcon copied={copied} />
+                </button>
+            ) : null}
             {url ? (
                 <a
                     href={url}

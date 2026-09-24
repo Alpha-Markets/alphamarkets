@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { addressesForChain, OPTIONAL_CONTRACTS, resolveAddresses } from "./deployments.js";
+import { addressesForChain, OPTIONAL_CONTRACTS, protocolTokens, resolveAddresses } from "./deployments.js";
 import { ROBINHOOD_MAINNET_CHAIN_ID, ROBINHOOD_TESTNET_CHAIN_ID } from "./chains.js";
 
 const ADDRESS = `0x${"ab".repeat(20)}`;
@@ -41,4 +41,12 @@ test("mainnet and testnet never share a contract address", () => {
 
 test("the mainnet settlement token is USDG", () => {
   assert.equal(addressesForChain(ROBINHOOD_MAINNET_CHAIN_ID).settlementToken, "0x5fc5360D0400a0Fd4f2af552ADD042D716F1d168");
+});
+
+test("only mainnet records a protocol token, and it is a valid address", () => {
+  assert.equal(protocolTokens[ROBINHOOD_TESTNET_CHAIN_ID], undefined);
+  const token = protocolTokens[ROBINHOOD_MAINNET_CHAIN_ID];
+  assert.ok(token);
+  assert.match(token.address, /^0x[0-9a-fA-F]{40}$/);
+  assert.equal(token.symbol, "ALPHA");
 });
