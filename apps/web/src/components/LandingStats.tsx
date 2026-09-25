@@ -36,6 +36,12 @@ export function LandingStats() {
   const overviews = useMarketOverviews(symbols);
 
   const volume = stats && decimals !== undefined ? stats.reduce((sum, row) => sum + row.perpVolume24h + row.optionsVolume24h, 0n) : undefined;
+  // Until anything trades on AlphaMarkets the total is 0, so show the underlying stocks' own volume
+  // instead, labeled as such (each card does the same; see `LandingMarkets`).
+  const stockVolume = stats?.some((row) => row.underlyingVolumeUsd !== null)
+    ? stats.reduce((sum, row) => sum + Number(row.underlyingVolumeUsd ?? 0n), 0)
+    : undefined;
+  const showStockVolume = volume === 0n && stockVolume !== undefined && stockVolume > 0;
   const settled = overviews.length > 0 && overviews.every((query) => query.data);
   const openInterest =
     settled && decimals !== undefined ? overviews.reduce((sum, query) => sum + (query.data?.openInterest?.total ?? 0n), 0n) : undefined;
@@ -48,7 +54,11 @@ export function LandingStats() {
   return (
     <dl className={cn(PAGE_FRAME, "pb-10 lg:pb-12")}>
       <div className="grid grid-cols-2 gap-x-8 gap-y-8 sm:grid-cols-4 sm:gap-x-10">
-        <Figure label="24h volume" value={volumeNumber} format={(n) => `$${fmtCompact(n)}`} />
+        <Figure
+          label={showStockVolume ? "Stock volume" : "24h volume"}
+          value={showStockVolume ? stockVolume : volumeNumber}
+          format={(n) => `$${fmtCompact(n)}`}
+        />
         <Figure label="Open interest" value={openInterestNumber} format={(n) => `$${fmtCompact(n)}`} />
         <Figure label="Perpetual markets" value={perpCount} format={(n) => String(Math.round(n))} />
         <Figure label="Option markets" value={optionCount} format={(n) => String(Math.round(n))} />
