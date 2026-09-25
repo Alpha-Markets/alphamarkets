@@ -17,6 +17,9 @@ export interface MarketStats {
   perpVolume24h: bigint;
   /// Premium paid on options opened in the last 24h.
   optionsVolume24h: bigint;
+  /// Whole US dollars the underlying stock traded in its latest session, from an outside source.
+  /// It is not volume on AlphaMarkets. Null until the API has loaded it.
+  underlyingVolumeUsd: bigint | null;
 }
 
 export interface MarketsNamespace {
@@ -66,12 +69,13 @@ export function createMarkets(client: AlphaMarketsClient, addresses: ContractAdd
 
   async function stats(): Promise<MarketStats[]> {
     const rows = await apiGet<
-      Array<{ marketId: `0x${string}`; change24hBps: number | null; changeWindowSeconds: number; perpVolume24h: string; optionsVolume24h: string }>
+      Array<{ marketId: `0x${string}`; change24hBps: number | null; changeWindowSeconds: number; perpVolume24h: string; optionsVolume24h: string; underlyingVolumeUsd?: string | null }>
     >("markets.stats", "/v1/markets/stats");
     return rows.map((row) => ({
       ...row,
       perpVolume24h: BigInt(row.perpVolume24h),
       optionsVolume24h: BigInt(row.optionsVolume24h),
+      underlyingVolumeUsd: row.underlyingVolumeUsd ? BigInt(row.underlyingVolumeUsd) : null,
     }));
   }
 

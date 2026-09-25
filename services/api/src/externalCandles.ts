@@ -134,3 +134,46 @@ export async function fetchPastCandles(symbol: string, interval: CandleInterval)
     return candles;
   }
 }
+
+/// Dollar volume the underlying stock traded in its latest session (the last daily bar's share
+/// volume times its close), as whole dollars. It is the stock's own volume, not volume traded on
+/// AlphaMarkets, so the UI must label it as such.
+export function dollarVolume(bars: { close: number; volume: number | null }[]): string | null {
+  const last = bars.filter((bar) => bar.volume != null).at(-1);
+  return last ? Math.round(last.volume! * last.close).toString() : null;
+}
+
+const volumeCache = new Map<string, { at: number; usd: string | null }>();
+const volumeInFlight = new Set<string>();
+
+async function loadUnderlyingVolume(symbol: string): Promise<void> {
+  if (volumeInFlight.has(symbol)) return;
+  volumeInFlight.add(symbol);
+  try {
+    const response = await fetch(`${YAHOO_URL}/${encodeURIComponent(symbol)}?interval=1d&range=5d`, {
+      headers: { "user-agent": "Mozilla/5.0" },
+      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+    });
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const body = (await response.json()) as YahooChart & { chart?: { result?: { indicators?: { quote?: { volume?: (number | null)[] }[] } }[] } };
+    const quote = body.chart?.result?.[0]?.indicators?.quote?.[0] as { close?: (number | null)[]; volume?: (number | null)[] } | undefined;
+    const bars = (quote?.close ?? []).flatMap((close, index) => (close == null ? [] : [{ close, volume: quote?.volume?.[index] ?? null }]));
+    volumeCache.set(symbol, { at: Date.now(), usd: dollarVolume(bars) });
+  } catch (error) {
+    console.warn(`api: could not load underlying volume for ${symbol}`, error);
+    // Keep any older value and retry in 30 s rather than on every request.
+    volumeCache.set(symbol, { at: Date.now() - CACHE_TTL_MS + 30_000, usd: volumeCache.get(symbol)?.usd ?? null });
+  } finally {
+    volumeInFlight.delete(symbol);
+  }
+}
+
+/// The underlying stock's latest-session dollar volume, or null when not loaded yet. It never waits
+/// for Yahoo: a cold or expired entry starts a background refresh, so a slow source cannot delay
+/// the stats response. The first request after a restart gets null; the next one has the value.
+export function cachedUnderlyingVolumeUsd(symbol: string): string | null {
+  if (process.env.EXTERNAL_CANDLE_HISTORY === "false") return null;
+  const hit = volumeCache.get(symbol);
+  if (!hit || Date.now() - hit.at >= CACHE_TTL_MS) void loadUnderlyingVolume(symbol);
+  return hit?.usd ?? null;
+}

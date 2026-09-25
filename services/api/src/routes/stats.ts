@@ -1,7 +1,7 @@
 import { resolveMarketId, type Address } from "@alphamarkets/sdk";
 import type { FastifyInstance } from "fastify";
 import { getSql } from "../db.js";
-import { fetchPastCandles, pastPricePoints } from "../externalCandles.js";
+import { cachedUnderlyingVolumeUsd, fetchPastCandles, pastPricePoints } from "../externalCandles.js";
 import { changeBps, parseRange, RANGES } from "../stats.js";
 
 /// Market statistics and history the chain cannot serve cheaply: everything here is derived from
@@ -10,6 +10,11 @@ import { changeBps, parseRange, RANGES } from "../stats.js";
 ///
 /// Timestamps are the indexer's row-insert time, not block time: accurate while the indexer is
 /// at the chain head, and all equal to the backfill moment if it was replaying old blocks.
+/// "NVDA" from the market id, which is the symbol's ASCII bytes padded with zeros to 32 bytes.
+function symbolOfMarketId(marketId: string): string {
+  return Buffer.from(marketId.slice(2), "hex").toString("utf8").replace(/\0+$/, "");
+}
+
 export function registerStatsRoutes(app: FastifyInstance) {
   const sql = getSql();
 
@@ -71,6 +76,7 @@ export function registerStatsRoutes(app: FastifyInstance) {
       const base = row.at24h ?? row.earliest;
       return {
         marketId: row.marketId,
+        underlyingVolumeUsd: cachedUnderlyingVolumeUsd(symbolOfMarketId(row.marketId)),
         change24hBps: changeBps(row.latest, base),
         changeWindowSeconds: row.at24h ? 86_400 : row.windowSeconds ? Number(row.windowSeconds) : 0,
         perpVolume24h: perpVolume.get(row.marketId) ?? "0",
