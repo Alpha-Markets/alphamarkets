@@ -59,7 +59,7 @@ export function ContractAddressBadge({ className }: { className?: string }) {
             )}
         >
             <span className={cn(MONO, 'text-xs text-muted')}>
-                {token?.symbol ? `CA` : 'CA'}
+                CA
             </span>
             <span
                 className={cn(
