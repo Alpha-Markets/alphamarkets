@@ -2,6 +2,7 @@ import { chains } from '@alphamarkets/config';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import type { ReactNode } from 'react';
+import { ContractAddressBadge } from '@/components/ContractAddressBadge';
 import { DocsLiveParameters } from '@/components/DocsLiveParameters';
 import { Footer } from '@/components/Footer';
 import { env } from '@/lib/env';
@@ -12,7 +13,7 @@ import { cn, listLink } from '@alphamarkets/ui';
 export const metadata: Metadata = {
     title: 'Docs · AlphaMarkets',
     description:
-        'How AlphaMarkets perpetuals, options, margin, liquidation and settlement work, checked against the deployed contracts.',
+        'How AlphaMarkets perpetuals, options, margin, liquidation and settlement work on Robinhood Chain mainnet, checked against the deployed contracts.',
 };
 
 /// Every claim on this page comes from the Solidity source in `packages/contracts/src`, and the file
@@ -21,6 +22,7 @@ export const metadata: Metadata = {
 /// code has today is stated as a limit, not left out.
 const SECTIONS = [
     { id: 'overview', title: 'Overview' },
+    { id: 'network', title: 'Network and token' },
     { id: 'start', title: 'Deposit, trade, withdraw' },
     { id: 'perps', title: 'Perpetuals' },
     { id: 'orders', title: 'Limit, stop-loss and take-profit orders' },
@@ -33,7 +35,7 @@ const SECTIONS = [
     { id: 'verify', title: 'Verify it yourself' },
 ] as const;
 
-const bodyText = 'text-lg leading-[1.7] text-muted';
+const bodyText = 'text-lg leading-[1.8] text-muted';
 
 function Section({
     id,
@@ -50,7 +52,7 @@ function Section({
         <section
             id={id}
             aria-labelledby={`${id}-title`}
-            className="scroll-mt-6 border-t border-line py-12 first:border-t-0 first:pt-0 lg:py-16"
+            className="scroll-mt-8 border-t border-line py-14 first:border-t-0 first:pt-0 sm:py-20 lg:py-24"
         >
             <h2
                 id={`${id}-title`}
@@ -58,9 +60,9 @@ function Section({
             >
                 {title}
             </h2>
-            <div className="mt-6 flex max-w-[68ch] flex-col gap-5">{children}</div>
+            <div className="mt-8 flex max-w-[68ch] flex-col gap-6 sm:mt-10">{children}</div>
             {sources?.length ? (
-                <p className={cn(MONO, 'mt-8 flex max-w-[68ch] flex-wrap gap-x-4 gap-y-1 text-xs text-faint')}>
+                <p className={cn(MONO, 'mt-10 flex max-w-[68ch] flex-wrap gap-x-4 gap-y-1 border-t border-line pt-4 text-xs text-faint')}>
                     <span>Checked against</span>
                     {sources.map((path) => (
                         <code key={path}>{path}</code>
@@ -77,7 +79,7 @@ function Formula({ children }: { children: ReactNode }) {
         <pre
             className={cn(
                 MONO,
-                'overflow-x-auto rounded-control border border-line bg-surface px-4 py-3 text-sm leading-relaxed text-text',
+                'my-1 overflow-x-auto rounded-control border border-line bg-surface px-5 py-4 text-sm leading-loose text-text',
             )}
         >
             {children}
@@ -92,6 +94,7 @@ function Term({ children }: { children: ReactNode }) {
 export default function Docs() {
     const chain = chains[env.chainId];
     const vaultUrl = explorerAddressUrl(env.explorerUrl, env.addresses.vault);
+    const settlementTokenUrl = explorerAddressUrl(env.explorerUrl, env.addresses.settlementToken);
 
     return (
         <div className="flex min-h-full flex-col">
@@ -110,7 +113,7 @@ export default function Docs() {
                 </nav>
 
                 <article className="min-w-0">
-                    <header className="mb-12 max-w-[68ch] lg:mb-16">
+                    <header className="mb-16 max-w-[68ch] lg:mb-24">
                         <h1 className="font-serif text-[2.75rem] font-normal leading-[1.05] tracking-[-0.03em] text-text sm:text-[4rem]">
                             Documentation
                         </h1>
@@ -123,10 +126,11 @@ export default function Docs() {
                             role="note"
                             className="mt-6 rounded-panel border border-line bg-surface p-5 text-base leading-relaxed text-muted"
                         >
-                            <strong className="font-medium text-text">Testnet only.</strong> AlphaMarkets runs on{' '}
-                            {chain.name}. It is not audited and has not been deployed to mainnet. Prices come from
-                            test feeds and the settlement token is a test token. Do not treat any balance here as
-                            real money. See <a href="#limits" className="text-accent underline underline-offset-4">Known limits</a>.
+                            <strong className="font-medium text-text">Live on {chain.name} mainnet.</strong>{' '}
+                            Deposits, positions and payouts are real funds. Trade only what you can afford to lose,
+                            and read <a href="#limits" className="text-accent underline underline-offset-4">Known limits</a>{' '}
+                            before you deposit. See <a href="#network" className="text-accent underline underline-offset-4">Network and token</a>{' '}
+                            for the chain, the settlement token and the protocol token address.
                         </p>
                     </header>
 
@@ -146,6 +150,46 @@ export default function Docs() {
                             closes. Every contract is a proxy that an admin can upgrade, so the code behind an address
                             can change (see Known limits).
                         </p>
+                    </Section>
+
+                    <Section id="network" title="Network and token">
+                        <p className={bodyText}>
+                            AlphaMarkets runs on {chain.name} mainnet (chain ID <Term>{String(env.chainId)}</Term>), an
+                            Ethereum L2. Gas is paid in ETH. Every contract address is listed in full under{' '}
+                            <Link href="/#landing-contracts" className="text-accent underline underline-offset-4">
+                                Smart contracts
+                            </Link>{' '}
+                            on the home page.
+                        </p>
+                        <p className={bodyText}>
+                            <strong className="font-medium text-text">Settlement token.</strong> Margin, fees, profit
+                            and loss and option premiums are all in USDG, which has 6 decimals.
+                            {settlementTokenUrl ? (
+                                <>
+                                    {' '}
+                                    <a
+                                        href={settlementTokenUrl}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        className="text-accent underline underline-offset-4"
+                                    >
+                                        View the token on the explorer
+                                    </a>
+                                    .
+                                </>
+                            ) : null}
+                        </p>
+                        <p className={bodyText}>
+                            <strong className="font-medium text-text">Markets.</strong> Each market is a tokenized
+                            stock on the chain. Its price comes from a Chainlink data feed (see Price feeds). The
+                            list of markets, and their leverage and limits, are under Live parameters.
+                        </p>
+                        <p className={bodyText}>
+                            <strong className="font-medium text-text">Protocol token.</strong> The protocol token is
+                            not one of the trading contracts, and trading does not need it. Check its contract
+                            address here, and only against this page or the home page:
+                        </p>
+                        <ContractAddressBadge />
                     </Section>
 
                     <Section
@@ -261,7 +305,7 @@ liquidation price = entry ± entry × (maintenance − margin) ÷ size
                         </p>
                         <p className={bodyText}>
                             Nothing in the protocol itself calls liquidate, so a position stays open until someone
-                            does. On testnet a bot runs liquidations.
+                            does.
                         </p>
                     </Section>
 
@@ -366,8 +410,13 @@ put payout  = max(strike − settlement, 0) × contract size × contracts`}</For
                             trading but not take funds.
                         </p>
                         <p className={bodyText}>
-                            On testnet the feeds are test contracts whose price a keeper pushes, not real market
-                            data.
+                            <strong className="font-medium text-text">Chainlink feeds.</strong> Prices come from
+                            Chainlink data feeds on {chain.name}, which report each token&apos;s price with 8
+                            decimals. The router converts them to 18. Stock feeds update on the equity market
+                            schedule, 24 hours a day, 5 days a week. When a feed has not updated within the maximum
+                            age, reads for that market revert. Opening, closing, liquidation and settlement wait
+                            for the next fresh price. An option that expires in that window settles at the first
+                            valid price after expiry.
                         </p>
                     </Section>
 
@@ -383,25 +432,16 @@ put payout  = max(strike − settlement, 0) × contract size × contracts`}</For
                     </div>
 
                     <Section id="limits" title="Known limits">
-                        <ul className={cn(bodyText, 'flex list-disc flex-col gap-3 pl-5 marker:text-faint')}>
+                        <ul className={cn(bodyText, 'flex list-disc flex-col gap-5 pl-5 marker:text-faint')}>
                             <li>
-                                <strong className="font-medium text-text">Not audited.</strong> No independent review of
-                                the contracts has been done.
+                                <strong className="font-medium text-text">Upgradeable contracts.</strong> Every
+                                contract is a proxy that an admin can upgrade, so the code behind an address can
+                                change. Read the current values under Live parameters.
                             </li>
                             <li>
-                                <strong className="font-medium text-text">Admin control.</strong> One deployer key
-                                holds the admin roles and can upgrade every contract. The plan is to move these to a
-                                multisig with a timelock before mainnet.
-                            </li>
-                            <li>
-                                <strong className="font-medium text-text">Test prices and token.</strong> Feeds and the
-                                settlement token are test contracts. Fee values are placeholders, not a final schedule.
-                            </li>
-                            <li>
-                                <strong className="font-medium text-text">Recent code is unaudited.</strong> The
-                                vault pool, the pause roles, the option price bounds and batched settlement were
-                                upgraded on testnet on 24 September 2026. They are covered by tests and were checked
-                                on testnet, but no independent review has seen them.
+                                <strong className="font-medium text-text">Market hours.</strong> Stock prices update
+                                24 hours a day, 5 days a week. While a feed is stale, its market cannot open, close
+                                or liquidate positions.
                             </li>
                             <li>
                                 <strong className="font-medium text-text">Pool size.</strong> Options are buy-only and
@@ -416,10 +456,6 @@ put payout  = max(strike − settlement, 0) × contract size × contracts`}</For
                             <li>
                                 <strong className="font-medium text-text">Funding is inactive</strong>, as described
                                 above.
-                            </li>
-                            <li>
-                                <strong className="font-medium text-text">Who can pause.</strong> On testnet the
-                                deployer key holds the pause role. Who holds it on mainnet is not decided yet.
                             </li>
                             <li>
                                 <strong className="font-medium text-text">Alerts need an open tab.</strong> Take-profit,
