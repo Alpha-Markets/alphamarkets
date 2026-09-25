@@ -59,9 +59,14 @@ export function ContractAddressBadge({ className }: { className?: string }) {
             )}
         >
             <span className={cn(MONO, 'text-xs text-muted')}>
-                {token?.symbol ? `$${token.symbol} CA` : 'CA'}
+                {token?.symbol ? `CA` : 'CA'}
             </span>
-            <span className={cn(MONO, 'break-all text-[11px] text-text sm:text-xs')}>
+            <span
+                className={cn(
+                    MONO,
+                    'break-all text-[11px] text-text sm:text-xs',
+                )}
+            >
                 {address ?? 'Coming Soon'}
             </span>
             {address ? (
