@@ -1,6 +1,7 @@
 import { resolveMarketId, type Address } from "@alphamarkets/sdk";
 import type { FastifyInstance } from "fastify";
 import { getSql } from "../db.js";
+import { fetchPastCandles, pastPricePoints } from "../externalCandles.js";
 import { changeBps, parseRange, RANGES } from "../stats.js";
 
 /// Market statistics and history the chain cannot serve cheaply: everything here is derived from
@@ -96,7 +97,11 @@ export function registerStatsRoutes(app: FastifyInstance) {
         ) b
         order by bucket
       `;
-      return rows.map((row) => ({ time: Number(row.time), price: row.price }));
+      const indexed = rows.map((row) => ({ time: Number(row.time), price: row.price }));
+      // Fill the time before the indexer's first sample with the underlying stock's own history.
+      const past = await fetchPastCandles(request.params.symbol.toUpperCase(), "5m");
+      const now = Math.floor(Date.now() / 1000);
+      return [...pastPricePoints(past, now - rangeSeconds, indexed[0]?.time ?? Infinity, bucketSeconds), ...indexed];
     },
   );
 
