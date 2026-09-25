@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import type { Candle } from "./analytics.js";
-import { bucketBars, mergeHistory, parseYahooBars, pastPricePoints } from "./externalCandles.js";
+import { bucketBars, dollarVolume, mergeHistory, parseYahooBars, pastPricePoints } from "./externalCandles.js";
 
 const candle = (time: number): Candle => ({ time, open: "1", high: "1", low: "1", close: "1", volume: "0" });
 
@@ -52,4 +52,10 @@ test("line points come from past closes inside the window and before the indexed
     { time: 0, price: "2" },
     { time: 600, price: "3" },
   ]);
+});
+
+test("underlying dollar volume is the last bar's share volume times its close", () => {
+  assert.equal(dollarVolume([{ close: 10, volume: 5 }, { close: 200.5, volume: 1_000 }]), "200500");
+  assert.equal(dollarVolume([{ close: 10, volume: null }]), null);
+  assert.equal(dollarVolume([]), null);
 });

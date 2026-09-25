@@ -38,6 +38,9 @@ function MarketCard({ symbol, overview, stats, decimals }: CardProps) {
     const step = Math.max(1, Math.floor(all.length / SPARK_POINTS));
     return all.filter((_, index) => index % step === 0 || index === all.length - 1);
   }, [history]);
+  // Until anyone trades this market on AlphaMarkets its volume is 0, so show the underlying stock's
+  // own volume instead, labeled as such, rather than a card that reads as broken.
+  const showStockVolume = stats !== undefined && stats.perpVolume24h === 0n && stats.underlyingVolumeUsd !== null;
   return (
     <Link
       href={`/perpetuals?market=${symbol}`}
@@ -58,8 +61,13 @@ function MarketCard({ symbol, overview, stats, decimals }: CardProps) {
           <span className="truncate tabular-nums text-muted">{overview?.openInterest ? fmtUsd(overview.openInterest.total, decimals, 0) : "–"}</span>
         </div>
         <div className="flex flex-col gap-1 min-w-0">
-          <span className="text-xs text-muted">24h volume</span>
-          <span className="truncate tabular-nums text-muted">{stats ? fmtUsd(stats.perpVolume24h, decimals, 0) : "–"}</span>
+          <span className="text-xs text-muted">{showStockVolume ? "Stock volume" : "24h volume"}</span>
+          <span
+            className="truncate tabular-nums text-muted"
+            title={showStockVolume ? "Dollar volume the underlying stock traded in its latest session. Not volume on AlphaMarkets." : undefined}
+          >
+            {showStockVolume ? fmtUsd(stats.underlyingVolumeUsd! * 10n ** BigInt(decimals), decimals, 0) : stats ? fmtUsd(stats.perpVolume24h, decimals, 0) : "–"}
+          </span>
         </div>
         <div className="flex flex-col gap-1 min-w-0">
           <span className="text-xs text-muted">Funding</span>
