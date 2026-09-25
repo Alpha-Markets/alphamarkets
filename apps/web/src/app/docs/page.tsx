@@ -35,7 +35,7 @@ const SECTIONS = [
     { id: 'verify', title: 'Verify it yourself' },
 ] as const;
 
-const bodyText = 'text-lg leading-[1.7] text-muted';
+const bodyText = 'text-lg leading-[1.8] text-muted';
 
 function Section({
     id,
@@ -52,7 +52,7 @@ function Section({
         <section
             id={id}
             aria-labelledby={`${id}-title`}
-            className="scroll-mt-6 border-t border-line py-12 first:border-t-0 first:pt-0 lg:py-16"
+            className="scroll-mt-8 border-t border-line py-14 first:border-t-0 first:pt-0 sm:py-20 lg:py-24"
         >
             <h2
                 id={`${id}-title`}
@@ -60,9 +60,9 @@ function Section({
             >
                 {title}
             </h2>
-            <div className="mt-6 flex max-w-[68ch] flex-col gap-5">{children}</div>
+            <div className="mt-8 flex max-w-[68ch] flex-col gap-6 sm:mt-10">{children}</div>
             {sources?.length ? (
-                <p className={cn(MONO, 'mt-8 flex max-w-[68ch] flex-wrap gap-x-4 gap-y-1 text-xs text-faint')}>
+                <p className={cn(MONO, 'mt-10 flex max-w-[68ch] flex-wrap gap-x-4 gap-y-1 border-t border-line pt-4 text-xs text-faint')}>
                     <span>Checked against</span>
                     {sources.map((path) => (
                         <code key={path}>{path}</code>
@@ -79,7 +79,7 @@ function Formula({ children }: { children: ReactNode }) {
         <pre
             className={cn(
                 MONO,
-                'overflow-x-auto rounded-control border border-line bg-surface px-4 py-3 text-sm leading-relaxed text-text',
+                'my-1 overflow-x-auto rounded-control border border-line bg-surface px-5 py-4 text-sm leading-loose text-text',
             )}
         >
             {children}
@@ -113,7 +113,7 @@ export default function Docs() {
                 </nav>
 
                 <article className="min-w-0">
-                    <header className="mb-12 max-w-[68ch] lg:mb-16">
+                    <header className="mb-16 max-w-[68ch] lg:mb-24">
                         <h1 className="font-serif text-[2.75rem] font-normal leading-[1.05] tracking-[-0.03em] text-text sm:text-[4rem]">
                             Documentation
                         </h1>
@@ -432,7 +432,7 @@ put payout  = max(strike − settlement, 0) × contract size × contracts`}</For
                     </div>
 
                     <Section id="limits" title="Known limits">
-                        <ul className={cn(bodyText, 'flex list-disc flex-col gap-3 pl-5 marker:text-faint')}>
+                        <ul className={cn(bodyText, 'flex list-disc flex-col gap-5 pl-5 marker:text-faint')}>
                             <li>
                                 <strong className="font-medium text-text">Upgradeable contracts.</strong> Every
                                 contract is a proxy that an admin can upgrade, so the code behind an address can
